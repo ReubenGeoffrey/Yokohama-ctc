@@ -1,0 +1,2042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Daily &amp; Monthly CTC Reconciliation — ATC Tires</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --red:#B3222F;
+    --red-deep:#8F1B26;
+    --red-tint:#FBEEEE;
+    --ink:#1D1D1F;
+    --muted:#6B6B70;
+    --line:#E4E3E6;
+    --panel:#FFFFFF;
+    --bg:#F7F6F5;
+    --good:#1E7A45;
+    --good-tint:#EBF7EE;
+    --bad:#B3222F;
+    --blue:#1A73E8;
+    --blue-tint:#E8F0FE;
+    --purple:#7C3AED;
+    --purple-tint:#F3E8FF;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+    -webkit-font-smoothing:antialiased;
+    min-height:100%;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:40px 24px 90px;}
+
+  header.top{margin-bottom:24px;}
+  .eyebrow{
+    font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--red);font-weight:600;margin-bottom:8px;
+  }
+  h1{
+    font-size:26px;font-weight:700;margin:0 0 8px;letter-spacing:-.01em;color:var(--ink);
+  }
+  .sub{color:var(--muted);font-size:14px;line-height:1.6;max-width:760px;}
+
+  /* Progress rail */
+  .rail{display:flex;align-items:center;gap:0;margin:22px 0 24px;}
+  .rail .seg{flex:1;height:2px;background:var(--line);position:relative;overflow:hidden;}
+  .rail .seg .fill{position:absolute;inset:0;width:0%;background:var(--red);transition:width .4s ease;}
+  .rail .node{
+    width:30px;height:30px;border-radius:50%;
+    background:var(--panel);
+    border:1.5px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:12.5px;font-weight:700;color:var(--muted);
+    flex-shrink:0;transition:all .2s ease;z-index:1;
+  }
+  .rail .node.active{border-color:var(--red);color:var(--red);}
+  .rail .node.done{background:var(--red);border-color:var(--red);color:#fff;}
+
+  section.stage{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:24px 26px;margin-bottom:16px;
+    transition:opacity .2s ease;
+  }
+  section.stage.disabled{opacity:.45;pointer-events:none;}
+  .stage-head{display:flex;align-items:baseline;gap:10px;margin-bottom:4px;}
+  .stage-num{
+    font-size:11.5px;font-weight:700;color:var(--red);background:var(--red-tint);
+    padding:2px 8px;border-radius:5px;
+  }
+  .stage-title{font-size:16px;font-weight:600;}
+  .stage-desc{color:var(--muted);font-size:13.5px;margin:6px 0 16px;line-height:1.55;}
+
+  .drop{
+    border:1.5px dashed var(--line);border-radius:8px;padding:16px 18px;
+    display:flex;align-items:center;gap:14px;cursor:pointer;
+    transition:border-color .15s, background .15s;
+    background:#FDFDFD;
+  }
+  .drop:hover, .drop.drag-active{border-color:var(--red);background:var(--red-tint);}
+  .drop.filled{border-color:var(--good);border-style:solid;background:#F1F8F4;}
+  
+  .batch-drop-box{
+    border:2px dashed var(--blue);border-radius:10px;padding:26px 20px;
+    background:#FAFCFF;text-align:center;cursor:pointer;
+    transition:all .15s ease;
+  }
+  .batch-drop-box:hover, .batch-drop-box.drag-active{
+    border-color:#1557B0;background:var(--blue-tint);
+  }
+  .batch-drop-box.filled{
+    border-color:var(--good);background:#F1F8F4;
+  }
+
+  .drop-icon{
+    width:36px;height:36px;border-radius:8px;
+    background:var(--red-tint);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    font-size:15px;color:var(--red);
+  }
+  .drop.filled .drop-icon{color:var(--good);background:#E3F3E9;}
+  .drop-text{flex:1;min-width:0;}
+  .drop-label{font-size:13.5px;font-weight:600;}
+  .drop-file{font-size:12px;color:var(--muted);margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  input[type=file]{display:none;}
+
+  .btn-row{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap;}
+  .btn-mini{
+    display:inline-flex;align-items:center;gap:6px;
+    background:#fff;border:1px solid var(--line);padding:8px 16px;border-radius:6px;
+    font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;
+    transition:all .15s ease;box-shadow:0 1px 2px rgba(0,0,0,0.03);
+  }
+  .btn-mini:hover{border-color:var(--blue);color:var(--blue);background:#fff;transform:translateY(-1px);}
+
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  @media(max-width:640px){.row2,.row3{grid-template-columns:1fr;}}
+
+  .tag-optional{
+    font-size:10px;color:var(--muted);font-weight:600;
+    border:1px solid var(--line);padding:1px 7px;border-radius:20px;margin-left:6px;
+  }
+
+  .status-line{
+    display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-top:12px;font-weight:500;
+  }
+  .status-line .dot{width:6px;height:6px;border-radius:50%;background:var(--good);flex-shrink:0;}
+  .status-line.warn .dot{background:var(--bad);}
+
+  .date-box{
+    display:flex;align-items:center;gap:12px;margin-top:16px;padding:12px 16px;
+    background:#FDFDFD;border:1px solid var(--line);border-radius:8px;
+  }
+  .date-box label{font-size:13px;color:var(--muted);font-weight:600;}
+  .date-box input[type=date]{
+    background:#fff;border:1px solid var(--line);color:var(--ink);
+    font-size:14px;padding:6px 10px;border-radius:6px;font-weight:600;
+  }
+
+  button.primary{
+    background:var(--red);color:#fff;border:none;padding:12px 22px;
+    font-weight:600;font-size:14px;
+    border-radius:8px;cursor:pointer;margin-top:14px;
+    transition:background .15s;
+  }
+  button.primary:hover{background:var(--red-deep);}
+  button.primary:active{transform:scale(.99);}
+  button.primary:disabled{background:#D9D8DB;color:#fff;cursor:not-allowed;}
+
+  button.blue{
+    background:var(--blue);color:#fff;border:none;padding:12px 24px;
+    font-weight:600;font-size:14px;
+    border-radius:8px;cursor:pointer;margin-top:14px;
+    transition:background .15s;
+  }
+  button.blue:hover{background:#1557B0;}
+  button.blue:disabled{background:#D9D8DB;color:#fff;cursor:not-allowed;}
+
+  button.ghost{
+    background:transparent;color:var(--ink);border:1px solid var(--line);padding:9px 16px;
+    font-weight:600;font-size:13px;border-radius:8px;cursor:pointer;
+    transition:border-color .15s, background .15s;
+  }
+  button.ghost:hover{border-color:var(--red);color:var(--red);background:var(--red-tint);}
+
+  .btn-action{
+    background:#fff;border:1px solid var(--line);padding:5px 10px;border-radius:6px;
+    font-size:11.5px;font-weight:600;color:var(--blue);cursor:pointer;
+    transition:all .15s ease;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;
+  }
+  .btn-action:hover{background:var(--blue-tint);border-color:var(--blue);}
+
+  .group-card{
+    border-radius:8px;overflow:hidden;margin-top:14px;
+    border:1px solid var(--line);background:#FDFDFD;
+  }
+  .group-card .group-title{
+    font-weight:600;font-size:13px;
+    padding:10px 16px;color:#fff;
+  }
+  .group-card.direct .group-title{background:var(--red);}
+  .group-card.indirect .group-title{background:#5C5C60;}
+
+  table.summary{width:100%;border-collapse:collapse;font-size:13px;}
+  table.summary th{
+    text-align:right;font-weight:600;color:var(--muted);padding:9px 16px;
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;
+    border-bottom:1px solid var(--line);
+  }
+  table.summary th:first-child, table.summary td:first-child{text-align:left;}
+  table.summary td{padding:10px 16px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;}
+  table.summary tr.subtotal td{
+    font-weight:700;background:var(--red-tint);border-top:1px solid var(--line);border-bottom:none;
+  }
+  table.summary tr.subtotal.indirect-sub td{background:#F1F0F1;}
+  table.summary tr:last-child td{border-bottom:none;}
+
+  .grand-total{
+    display:flex;justify-content:space-between;align-items:center;margin-top:14px;
+    padding:16px 20px;border-radius:8px;
+    background:var(--ink);color:#fff;
+  }
+  .grand-total .label{font-weight:600;font-size:13.5px;opacity:.85;}
+  .grand-total .value{font-weight:700;font-size:20px;}
+
+  /* Download Center Panel */
+  .download-center{
+    margin-top:20px;padding:20px;background:#F9FBFF;border:1.5px solid #D0E1FD;border-radius:10px;
+  }
+  .download-center-title{
+    font-size:15px;font-weight:700;color:#1557B0;margin-bottom:6px;display:flex;align-items:center;gap:8px;
+  }
+  .download-center-desc{
+    font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:16px;
+  }
+  .daily-downloads-grid{
+    display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:10px;margin-top:12px;
+  }
+  .daily-btn-card{
+    background:#fff;border:1px solid #D0E1FD;padding:10px 12px;border-radius:8px;
+    display:flex;align-items:center;justify-content:space-between;cursor:pointer;
+    transition:all .15s ease;
+  }
+  .daily-btn-card:hover{
+    border-color:var(--blue);background:var(--blue-tint);transform:translateY(-1px);
+  }
+  .daily-btn-date{font-size:13px;font-weight:700;color:var(--ink);}
+  .daily-btn-hc{font-size:11.5px;color:var(--muted);}
+
+  /* Enhanced Unmatched / Excluded Panel */
+  .unmatched-card{
+    margin-top:18px;border-radius:8px;background:var(--red-tint);
+    border:1px solid #EAD0D2;padding:16px 18px;
+  }
+  .unmatched-head{
+    display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;
+  }
+  .unmatched-title{
+    font-size:13.5px;font-weight:700;color:var(--bad);display:flex;align-items:center;gap:6px;
+  }
+  .unmatched-desc{
+    font-size:12.5px;color:#7A1E24;line-height:1.5;margin-bottom:12px;
+  }
+  .btn-copy{
+    background:#fff;border:1px solid #EAD0D2;border-radius:6px;padding:5px 12px;
+    font-size:12px;font-weight:600;color:var(--bad);cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;transition:all .15s ease;
+  }
+  .btn-copy:hover{background:var(--bad);color:#fff;border-color:var(--bad);}
+  
+  .unmatched-grid{
+    display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:8px;margin-top:10px;
+  }
+  .unmatched-item{
+    background:#fff;border:1px solid #EAD0D2;border-radius:6px;padding:8px 12px;
+    display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;
+  }
+  .unmatched-info{display:flex;flex-direction:column;min-width:0;}
+  .unmatched-code{font-weight:700;color:var(--ink);font-size:12.5px;}
+  .unmatched-name{color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  
+  .tag-cat{
+    font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.02em;flex-shrink:0;
+  }
+  .tag-cat.cl{background:var(--red-tint);color:var(--red);}
+  .tag-cat.naps{background:var(--purple-tint);color:var(--purple);}
+  .tag-cat.op{background:var(--blue-tint);color:var(--blue);}
+
+  .matched-card{
+    margin-top:16px;border-radius:8px;background:var(--good-tint);
+    border:1px solid #C3E6CB;padding:12px 18px;display:flex;align-items:center;gap:10px;
+    font-size:13px;color:var(--good);
+  }
+
+  .divider{
+    display:flex;align-items:center;text-align:center;margin:24px 0 18px;color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.05em;
+  }
+  .divider::before, .divider::after{content:'';flex:1;border-bottom:1px solid var(--line);}
+  .divider:not(:empty)::before{margin-right:1em;}
+  .divider:not(:empty)::after{margin-left:1em;}
+
+  .matrix-wrap{margin-top:14px;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+  table.matrix{width:100%;border-collapse:collapse;font-size:13px;background:#fff;}
+  table.matrix th{background:#F7F6F5;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);}
+  table.matrix td{padding:10px 14px;border-bottom:1px solid var(--line);}
+  .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+  .badge.ok{background:#E3F3E9;color:var(--good);}
+  .badge.miss{background:#F1F0F2;color:var(--muted);}
+  .badge.file{background:#E8F0FE;color:var(--blue);}
+
+  footer.note{
+    margin-top:24px;color:var(--muted);font-size:12px;line-height:1.7;
+    border-top:1px solid var(--line);padding-top:18px;
+  }
+  .spinner{
+    display:inline-block;width:13px;height:13px;border-radius:50%;
+    border:2px solid rgba(255,255,255,.4);border-top-color:#fff;
+    animation:spin .7s linear infinite;margin-right:8px;vertical-align:-2px;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">ATC Tires · Payroll Ops</div>
+    <h1 id="mainTitle">Monthly CTC Reconciliation &amp; Attendance Mapper</h1>
+    <p class="sub" id="mainSubtitle">Upload the CTC master once, drop in your entire attendance folder (e.g. <strong>INPUT AUG Present</strong>), and download the single consolidated monthly workbook or individual date-by-date files.</p>
+  </header>
+
+  <div class="rail">
+    <div class="node active" id="node1">1</div>
+    <div class="seg"><div class="fill" id="fill1"></div></div>
+    <div class="node" id="node2">2</div>
+    <div class="seg"><div class="fill" id="fill2"></div></div>
+    <div class="node" id="node3">3</div>
+    <div class="seg"><div class="fill" id="fill3"></div></div>
+    <div class="node" id="node4">4</div>
+  </div>
+
+  <!-- STAGE 1 -->
+  <section class="stage" id="stage1">
+    <div class="stage-head"><span class="stage-num">01</span><span class="stage-title">Load the CTC master</span></div>
+    <p class="stage-desc">This is <em>CL_CTC_Input_2.xlsx</em> — Contract, NAPS and OPERATOR sheets. It tells the tool each employee's Direct/Indirect status and daily CTC/OT rate.</p>
+    <label class="drop" id="dropMaster">
+      <div class="drop-icon">⛁</div>
+      <div class="drop-text">
+        <div class="drop-label">Drop or choose CL_CTC_Input_2.xlsx</div>
+        <div class="drop-file" id="masterFileName">No file loaded</div>
+      </div>
+      <input type="file" id="masterInput" accept=".xlsx,.xls">
+    </label>
+    <div class="status-line" id="masterStatus" style="display:none;"><div class="dot"></div><span></span></div>
+  </section>
+
+  <!-- STAGE 2 -->
+  <section class="stage disabled" id="stage2">
+    <div class="stage-head"><span class="stage-num">02</span><span class="stage-title">Drop attendance folder or files</span></div>
+    <p class="stage-desc">Drop your entire monthly attendance folder (e.g. <strong>INPUT AUG Present</strong>) OR select multiple files. All dates and categories are automatically detected!</p>
+
+    <!-- BATCH MULTI-DATE DROPZONE -->
+    <div class="batch-drop-box" id="dropBatch">
+      <div style="font-size:28px;margin-bottom:6px;">📂</div>
+      <div style="font-size:15.5px;font-weight:700;color:var(--ink);" id="batchTitle">Drop Entire Attendance Folder (e.g. INPUT AUG Present) Here</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px;" id="batchFileName">Drag &amp; drop whole folder or click the buttons below</div>
+      
+      <div class="btn-row">
+        <label class="btn-mini" onclick="event.stopPropagation();">
+          📂 Choose Folder (All Dates)
+          <input type="file" id="batchInputFolder" webkitdirectory directory multiple>
+        </label>
+        <label class="btn-mini" onclick="event.stopPropagation();">
+          📁 Choose Files
+          <input type="file" id="batchInputFiles" accept=".xlsx,.xls" multiple>
+        </label>
+      </div>
+    </div>
+
+    <!-- Batch Matrix Table -->
+    <div id="batchMatrixBox" style="display:none;margin-top:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:13.5px;font-weight:700;color:var(--ink);" id="batchMatrixTitle">Detected Dates &amp; Attached Files</div>
+        <button class="ghost" id="clearBatchBtn" type="button" style="padding:4px 10px;font-size:11.5px;">Clear Files</button>
+      </div>
+      <div class="matrix-wrap">
+        <table class="matrix">
+          <thead><tr><th>Date</th><th>Source / Contract</th><th>Operator</th><th>NAPS</th><th>Status / Present Count</th></tr></thead>
+          <tbody id="batchMatrixBody"></tbody>
+        </table>
+      </div>
+      <button class="blue" id="computeBatchBtn">⚡ Reconcile All Detected Dates</button>
+    </div>
+
+    <div class="divider">OR PROCESS A SINGLE RAW DATE</div>
+    
+    <div class="row3">
+      <label class="drop" id="dropCL">
+        <div class="drop-icon">⛁</div>
+        <div class="drop-text">
+          <div class="drop-label">Contract Labour</div>
+          <div class="drop-file" id="clFileName">No file loaded</div>
+        </div>
+        <input type="file" id="clInput" accept=".xlsx,.xls">
+      </label>
+      <label class="drop" id="dropOp">
+        <div class="drop-icon">⛁</div>
+        <div class="drop-text">
+          <div class="drop-label">Operator</div>
+          <div class="drop-file" id="opFileName">No file loaded</div>
+        </div>
+        <input type="file" id="opInput" accept=".xlsx,.xls">
+      </label>
+      <label class="drop" id="dropNaps">
+        <div class="drop-icon">⛁</div>
+        <div class="drop-text">
+          <div class="drop-label">NAPS <span class="tag-optional">optional</span></div>
+          <div class="drop-file" id="napsFileName">No file loaded</div>
+        </div>
+        <input type="file" id="napsInput" accept=".xlsx,.xls">
+      </label>
+    </div>
+
+    <div class="date-box">
+      <label for="reportDate">Report date</label>
+      <input type="date" id="reportDate">
+      <span class="status-line" id="dateDetected" style="margin-top:0;"><span></span></span>
+    </div>
+
+    <button class="primary" id="computeBtn" disabled>Compute single day head count &amp; wages</button>
+  </section>
+
+  <!-- STAGE 3 -->
+  <section class="stage disabled" id="stage3">
+    <div class="stage-head"><span class="stage-num">03</span><span class="stage-title">Review the breakdown &amp; Excluded Employees</span></div>
+    <p class="stage-desc">Grouped by Direct and Indirect, split across Operator / Contract Labour / NAPS, with instant download for any specific date.</p>
+    <div id="tableHolder"></div>
+    <div id="unmatchedHolder"></div>
+  </section>
+
+  <!-- STAGE 4 -->
+  <section class="stage disabled" id="stage4">
+    <div class="stage-head"><span class="stage-num">04</span><span class="stage-title">Download Workbooks (Single Consolidated &amp; Date-Wise)</span></div>
+    <p class="stage-desc">The ATC / CL / NAPS detail sheets are built automatically from the master. Drop in your monthly Summary sheet (optional) to write all daily metrics directly into it.</p>
+    
+    <label class="drop" id="dropSummary">
+      <div class="drop-icon">⛁</div>
+      <div class="drop-text">
+        <div class="drop-label">Monthly Summary <span class="tag-optional">Summary sheet.xlsx</span></div>
+        <div class="drop-file" id="summaryFileName">No file loaded (will create clean if skipped)</div>
+      </div>
+      <input type="file" id="summaryInput" accept=".xlsx,.xls">
+    </label>
+    <div class="status-line" id="summaryStatus" style="display:none;"><div class="dot"></div><span></span></div>
+    
+    <!-- CONSOLIDATED & DATE-WISE DOWNLOAD CENTER -->
+    <div class="download-center" id="downloadCenter">
+      <div class="download-center-title">📥 Output Download Center</div>
+      <div class="download-center-desc">Download the full monthly consolidated workbook or pick individual date-wise Excel files below.</div>
+      
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+        <button class="primary" id="writeAllBtn" style="margin-top:0;">📥 Download Combined Monthly Workbook (All Dates)</button>
+        <button class="blue" id="downloadAllZipBtn" style="margin-top:0;background:#34A853;">📦 Download All Daily Files (ZIP)</button>
+        <button class="ghost" id="nextDayBtn" disabled type="button">Switch to another day →</button>
+      </div>
+
+      <div id="dateWiseContainer" style="margin-top:18px;display:none;">
+        <div style="font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;">
+          Individual Date Workbooks (Single Day Excel Files):
+        </div>
+        <div class="daily-downloads-grid" id="dailyDownloadsGrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="note">
+    Everything runs locally in your browser — files are parsed with SheetJS/ExcelJS and never leave your computer. Pure UTC date matching is enforced for all 12 months of the year.
+  </footer>
+
+</div>
+
+<script>
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
+
+const MONTH_MAP = {JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_FULL_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+const state = {
+  master: null,
+  summaryBuffer: null,
+  present: { cl:null, op:null, naps:null },
+  reportDate: null,
+  computed: null,
+  unmatched: [],
+  batchDates: {},
+  batchMultiResults: null,
+  batchUnmatched: [],
+  detectedYear: 2026,
+  detectedMonth: 7
+};
+
+let detailWorkbook = null;
+
+function setNode(n, cls){ const el = document.getElementById('node'+n); if(el) el.className = 'node ' + cls; }
+function setFill(n, pct){ const el = document.getElementById('fill'+n); if(el) el.style.width = pct + '%'; }
+function enableStage(n){ const el = document.getElementById('stage'+n); if(el) el.classList.remove('disabled'); }
+
+function getActiveYearMonth(){
+  if (state.reportDate) {
+    return { year: state.reportDate.getUTCFullYear(), month: state.reportDate.getUTCMonth() };
+  }
+  const dateKeys = Object.keys(state.batchDates);
+  if (dateKeys.length > 0) {
+    const firstDate = state.batchDates[dateKeys[0]].date;
+    return { year: firstDate.getUTCFullYear(), month: firstDate.getUTCMonth() };
+  }
+  return { year: state.detectedYear, month: state.detectedMonth };
+}
+
+function formatDateToInput(d){
+  if(!d) return '';
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function formatDateDisplay(d){
+  if(!d) return '';
+  return `${d.getUTCDate()}-${MONTH_NAMES[d.getUTCMonth()]}-${d.getUTCFullYear()}`;
+}
+
+function readWorkbook(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      try{ resolve(XLSX.read(e.target.result, {type:'array', cellDates:true})); }
+      catch(err){ reject(err); }
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+function sheetToRows(ws){ return XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''}); }
+
+async function extractFilesFromDataTransfer(dataTransfer) {
+  const fileList = [];
+  const items = dataTransfer.items;
+  
+  if (items && items.length > 0 && items[0].webkitGetAsEntry) {
+    const queue = [];
+    for (let i = 0; i < items.length; i++) {
+      const entry = items[i].webkitGetAsEntry();
+      if (entry) queue.push(entry);
+    }
+    while (queue.length > 0) {
+      const entry = queue.shift();
+      if (entry.isFile) {
+        const file = await new Promise(res => entry.file(res));
+        if (isValidExcel(file.name)) fileList.push(file);
+      } else if (entry.isDirectory) {
+        const dirReader = entry.createReader();
+        const entries = await readAllDirEntries(dirReader);
+        for (const child of entries) queue.push(child);
+      }
+    }
+  } else if (dataTransfer.files && dataTransfer.files.length) {
+    for (let i = 0; i < dataTransfer.files.length; i++) {
+      const f = dataTransfer.files[i];
+      if (isValidExcel(f.name)) fileList.push(f);
+    }
+  }
+  return fileList;
+}
+
+function isValidExcel(fn) {
+  if (!fn) return false;
+  const lower = fn.toLowerCase();
+  return (lower.endsWith('.xlsx') || lower.endsWith('.xls')) && !lower.startsWith('~$');
+}
+
+async function readAllDirEntries(dirReader) {
+  const entries = [];
+  let chunk = await new Promise(res => dirReader.readEntries(res));
+  while (chunk && chunk.length > 0) {
+    entries.push(...chunk);
+    chunk = await new Promise(res => dirReader.readEntries(res));
+  }
+  return entries;
+}
+
+function setupDropZone(dropZoneId, inputId, onFiles) {
+  const dropEl = document.getElementById(dropZoneId);
+  const inputEl = inputId ? document.getElementById(inputId) : null;
+
+  ['dragenter', 'dragover'].forEach(ev => {
+    dropEl.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation();
+      dropEl.classList.add('drag-active');
+    });
+  });
+
+  ['dragleave', 'dragend'].forEach(ev => {
+    dropEl.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation();
+      dropEl.classList.remove('drag-active');
+    });
+  });
+
+  dropEl.addEventListener('drop', async e => {
+    e.preventDefault(); e.stopPropagation();
+    dropEl.classList.remove('drag-active');
+    const files = await extractFilesFromDataTransfer(e.dataTransfer);
+    if (files && files.length) {
+      onFiles(files);
+    }
+  });
+
+  if (inputEl) {
+    inputEl.addEventListener('change', e => {
+      if (e.target.files && e.target.files.length) {
+        onFiles(Array.from(e.target.files));
+      }
+    });
+  }
+}
+
+// ---------- MASTER PARSERS ----------
+function buildContractMap(rows){
+  const map = new Map();
+  const header = rows[1].map(h=>String(h||'').trim().toUpperCase());
+  const idxEmp = header.indexOf('EMP NO');
+  const idxName = header.indexOf('NAME');
+  const idxCat = header.indexOf('CATEGORY');
+  const idxDept = header.indexOf('DEPT');
+  const idxDailyCTC = header.indexOf('DAILY CTC');
+  const idxDailyOT = header.indexOf('DAILY OT');
+  for(let i=2;i<rows.length;i++){
+    const r = rows[i];
+    if(!r || !r[idxEmp]) continue;
+    map.set(String(r[idxEmp]).trim().toUpperCase(), {
+      name: r[idxName]||'',
+      dept: r[idxDept]||'',
+      direct: String(r[idxCat]||'').trim().toUpperCase()==='DIRECT',
+      dailyCTC: Number(r[idxDailyCTC])||0,
+      dailyOT: Number(r[idxDailyOT])||0
+    });
+  }
+  return map;
+}
+function buildNapsMap(rows){
+  const map = new Map();
+  const header = rows[0].map(h=>String(h||'').trim().toUpperCase());
+  const idxCode = header.indexOf('CODE');
+  const idxName = header.indexOf('NAME');
+  const idxDept = header.indexOf('DEPT');
+  const idxDI = header.indexOf('DIRECT/INDIRECT');
+  const idxDailyCTC = header.indexOf('DAILY CTC');
+  for(let i=1;i<rows.length;i++){
+    const r = rows[i];
+    if(!r || !r[idxCode]) continue;
+    map.set(String(r[idxCode]).trim().toUpperCase(), {
+      name: r[idxName]||'',
+      dept: r[idxDept]||'',
+      direct: String(r[idxDI]||'').trim().toUpperCase()==='DIRECT',
+      dailyCTC: Number(r[idxDailyCTC])||0,
+      dailyOT: 0
+    });
+  }
+  return map;
+}
+function buildOperatorMap(rows){
+  const map = new Map();
+  const header = rows[0].map(h=>String(h||'').trim().toUpperCase());
+  const idxCode = header.indexOf('EMP CODE');
+  const idxName = header.indexOf('EMP NAME');
+  const idxDept = header.indexOf('DEPARTMENT');
+  const idxDailyCTC = header.indexOf('DAILY CTC');
+  let idxDailyOT = header.indexOf('DAILY OT');
+  if(idxDailyOT===-1) idxDailyOT = header.indexOf('OT');
+  for(let i=1;i<rows.length;i++){
+    const r = rows[i];
+    if(!r || (r[idxCode]===''||r[idxCode]===undefined||r[idxCode]===null)) continue;
+    map.set(String(r[idxCode]).trim().toUpperCase(), {
+      name: r[idxName]||'',
+      dept: r[idxDept]||'',
+      direct: String(r[idxDept]||'').trim().toUpperCase()==='PRODUCTION',
+      dailyCTC: Number(r[idxDailyCTC])||0,
+      dailyOT: Number(r[idxDailyOT])||0
+    });
+  }
+  return map;
+}
+
+// Master Dropzone
+setupDropZone('dropMaster', 'masterInput', async (files)=>{
+  const file = files[0];
+  if(!file) return;
+  document.getElementById('masterFileName').textContent = file.name;
+  const st = document.getElementById('masterStatus');
+  try{
+    const wb = await readWorkbook(file);
+    state.master = {
+      contract: buildContractMap(sheetToRows(wb.Sheets['Contract'])),
+      naps: buildNapsMap(sheetToRows(wb.Sheets['NAPS'])),
+      operator: buildOperatorMap(sheetToRows(wb.Sheets['OPERATOR']))
+    };
+    document.getElementById('dropMaster').classList.add('filled');
+    st.style.display='flex'; st.className='status-line';
+    st.querySelector('span').textContent = `✓ Loaded ${state.master.contract.size} Contract Labour, ${state.master.naps.size} NAPS, ${state.master.operator.size} Operator records.`;
+
+    const { year, month } = getActiveYearMonth();
+    detailWorkbook = buildDetailWorkbook(state.master, year, month);
+
+    setNode(1,'done'); setFill(1,100); setNode(2,'active');
+    enableStage(2);
+    checkStage2Ready();
+  }catch(err){
+    console.error(err);
+    st.style.display='flex'; st.className='status-line warn';
+    st.querySelector('span').textContent = 'Could not read master file — check it has Contract, NAPS and OPERATOR sheets.';
+  }
+});
+
+// ---------- PRESENT FILE HELPERS ----------
+function findHeaderRowIdx(rows){
+  for(let i=0;i<rows.length;i++){
+    for(let c=0;c<Math.min(rows[i].length, 6);c++){
+      const s = String(rows[i][c]||'').trim().toUpperCase().replace(/[\s\.]/g, '');
+      if(s === 'SRNO' || s === 'SNO') return i;
+    }
+  }
+  return -1;
+}
+
+function timeStrToHours(v){
+  if(v===''||v==null) return 0;
+  if(typeof v === 'number') return v*24;
+  const m = String(v).trim().match(/^(\d{1,2}):(\d{2})/);
+  if(!m) return 0;
+  return parseInt(m[1],10) + parseInt(m[2],10)/60;
+}
+
+function extractDateFromAnywhere(rows, filename){
+  for(let i=0; i<Math.min(rows.length, 10); i++){
+    const row = rows[i];
+    if(!row) continue;
+    for(let c=0; c<Math.min(row.length, 8); c++){
+      const cell = String(row[c]||'').trim();
+      const m = cell.match(/as of\s+(\d{1,2})\w{0,2}\s+([A-Za-z]{3,})\s+(\d{4})/i);
+      if(m){
+        const day = parseInt(m[1], 10);
+        const monStr = m[2].substring(0,3).toUpperCase();
+        const mon = MONTH_MAP[monStr];
+        const yr = parseInt(m[3], 10);
+        if(mon !== undefined && !isNaN(day) && !isNaN(yr)){
+          return new Date(Date.UTC(yr, mon, day));
+        }
+      }
+      const m2 = cell.match(/(\d{1,2})[-\s/]([A-Za-z]{3,})[-\s/](\d{4})/i);
+      if(m2){
+        const day = parseInt(m2[1], 10);
+        const monStr = m2[2].substring(0,3).toUpperCase();
+        const mon = MONTH_MAP[monStr];
+        const yr = parseInt(m2[3], 10);
+        if(mon !== undefined && !isNaN(day) && !isNaN(yr)){
+          return new Date(Date.UTC(yr, mon, day));
+        }
+      }
+    }
+  }
+  // Check DD-MM-YYYY in filename (e.g. 21- 08-2026 or 22-08-2026)
+  const mDmy = filename.match(/(\d{1,2})\s*[-_/\.]\s*(\d{1,2})\s*[-_/\.]\s*(\d{4})/);
+  if (mDmy) {
+    const day = parseInt(mDmy[1], 10);
+    const mon = parseInt(mDmy[2], 10) - 1;
+    const yr = parseInt(mDmy[3], 10);
+    if(mon >= 0 && mon <= 11 && day >= 1 && day <= 31){
+      return new Date(Date.UTC(yr, mon, day));
+    }
+  }
+  const mIso = filename.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if(mIso){
+    return new Date(Date.UTC(parseInt(mIso[1],10), parseInt(mIso[2],10)-1, parseInt(mIso[3],10)));
+  }
+  const mFn = filename.match(/Date\s*(\d{1,2})/i);
+  if(mFn){
+    const day = parseInt(mFn[1], 10);
+    const { year, month } = getActiveYearMonth();
+    if(day >= 1 && day <= 31){
+      return new Date(Date.UTC(year, month, day));
+    }
+  }
+  return null;
+}
+
+function detectCategoryFromAnywhere(rows, hIdx, filename){
+  for(let i=0; i<Math.min(rows.length, 10); i++){
+    const row = rows[i];
+    if(!row) continue;
+    for(let c=0; c<Math.min(row.length, 8); c++){
+      const cell = String(row[c]||'').toUpperCase();
+      if(cell.includes('CATEGORY :') || cell.includes('CATEGORY:')){
+        if(cell.includes('OPERATOR')) return 'OP';
+        if(cell.includes('NAPS')) return 'NAPS';
+        if(cell.includes('CONTRACT') || cell.includes('CL')) return 'CL';
+      }
+    }
+  }
+  if(hIdx !== -1 && rows[hIdx]){
+    const header = rows[hIdx].map(h=>String(h||'').trim().toUpperCase());
+    const cIdx = header.indexOf('CODE');
+    if(cIdx !== -1){
+      for(let r=hIdx+1; r<Math.min(rows.length, hIdx+10); r++){
+        if(rows[r] && rows[r][cIdx]){
+          const sample = String(rows[r][cIdx]).trim().toUpperCase();
+          if(sample.startsWith('9')) return 'OP';
+          if(sample.startsWith('LN')) return 'NAPS';
+          if(sample.length >= 4) return 'CL';
+        }
+      }
+    }
+  }
+  const fn = filename.toUpperCase();
+  if(fn.includes('OPERATOR') || fn.includes('OP')) return 'OP';
+  if(fn.includes('NAPS')) return 'NAPS';
+  return 'CL';
+}
+
+function parsePresentRecords(rows, hIdx){
+  if(hIdx === -1) return [];
+  const header = rows[hIdx].map(h=>String(h||'').trim().toUpperCase());
+  const idxCode = header.indexOf('CODE');
+  const idxName = header.indexOf('NAME');
+  const idxStatus = header.indexOf('STATUS');
+  const idxOT = header.indexOf('OT');
+  let idxWorkHrs = header.indexOf('WORKHRS');
+  if(idxWorkHrs === -1) idxWorkHrs = header.indexOf('WORK HRS');
+  const out = [];
+  for(let i=hIdx+1;i<rows.length;i++){
+    const r = rows[i];
+    if(!r || idxCode===-1 || !r[idxCode]) continue;
+    const codeStr = String(r[idxCode]).trim().toUpperCase();
+    if(codeStr === 'GRANDTOTAL' || codeStr.startsWith('TOTAL')) continue;
+    const stStr = idxStatus!==-1 ? String(r[idxStatus]||'').trim().toUpperCase() : 'P';
+    out.push({
+      code: codeStr,
+      name: idxName!==-1 ? String(r[idxName]||'').trim() : '',
+      status: stStr,
+      isWop: stStr === 'WOP',
+      otHours: idxOT!==-1 ? timeStrToHours(r[idxOT]) : 0,
+      workHours: idxWorkHrs!==-1 ? timeStrToHours(r[idxWorkHrs]) : 0
+    });
+  }
+  return out;
+}
+
+// Single Day Dropzone Handlers
+function setupSinglePresentDrop(dropId, inputId, nameId, key){
+  setupDropZone(dropId, inputId, async (files)=>{
+    const file = files[0];
+    if(!file) return;
+    document.getElementById(nameId).textContent = file.name;
+    try{
+      const ab = await file.arrayBuffer();
+      const wb = XLSX.read(ab, {type:'array', cellDates:true});
+      const wsName = wb.SheetNames.includes('Present') ? 'Present' : wb.SheetNames[0];
+      const rows = sheetToRows(wb.Sheets[wsName]);
+      const hIdx = findHeaderRowIdx(rows);
+      if(hIdx===-1){ alert('Could not find Sr.No header in ' + file.name); return; }
+
+      const detectedDate = extractDateFromAnywhere(rows, file.name);
+      if(detectedDate){
+        state.reportDate = detectedDate;
+        state.detectedYear = detectedDate.getUTCFullYear();
+        state.detectedMonth = detectedDate.getUTCMonth();
+        document.getElementById('reportDate').value = formatDateToInput(detectedDate);
+        const dt = document.getElementById('dateDetected');
+        if(dt) dt.querySelector('span').textContent = `Detected: ${formatDateDisplay(detectedDate)}`;
+      }
+
+      state.present[key] = parsePresentRecords(rows, hIdx);
+      document.getElementById(dropId).classList.add('filled');
+      checkStage2Ready();
+    }catch(err){
+      console.error(err);
+      alert('Error parsing ' + file.name + ': ' + err.message);
+    }
+  });
+}
+setupSinglePresentDrop('dropCL', 'clInput', 'clFileName', 'cl');
+setupSinglePresentDrop('dropOp', 'opInput', 'opFileName', 'op');
+setupSinglePresentDrop('dropNaps', 'napsInput', 'napsFileName', 'naps');
+
+document.getElementById('reportDate').addEventListener('change', e=>{
+  if(e.target.value){
+    const [y, m, d] = e.target.value.split('-').map(Number);
+    state.reportDate = new Date(Date.UTC(y, m - 1, d));
+    state.detectedYear = y;
+    state.detectedMonth = m - 1;
+  } else {
+    state.reportDate = null;
+  }
+  checkStage2Ready();
+});
+
+function checkStage2Ready(){
+  const hasAnyFile = !!(state.present.cl || state.present.op || state.present.naps);
+  const hasDate = !!(state.reportDate || document.getElementById('reportDate').value);
+  document.getElementById('computeBtn').disabled = !(state.master && hasAnyFile && hasDate);
+}
+
+// Single Day Compute Button
+function emptyBucket(){ return {headcount:0, ctc:0, ot:0}; }
+
+document.getElementById('computeBtn').addEventListener('click', ()=>{
+  if(!state.master){ alert('Please load the CTC Master file in Stage 1 first.'); return; }
+  
+  const buckets = {
+    directOperator:emptyBucket(), directCL:emptyBucket(), directNAPS:emptyBucket(),
+    indirectOperator:emptyBucket(), indirectCL:emptyBucket(), indirectNAPS:emptyBucket()
+  };
+  state.unmatched = [];
+
+  function process(list, map, dKey, iKey, label){
+    if(!list || !map) return;
+    list.forEach(rec=>{
+      if(rec.status!=='P' && rec.status!=='WOP') return;
+      const info = map.get(rec.code);
+      if(!info){
+        state.unmatched.push({
+          code: rec.code,
+          name: rec.name || '',
+          category: label,
+          dateStr: formatDateDisplay(state.reportDate)
+        });
+        return;
+      }
+      const b = info.direct ? buckets[dKey] : buckets[iKey];
+      b.headcount+=1; b.ctc+=info.dailyCTC; b.ot += rec.otHours*info.dailyOT;
+    });
+  }
+
+  process(state.present.cl, state.master.contract, 'directCL','indirectCL','Contract Labour');
+  process(state.present.op, state.master.operator, 'directOperator','indirectOperator','Operator');
+  process(state.present.naps, state.master.naps, 'directNAPS','indirectNAPS','NAPS');
+
+  state.computed = buckets;
+  renderTable(buckets);
+  renderUnmatchedSection(state.unmatched);
+
+  setNode(2,'done'); setFill(2,100); setNode(3,'done'); setFill(3,100); setNode(4,'active');
+  enableStage(3); enableStage(4);
+  document.getElementById('writeAllBtn').disabled = false;
+  document.getElementById('dateWiseContainer').style.display = 'none';
+  document.getElementById('stage3').scrollIntoView({behavior:'smooth', block:'start'});
+});
+
+function fmt(n){ return Math.round(n).toLocaleString('en-IN'); }
+function fmtN(n){ return n.toLocaleString('en-IN'); }
+
+function renderTable(b){
+  function block(title, cls, rows){
+    const sumHC = rows.reduce((s,r)=>s+r[1].headcount,0);
+    const sumCTC = rows.reduce((s,r)=>s+r[1].ctc,0);
+    const sumOT = rows.reduce((s,r)=>s+r[1].ot,0);
+    let html = `<div class="group-card ${cls}">
+      <div class="group-title">${title}</div>
+      <table class="summary"><thead><tr>
+        <th>Type</th><th>Head Count</th><th>CTC</th><th>OT Wages</th><th>Total</th>
+      </tr></thead><tbody>`;
+    rows.forEach(r=>{
+      const tot = r[1].ctc + r[1].ot;
+      html += `<tr><td>${r[0]}</td><td>${fmtN(r[1].headcount)}</td><td>${fmt(r[1].ctc)}</td><td>${fmt(r[1].ot)}</td><td>${fmt(tot)}</td></tr>`;
+    });
+    html += `<tr class="subtotal ${cls==='indirect'?'indirect-sub':''}"><td>Total ${title}</td><td>${fmtN(sumHC)}</td><td>${fmt(sumCTC)}</td><td>${fmt(sumOT)}</td><td>${fmt(sumCTC+sumOT)}</td></tr>`;
+    html += `</tbody></table></div>`;
+    return {html, sumHC, sumCTC, sumOT};
+  }
+
+  const directRows = [
+    ['Operator', b.directOperator], ['Contract Labour', b.directCL], ['NAPS', b.directNAPS]
+  ];
+  const indirectRows = [
+    ['Operator', b.indirectOperator], ['Contract Labour', b.indirectCL], ['NAPS', b.indirectNAPS]
+  ];
+  const dBlock = block('Direct', 'direct', directRows);
+  const iBlock = block('Indirect', 'indirect', indirectRows);
+
+  const grandHC = dBlock.sumHC + iBlock.sumHC;
+  const grandCTC = dBlock.sumCTC + iBlock.sumCTC;
+  const grandOT = dBlock.sumOT + iBlock.sumOT;
+
+  let html = dBlock.html + iBlock.html;
+  html += `<div class="grand-total">
+    <span class="label">Grand Total &nbsp;·&nbsp; ${fmtN(grandHC)} present</span>
+    <span class="value">${fmt(grandCTC + grandOT)}</span>
+  </div>`;
+  document.getElementById('tableHolder').innerHTML = html;
+}
+
+// Comprehensive Unmatched / Excluded Employee Renderer
+function renderUnmatchedSection(unmatchedList){
+  const uh = document.getElementById('unmatchedHolder');
+  if(!unmatchedList || !unmatchedList.length){
+    uh.innerHTML = `
+      <div class="matched-card">
+        <span style="font-size:16px;">✓</span>
+        <span><strong>100% Matched</strong> — All present employees were found in the CTC Master roster (0 excluded).</span>
+      </div>
+    `;
+    return;
+  }
+
+  const codesOnly = unmatchedList.map(u => u.code).join(', ');
+  let itemsHtml = '';
+  unmatchedList.forEach(u => {
+    let catClass = 'cl';
+    if(u.category.includes('NAPS')) catClass = 'naps';
+    else if(u.category.includes('Operator')) catClass = 'op';
+
+    itemsHtml += `
+      <div class="unmatched-item">
+        <div class="unmatched-info">
+          <div class="unmatched-code">${u.code}</div>
+          <div class="unmatched-name">${u.name ? u.name : 'Name in attendance report'} ${u.dateStr ? '· ' + u.dateStr : ''}</div>
+        </div>
+        <span class="tag-cat ${catClass}">${u.category}</span>
+      </div>
+    `;
+  });
+
+  uh.innerHTML = `
+    <div class="unmatched-card">
+      <div class="unmatched-head">
+        <div class="unmatched-title">⚠️ ${unmatchedList.length} Present Employee(s) Not Found in CTC Master (Excluded)</div>
+        <button class="btn-copy" onclick="copyUnmatchedCodes('${codesOnly.replace(/'/g, "\\'")}')" id="copyUnmatchedBtn">📋 Copy Missing Codes</button>
+      </div>
+      <div class="unmatched-desc">
+        The following employees were marked <strong>Present</strong> in attendance but are missing from <strong>CL CTC Input 2.xlsx</strong>. Their Daily CTC &amp; OT wages are excluded from calculations until added to the Master roster.
+      </div>
+      <div class="unmatched-grid">
+        ${itemsHtml}
+      </div>
+    </div>
+  `;
+}
+
+function copyUnmatchedCodes(text){
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn = document.getElementById('copyUnmatchedBtn');
+    if(btn){
+      btn.textContent = 'Copied to Clipboard ✓';
+      setTimeout(()=>{ btn.textContent = '📋 Copy Missing Codes'; }, 2500);
+    }
+  });
+}
+
+// ---------- BATCH MULTI-FILE & CTC_OUTPUT ENGINE ----------
+async function processBatchFiles(files) {
+  if (!files || !files.length) return;
+  document.getElementById('batchFileName').textContent = `Analyzing ${files.length} file(s)...`;
+  
+  for (const file of files) {
+    if (!isValidExcel(file.name)) continue;
+    if (file.name === 'CL CTC Input 2.xlsx' || file.name === 'Summary sheet.xlsx') continue;
+
+    try {
+      const arrayBuf = await file.arrayBuffer();
+      const wb = XLSX.read(arrayBuf, {type:'array', cellDates:true});
+      
+      const isOutputWorkbook = wb.SheetNames.includes('Summary') || file.name.toUpperCase().includes('CTC_OUTPUT');
+      
+      if (isOutputWorkbook && wb.SheetNames.includes('Summary')) {
+        const wsSummary = wb.Sheets['Summary'];
+        const sumRows = sheetToRows(wsSummary);
+        let foundAnyDate = false;
+
+        for (let r = 3; r < sumRows.length; r++) {
+          const row = sumRows[r];
+          if (row && (Number(row[33]) > 0 || Number(row[36]) > 0)) {
+            const dayNum = r - 2;
+            const { year, month } = getActiveYearMonth();
+            const foundDate = new Date(Date.UTC(year, month, dayNum));
+            state.detectedYear = foundDate.getUTCFullYear();
+            state.detectedMonth = foundDate.getUTCMonth();
+            const dateKey = formatDateToInput(foundDate);
+            state.batchDates[dateKey] = {
+              date: foundDate,
+              isOutputFile: true,
+              outputFileName: file.name + (sumRows.filter(sr => sr && (sr[33] > 0 || sr[36] > 0)).length > 1 ? ` (Day ${dayNum})` : ''),
+              outputBuffer: arrayBuf,
+              summaryRow: row
+            };
+            foundAnyDate = true;
+          }
+        }
+        
+        if (!foundAnyDate) {
+          const fallbackDate = extractDateFromAnywhere([], file.name);
+          if (fallbackDate) {
+            state.detectedYear = fallbackDate.getUTCFullYear();
+            state.detectedMonth = fallbackDate.getUTCMonth();
+            const dateKey = formatDateToInput(fallbackDate);
+            state.batchDates[dateKey] = {
+              date: fallbackDate,
+              isOutputFile: true,
+              outputFileName: file.name,
+              outputBuffer: arrayBuf,
+              summaryRow: null
+            };
+          }
+        }
+      } else {
+        // Process each sheet in the workbook (supports single-sheet or multi-sheet workbooks)
+        for (const wsName of wb.SheetNames) {
+          const rows = sheetToRows(wb.Sheets[wsName]);
+          const hIdx = findHeaderRowIdx(rows);
+          if (hIdx === -1) continue;
+
+          const fileDate = extractDateFromAnywhere(rows, wsName + '_' + file.name);
+          if (!fileDate) continue;
+
+          state.detectedYear = fileDate.getUTCFullYear();
+          state.detectedMonth = fileDate.getUTCMonth();
+
+          const cat = detectCategoryFromAnywhere(rows, hIdx, wsName + '_' + file.name);
+          const records = parsePresentRecords(rows, hIdx);
+
+          const dateKey = formatDateToInput(fileDate);
+          if (!state.batchDates[dateKey]) {
+            state.batchDates[dateKey] = { date: fileDate, isOutputFile: false, CL:null, OP:null, NAPS:null };
+          }
+          state.batchDates[dateKey][cat] = records;
+        }
+      }
+    } catch (err) {
+      console.warn('Skipping file:', file.name, err);
+    }
+  }
+
+  renderBatchMatrix();
+}
+
+setupDropZone('dropBatch', null, processBatchFiles);
+
+document.getElementById('batchInputFiles').addEventListener('change', e => {
+  if (e.target.files && e.target.files.length) {
+    processBatchFiles(Array.from(e.target.files));
+  }
+});
+
+document.getElementById('batchInputFolder').addEventListener('change', e => {
+  if (e.target.files && e.target.files.length) {
+    processBatchFiles(Array.from(e.target.files));
+  }
+});
+
+document.getElementById('clearBatchBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  state.batchDates = {};
+  renderBatchMatrix();
+});
+
+function renderBatchMatrix(){
+  const dateKeys = Object.keys(state.batchDates).sort();
+  const tbody = document.getElementById('batchMatrixBody');
+  tbody.innerHTML = '';
+
+  dateKeys.forEach(dk=>{
+    const d = state.batchDates[dk];
+    const tr = document.createElement('tr');
+
+    if (d.isOutputFile) {
+      const hc = d.summaryRow ? d.summaryRow[33] : '—';
+      const tot = d.summaryRow ? d.summaryRow[36] : 0;
+      tr.innerHTML = `
+        <td><strong>${formatDateDisplay(d.date)}</strong></td>
+        <td colspan="3"><span class="badge file">📄 ${d.outputFileName}</span></td>
+        <td><strong>${hc !== '—' ? Number(hc).toLocaleString('en-IN') + ' present (' + fmt(tot) + ')' : 'Daily Output Ready'}</strong></td>
+      `;
+    } else {
+      const clP = d.CL ? d.CL.filter(r=>r.status==='P').length : 0;
+      const opP = d.OP ? d.OP.filter(r=>r.status==='P').length : 0;
+      const napsP = d.NAPS ? d.NAPS.filter(r=>r.status==='P').length : 0;
+      const totalP = clP + opP + napsP;
+      tr.innerHTML = `
+        <td><strong>${formatDateDisplay(d.date)}</strong></td>
+        <td>${d.CL ? `<span class="badge ok">✓ CL (${clP})</span>` : `<span class="badge miss">—</span>`}</td>
+        <td>${d.OP ? `<span class="badge ok">✓ Operator (${opP})</span>` : `<span class="badge miss">—</span>`}</td>
+        <td>${d.NAPS ? `<span class="badge ok">✓ NAPS (${napsP})</span>` : `<span class="badge miss">—</span>`}</td>
+        <td><strong>${totalP.toLocaleString('en-IN')}</strong> present</td>
+      `;
+    }
+    tbody.appendChild(tr);
+  });
+
+  const hasDates = dateKeys.length > 0;
+  document.getElementById('batchMatrixBox').style.display = hasDates ? 'block' : 'none';
+  document.getElementById('dropBatch').classList.toggle('filled', hasDates);
+  document.getElementById('batchFileName').textContent = hasDates 
+    ? `✓ ${dateKeys.length} date(s) ready for reconciliation & merge`
+    : 'Drag & drop whole folder or click the buttons below';
+}
+
+// Batch Compute & Merge Button
+document.getElementById('computeBatchBtn').addEventListener('click', async ()=>{
+  if(!state.master){ alert('Please load the CTC Master file in Stage 1 first.'); return; }
+  const dateKeys = Object.keys(state.batchDates).sort();
+  if(!dateKeys.length){ alert('No attendance files detected. Please drop attendance files or CTC_Output files first.'); return; }
+
+  const btn = document.getElementById('computeBatchBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Reconciling All Dates…';
+
+  const batchUnmatchedList = [];
+  const multiDaily = [];
+
+  const { year, month } = getActiveYearMonth();
+  detailWorkbook = buildDetailWorkbook(state.master, year, month);
+
+  const wsATC = detailWorkbook.getWorksheet('ATC');
+  const wsCL = detailWorkbook.getWorksheet('CL');
+  const wsNAPS = detailWorkbook.getWorksheet('NAPS');
+
+  const rowMapATC = buildEmployeeRowMap(wsATC);
+  const rowMapCL = buildEmployeeRowMap(wsCL);
+  const rowMapNAPS = buildEmployeeRowMap(wsNAPS);
+
+  for(let idx=0; idx<dateKeys.length; idx++){
+    const dk = dateKeys[idx];
+    const dObj = state.batchDates[dk];
+    const targetDate = dObj.date;
+    const dayNum = targetDate.getUTCDate();
+    const targetCol = 8 + dayNum;
+    const targetRow = 3 + dayNum;
+
+    if (dObj.isOutputFile && dObj.outputBuffer) {
+      const srcWb = new ExcelJS.Workbook();
+      await srcWb.xlsx.load(dObj.outputBuffer);
+      const srcSum = srcWb.getWorksheet('Summary');
+
+      let dHC = 0, dCTC = 0, dOT = 0, dTot = 0;
+      let iHC = 0, iCTC = 0, iOT = 0, iTot = 0;
+      let gHC = 0, gCTC = 0, gOT = 0, gTot = 0;
+
+      if (srcSum) {
+        const row = srcSum.getRow(targetRow);
+        dHC = Number(row.getCell(14).value)||0;
+        dCTC = Number(row.getCell(15).value)||0;
+        dOT = Number(row.getCell(16).value)||0;
+        dTot = Number(row.getCell(17).value)||0;
+
+        iHC = Number(row.getCell(30).value)||0;
+        iCTC = Number(row.getCell(31).value)||0;
+        iOT = Number(row.getCell(32).value)||0;
+        iTot = Number(row.getCell(33).value)||0;
+
+        gHC = Number(row.getCell(34).value)||0;
+        gCTC = Number(row.getCell(35).value)||0;
+        gOT = Number(row.getCell(36).value)||0;
+        gTot = Number(row.getCell(37).value)||0;
+      }
+
+      ['ATC', 'CL', 'NAPS'].forEach(sname => {
+        const srcDet = srcWb.getWorksheet(sname);
+        const destDet = detailWorkbook.getWorksheet(sname);
+        if (!srcDet || !destDet) return;
+        for (let r = 2; r <= srcDet.rowCount; r++) {
+          const val = srcDet.getCell(r, targetCol).value;
+          if (val !== null && val !== undefined && val !== 0 && val !== '') {
+            destDet.getCell(r, targetCol).value = val;
+          }
+        }
+      });
+
+      const buckets = {
+        directOperator: { headcount: Number(srcSum.getCell(targetRow,2).value)||0, ctc: Number(srcSum.getCell(targetRow,3).value)||0, ot: Number(srcSum.getCell(targetRow,4).value)||0 },
+        directCL:       { headcount: Number(srcSum.getCell(targetRow,6).value)||0, ctc: Number(srcSum.getCell(targetRow,7).value)||0, ot: Number(srcSum.getCell(targetRow,8).value)||0 },
+        directNAPS:     { headcount: Number(srcSum.getCell(targetRow,10).value)||0, ctc: Number(srcSum.getCell(targetRow,11).value)||0, ot: Number(srcSum.getCell(targetRow,12).value)||0 },
+        indirectOperator:{ headcount: Number(srcSum.getCell(targetRow,18).value)||0, ctc: Number(srcSum.getCell(targetRow,19).value)||0, ot: Number(srcSum.getCell(targetRow,20).value)||0 },
+        indirectCL:     { headcount: Number(srcSum.getCell(targetRow,22).value)||0, ctc: Number(srcSum.getCell(targetRow,23).value)||0, ot: Number(srcSum.getCell(targetRow,24).value)||0 },
+        indirectNAPS:   { headcount: Number(srcSum.getCell(targetRow,26).value)||0, ctc: Number(srcSum.getCell(targetRow,27).value)||0, ot: Number(srcSum.getCell(targetRow,28).value)||0 }
+      };
+
+      multiDaily.push({ index: idx, date: targetDate, buckets, dHC, dCTC, dOT, dTot, iHC, iCTC, iOT, iTot, gHC, gCTC, gOT, gTot });
+    } else {
+      const buckets = {
+        directOperator:emptyBucket(), directCL:emptyBucket(), directNAPS:emptyBucket(),
+        indirectOperator:emptyBucket(), indirectCL:emptyBucket(), indirectNAPS:emptyBucket()
+      };
+
+      function processList(list, map, dKey, iKey, wsDet, rMap, label){
+        if(!list) return;
+        list.forEach(rec=>{
+          if(rec.status!=='P' && rec.status!=='WOP') return;
+          const info = map.get(rec.code);
+          if(!info){
+            batchUnmatchedList.push({
+              code: rec.code,
+              name: rec.name || '',
+              category: label,
+              dateStr: formatDateDisplay(targetDate)
+            });
+            return;
+          }
+          const b = info.direct ? buckets[dKey] : buckets[iKey];
+          b.headcount += 1;
+          b.ctc += info.dailyCTC;
+          b.ot += rec.otHours * info.dailyOT;
+
+          if(rMap.has(rec.code)){
+            const rows = rMap.get(rec.code);
+            wsDet.getCell(rows.ctcRow, targetCol).value = info.dailyCTC;
+            wsDet.getCell(rows.otRow, targetCol).value = rec.otHours * info.dailyOT;
+          }
+        });
+      }
+
+      processList(dObj.CL, state.master.contract, 'directCL', 'indirectCL', wsCL, rowMapCL, 'Contract Labour');
+      processList(dObj.OP, state.master.operator, 'directOperator', 'indirectOperator', wsATC, rowMapATC, 'Operator');
+      processList(dObj.NAPS, state.master.naps, 'directNAPS', 'indirectNAPS', wsNAPS, rowMapNAPS, 'NAPS');
+
+      const dTotOp = buckets.directOperator.ctc + buckets.directOperator.ot;
+      const dTotCL = buckets.directCL.ctc + buckets.directCL.ot;
+      const dTotNaps = buckets.directNAPS.ctc + buckets.directNAPS.ot;
+      const dHC = buckets.directOperator.headcount + buckets.directCL.headcount + buckets.directNAPS.headcount;
+      const dCTC = buckets.directOperator.ctc + buckets.directCL.ctc + buckets.directNAPS.ctc;
+      const dOT = buckets.directOperator.ot + buckets.directCL.ot + buckets.directNAPS.ot;
+      const dTot = dCTC + dOT;
+
+      const iTotOp = buckets.indirectOperator.ctc + buckets.indirectOperator.ot;
+      const iTotCL = buckets.indirectCL.ctc + buckets.indirectCL.ot;
+      const iTotNaps = buckets.indirectNAPS.ctc + buckets.indirectNAPS.ot;
+      const iHC = buckets.indirectOperator.headcount + buckets.indirectCL.headcount + buckets.indirectNAPS.headcount;
+      const iCTC = buckets.indirectOperator.ctc + buckets.indirectCL.ctc + buckets.indirectNAPS.ctc;
+      const iOT = buckets.indirectOperator.ot + buckets.indirectCL.ot + buckets.indirectNAPS.ot;
+      const iTot = iCTC + iOT;
+
+      const gHC = dHC + iHC, gCTC = dCTC + iCTC, gOT = dOT + iOT, gTot = dTot + iTot;
+
+      multiDaily.push({ index: idx, date: targetDate, buckets, dHC, dCTC, dOT, dTot, iHC, iCTC, iOT, iTot, gHC, gCTC, gOT, gTot });
+    }
+  }
+
+  state.batchMultiResults = multiDaily;
+
+  renderBatchMultiTable(multiDaily);
+  renderUnmatchedSection(batchUnmatchedList);
+  renderDateWiseDownloadGrid(multiDaily);
+
+  setNode(2,'done'); setFill(2,100); setNode(3,'done'); setFill(3,100); setNode(4,'active');
+  enableStage(3); enableStage(4);
+  document.getElementById('writeAllBtn').disabled = false;
+  document.getElementById('stage3').scrollIntoView({behavior:'smooth', block:'start'});
+
+  btn.disabled = false;
+  btn.textContent = '⚡ Reconcile All Detected Dates';
+});
+
+function renderBatchMultiTable(results){
+  const totHC = results.reduce((s,r)=>s+r.gHC,0);
+  const totCTC = results.reduce((s,r)=>s+r.gCTC,0);
+  const totOT = results.reduce((s,r)=>s+r.gOT,0);
+  const totCost = totCTC + totOT;
+
+  let html = `<div class="matrix-wrap"><table class="matrix"><thead><tr>
+    <th>Date</th><th>Direct HC</th><th>Direct Cost</th><th>Indirect HC</th><th>Indirect Cost</th><th>Total Headcount</th><th>Daily CTC</th><th>OT Wages</th><th>Grand Total</th><th>Action</th>
+  </tr></thead><tbody>`;
+
+  results.forEach((r, idx)=>{
+    html += `<tr>
+      <td><strong>${formatDateDisplay(r.date)}</strong></td>
+      <td style="text-align:right;">${fmtN(r.dHC)}</td><td style="text-align:right;">${fmt(r.dTot)}</td>
+      <td style="text-align:right;">${fmtN(r.iHC)}</td><td style="text-align:right;">${fmt(r.iTot)}</td>
+      <td style="text-align:right;"><strong>${fmtN(r.gHC)}</strong></td>
+      <td style="text-align:right;">${fmt(r.gCTC)}</td><td style="text-align:right;">${fmt(r.gOT)}</td>
+      <td style="text-align:right;"><strong>${fmt(r.gTot)}</strong></td>
+      <td style="text-align:center;">
+        <button class="btn-action" onclick="downloadSingleDateWorkbook(${idx})">📥 Download Day</button>
+      </td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  html += `<div class="grand-total" style="margin-top:14px;">
+    <span class="label">Reconciled ${results.length} Dates &nbsp;·&nbsp; Total Headcount: ${fmtN(totHC)}</span>
+    <span class="value">${fmt(totCost)}</span>
+  </div>`;
+
+  document.getElementById('tableHolder').innerHTML = html;
+}
+
+function renderDateWiseDownloadGrid(results){
+  const grid = document.getElementById('dailyDownloadsGrid');
+  const container = document.getElementById('dateWiseContainer');
+  if(!results || !results.length){
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'block';
+  grid.innerHTML = '';
+
+  results.forEach((r, idx)=>{
+    const card = document.createElement('div');
+    card.className = 'daily-btn-card';
+    card.onclick = () => downloadSingleDateWorkbook(idx);
+    card.innerHTML = `
+      <div>
+        <div class="daily-btn-date">📅 ${formatDateDisplay(r.date)}</div>
+        <div class="daily-btn-hc">${r.gHC.toLocaleString('en-IN')} present · ${fmt(r.gTot)}</div>
+      </div>
+      <div style="font-size:16px;color:var(--blue);">📥</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ---------- DETAIL WORKBOOK GENERATOR (DYNAMIC MONTH & YEAR) ----------
+function buildDetailSheet(wb, title, employeeMap, otLabel, year, month){
+  const ws = wb.addWorksheet(title);
+  const FONT_NAME = 'Segoe UI';
+  const cYellowHeader = 'FFFFE699'; // Simple warm professional yellow
+  const cTextDark = 'FF1F2937';     // Crisp dark slate
+  const cBorder = 'FFD1D5DB';       // Subtle minimalist border
+
+  const headerFill = { type:'pattern', pattern:'solid', fgColor:{argb: cYellowHeader} };
+  const headerFont = { name:FONT_NAME, size:10, bold:true, color:{argb: cTextDark} };
+  const border = {
+    top:{style:'thin', color:{argb: cBorder}}, bottom:{style:'thin', color:{argb: cBorder}},
+    left:{style:'thin', color:{argb: cBorder}}, right:{style:'thin', color:{argb: cBorder}}
+  };
+
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const maxCol = 10 + daysInMonth;
+
+  const headers = {
+    2:'S.No',
+    3:'Emp Code',
+    4:'Name',
+    5:'Department',
+    6:'Total Work Hrs',
+    7:'No of days present',
+    8:'Total OT Hrs',
+    9:'Wages',
+    10:'Metric'
+  };
+  Object.entries(headers).forEach(([c,label])=>{ ws.getCell(1,Number(c)).value = label; });
+  
+  for(let i=0;i<daysInMonth;i++){
+    const d = new Date(Date.UTC(year, month, 1 + i));
+    ws.getCell(1, 11+i).value = d;
+  }
+  for(let c=1;c<=maxCol;c++){
+    const cell = ws.getCell(1,c);
+    cell.fill = headerFill; cell.font = headerFont; cell.border = border;
+    cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+    if(c>=11) cell.numFmt = 'dd-mmm';
+  }
+
+  let r = 2, sno = 1;
+  employeeMap.forEach((info, code)=>{
+    const ctcRow = r, otRow = r+1;
+    ws.getCell(ctcRow,2).value = sno;
+    ws.getCell(ctcRow,3).value = code;
+    ws.getCell(ctcRow,4).value = info.name;
+    ws.getCell(ctcRow,5).value = info.dept;
+    ws.getCell(ctcRow,10).value = 'Present CTC';
+    ws.getCell(otRow,10).value = otLabel;
+    for(const col of [2,3,4,5,6,7,8,9]) ws.mergeCells(ctcRow,col,otRow,col);
+
+    const banded = sno % 2 === 0;
+    for(const rr of [ctcRow, otRow]){
+      for(let c=2;c<=maxCol;c++){
+        const cell = ws.getCell(rr,c);
+        cell.border = border;
+        cell.font = { name:FONT_NAME, size:10, color:{argb:'FF111827'} };
+        cell.alignment = (c===4) ? { horizontal:'left', vertical:'middle' } : ((c>=6 && c<=9) || c>=11 ? { horizontal:'right', vertical:'middle' } : { horizontal:'center', vertical:'middle' });
+        if(banded) cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFAFAFA'} };
+        if(c===6 || c===8) cell.numFmt = '#,##0.00';
+        else if(c===7 || c===9 || c>=11) cell.numFmt = '#,##0';
+      }
+      const m = ws.getCell(rr,10);
+      m.font = { name:FONT_NAME, size:9.5, bold:true, color:{argb: rr===ctcRow?'FF854D0E':'FF4B5563'} };
+      m.alignment = { horizontal:'left', vertical:'middle' };
+    }
+    r += 2; sno += 1;
+  });
+
+  ws.views = [{ state:'frozen', xSplit:10, ySplit:1, showGridLines:true }];
+  ws.getColumn(1).width = 3;
+  const widths = {2:6,3:13,4:26,5:18,6:15,7:16,8:14,9:14,10:14};
+  Object.entries(widths).forEach(([c,w])=>{ ws.getColumn(Number(c)).width = w; });
+  for(let c=11;c<=maxCol;c++) ws.getColumn(c).width = 11;
+  ws.getRow(1).height = 24;
+  return ws;
+}
+
+function buildDetailWorkbook(master, year, month){
+  const wb = new ExcelJS.Workbook();
+  buildDetailSheet(wb, 'ATC', master.operator, 'OT Hrs', year, month);
+  buildDetailSheet(wb, 'CL', master.contract, 'OT Hrs - Amt', year, month);
+  buildDetailSheet(wb, 'NAPS', master.naps, 'OT Hrs - Amt', year, month);
+  return wb;
+}
+
+function buildEmployeeRowMap(ws){
+  const map = new Map();
+  const maxRow = ws.rowCount;
+  let r = 2;
+  while(r <= maxRow){
+    const codeVal = ws.getCell(r,3).value;
+    if(codeVal!==null && codeVal!==undefined && String(codeVal).trim()!==''){
+      map.set(String(codeVal).trim().toUpperCase(), {ctcRow:r, otRow:r+1});
+      r += 2;
+    } else {
+      r += 1;
+    }
+  }
+  return map;
+}
+
+function cloneSheetInto(destWb, srcWs){
+  const destWs = destWb.addWorksheet(srcWs.name);
+  const maxCol = Math.max(srcWs.columnCount, 45);
+  for(let c=1; c<=maxCol; c++){
+    const w = srcWs.getColumn(c).width;
+    if(w) destWs.getColumn(c).width = w;
+  }
+  srcWs.eachRow({includeEmpty:true}, (row, rowNumber)=>{
+    const destRow = destWs.getRow(rowNumber);
+    row.eachCell({includeEmpty:true}, (cell, colNumber)=>{
+      const destCell = destRow.getCell(colNumber);
+      destCell.value = cell.value;
+      if(cell.style) destCell.style = cell.style;
+    });
+    if(row.height) destRow.height = row.height;
+    destRow.commit();
+  });
+  if(srcWs.model && srcWs.model.merges){
+    srcWs.model.merges.forEach(range=>{ try{ destWs.mergeCells(range); }catch(e){} });
+  }
+  if(srcWs.views && srcWs.views.length) destWs.views = srcWs.views;
+  return destWs;
+}
+
+// Minimalistic Professional Yellow Styling for Summary Sheet
+function applyExecutiveSummaryStyling(wsSummary, year, month){
+  if (!wsSummary) return;
+  const FONT_NAME = 'Segoe UI';
+  
+  // Minimalist Yellow Palette
+  const cYellowMain = 'FFFFE699';   // Soft warm classic yellow
+  const cYellowSub = 'FFFFF2CC';    // Pale pastel cream yellow
+  const cYellowAccent = 'FFFDE68A'; // Warm gold yellow
+  const cTextDark = 'FF1F2937';     // Slate dark charcoal
+  const cTextSub = 'FF374151';      // Medium slate
+  const cBorder = 'FFD1D5DB';       // Crisp subtle border
+
+  const thinBorder = {
+    top: { style: 'thin', color: { argb: cBorder } },
+    left: { style: 'thin', color: { argb: cBorder } },
+    bottom: { style: 'thin', color: { argb: cBorder } },
+    right: { style: 'thin', color: { argb: cBorder } }
+  };
+
+  // Row 1: Top Category Headers
+  wsSummary.getRow(1).height = 25;
+  try { wsSummary.mergeCells(1, 2, 1, 17); } catch(e){}
+  const cDirect = wsSummary.getCell(1, 2);
+  cDirect.value = 'DIRECT LABOUR / PRODUCTION';
+  cDirect.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cYellowMain } };
+  cDirect.font = { name: FONT_NAME, size: 10.5, bold: true, color: { argb: cTextDark } };
+  cDirect.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  try { wsSummary.mergeCells(1, 18, 1, 33); } catch(e){}
+  const cIndirect = wsSummary.getCell(1, 18);
+  cIndirect.value = 'INDIRECT LABOUR / SUPPORT';
+  cIndirect.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cYellowSub } };
+  cIndirect.font = { name: FONT_NAME, size: 10.5, bold: true, color: { argb: cTextDark } };
+  cIndirect.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  try { wsSummary.mergeCells(1, 34, 1, 37); } catch(e){}
+  const cGrand = wsSummary.getCell(1, 34);
+  cGrand.value = 'GRAND TOTAL (PLANT WIDE)';
+  cGrand.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cYellowAccent } };
+  cGrand.font = { name: FONT_NAME, size: 10.5, bold: true, color: { argb: cTextDark } };
+  cGrand.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  // Row 2: Sub-categories
+  wsSummary.getRow(2).height = 22;
+  const subCats = [
+    { start: 2, end: 5, label: 'Operator', bg: 'FFFFFBEB', fg: 'FF78350F' },
+    { start: 6, end: 9, label: 'Contract Labour', bg: 'FFFFFBEB', fg: 'FF78350F' },
+    { start: 10, end: 13, label: 'NAPS', bg: 'FFFFFBEB', fg: 'FF78350F' },
+    { start: 14, end: 17, label: 'Total Direct', bg: 'FFFDE047', fg: cTextDark },
+    { start: 18, end: 21, label: 'Operator', bg: 'FFFEFCE8', fg: cTextDark },
+    { start: 22, end: 25, label: 'Contract Labour', bg: 'FFFEFCE8', fg: cTextDark },
+    { start: 26, end: 29, label: 'NAPS', bg: 'FFFEFCE8', fg: cTextDark },
+    { start: 30, end: 33, label: 'Total Indirect', bg: 'FFFDE047', fg: cTextDark },
+    { start: 34, end: 37, label: 'Plant Grand Total', bg: 'FFFACC15', fg: cTextDark }
+  ];
+
+  subCats.forEach(sc => {
+    try { wsSummary.mergeCells(2, sc.start, 2, sc.end); } catch(e){}
+    const c = wsSummary.getCell(2, sc.start);
+    c.value = sc.label;
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sc.bg } };
+    c.font = { name: FONT_NAME, size: 9.5, bold: true, color: { argb: sc.fg } };
+    c.alignment = { horizontal: 'center', vertical: 'middle' };
+  });
+
+  // Row 3: Metric Headers (Clean Visible Yellow)
+  wsSummary.getRow(3).height = 22;
+  const cellA3 = wsSummary.getCell(3, 1);
+  cellA3.value = 'Date';
+  cellA3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cYellowMain } };
+  cellA3.font = { name: FONT_NAME, size: 9.5, bold: true, color: { argb: cTextDark } };
+  cellA3.alignment = { horizontal: 'center', vertical: 'middle' };
+  cellA3.border = thinBorder;
+
+  for (let c = 2; c <= 37; c++) {
+    const mod = (c - 2) % 4;
+    let label = 'Head Count';
+    if (mod === 1) label = 'CTC';
+    else if (mod === 2) label = 'OT Wages';
+    else if (mod === 3) label = 'Total';
+
+    const cell = wsSummary.getCell(3, c);
+    cell.value = label;
+    const isTotCol = mod === 3 || c >= 34;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isTotCol ? cYellowAccent : cYellowMain } };
+    cell.font = { name: FONT_NAME, size: 9.5, bold: true, color: { argb: cTextDark } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
+  }
+
+  // Column Widths
+  wsSummary.getColumn(1).width = 14;
+  for (let c = 2; c <= 37; c++) {
+    const mod = (c - 2) % 4;
+    wsSummary.getColumn(c).width = (mod === 0) ? 11 : 14;
+  }
+
+  // Days styling (1 to 31) - Clean number format without rupee symbol
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const r = 3 + d;
+    wsSummary.getRow(r).height = 20;
+    const dateVal = new Date(Date.UTC(year, month, d));
+    const cellDate = wsSummary.getCell(r, 1);
+    if (!cellDate.value) cellDate.value = dateVal;
+    cellDate.numFmt = 'dd-mmm-yyyy';
+    cellDate.alignment = { horizontal: 'center', vertical: 'middle' };
+    cellDate.font = { name: FONT_NAME, size: 10, color: { argb: cTextSub } };
+    cellDate.border = thinBorder;
+
+    const isBanded = d % 2 === 0;
+    const rowBg = isBanded ? 'FFFAFAFA' : 'FFFFFFFF';
+
+    for (let c = 2; c <= 37; c++) {
+      const cell = wsSummary.getCell(r, c);
+      cell.border = thinBorder;
+      cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
+      cell.alignment = { horizontal: 'right', vertical: 'middle' };
+      cell.numFmt = '#,##0';
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+    }
+  }
+
+  wsSummary.views = [{ state: 'frozen', xSplit: 1, ySplit: 3, showGridLines: true }];
+}
+
+// Summary Dropzone
+setupDropZone('dropSummary', 'summaryInput', async (files)=>{
+  const file = files[0];
+  if(!file) return;
+  document.getElementById('summaryFileName').textContent = file.name;
+  state.summaryBuffer = await file.arrayBuffer();
+  document.getElementById('dropSummary').classList.add('filled');
+  const st = document.getElementById('summaryStatus');
+  st.style.display='flex'; st.className='status-line';
+  st.querySelector('span').textContent = 'Loaded Summary template — ready to write.';
+});
+
+// Helper to write a day row in Summary sheet
+function writeSummaryDayToWs(wsSummary, targetRow, b){
+  if(!wsSummary) return;
+  const dTotOp = b.directOperator.ctc + b.directOperator.ot;
+  const dTotCL = b.directCL.ctc + b.directCL.ot;
+  const dTotNaps = b.directNAPS.ctc + b.directNAPS.ot;
+  const dHC = b.directOperator.headcount + b.directCL.headcount + b.directNAPS.headcount;
+  const dCTC = b.directOperator.ctc + b.directCL.ctc + b.directNAPS.ctc;
+  const dOT = b.directOperator.ot + b.directCL.ot + b.directNAPS.ot;
+  const dTot = dCTC + dOT;
+
+  const iTotOp = b.indirectOperator.ctc + b.indirectOperator.ot;
+  const iTotCL = b.indirectCL.ctc + b.indirectCL.ot;
+  const iTotNaps = b.indirectNAPS.ctc + b.indirectNAPS.ot;
+  const iHC = b.indirectOperator.headcount + b.indirectCL.headcount + b.indirectNAPS.headcount;
+  const iCTC = b.indirectOperator.ctc + b.indirectCL.ctc + b.indirectNAPS.ctc;
+  const iOT = b.indirectOperator.ot + b.indirectCL.ot + b.indirectNAPS.ot;
+  const iTot = iCTC + iOT;
+
+  const gHC = dHC + iHC, gCTC = dCTC + iCTC, gOT = dOT + iOT, gTot = dTot + iTot;
+
+  const writes = {
+    2:b.directOperator.headcount, 3:b.directOperator.ctc, 4:b.directOperator.ot, 5:dTotOp,
+    6:b.directCL.headcount,       7:b.directCL.ctc,       8:b.directCL.ot,       9:dTotCL,
+    10:b.directNAPS.headcount,    11:b.directNAPS.ctc,    12:b.directNAPS.ot,    13:dTotNaps,
+    14:dHC, 15:dCTC, 16:dOT, 17:dTot,
+    18:b.indirectOperator.headcount, 19:b.indirectOperator.ctc, 20:b.indirectOperator.ot, 21:iTotOp,
+    22:b.indirectCL.headcount,       23:b.indirectCL.ctc,       24:b.indirectCL.ot,       25:iTotCL,
+    26:b.indirectNAPS.headcount,     27:b.indirectNAPS.ctc,     28:b.indirectNAPS.ot,     29:iTotNaps,
+    30:iHC, 31:iCTC, 32:iOT, 33:iTot,
+    34:gHC, 35:gCTC, 36:gOT, 37:gTot
+  };
+  Object.entries(writes).forEach(([col,val])=>{ wsSummary.getCell(targetRow, Number(col)).value = val; });
+}
+
+// Generate single date workbook buffer
+async function generateSingleDateWorkbookBuffer(dateObj, buckets, dateRecords){
+  const { year, month } = getActiveYearMonth();
+  const dayNum = dateObj.getUTCDate();
+  const targetRow = 3 + dayNum;
+  const targetCol = 10 + dayNum;
+
+  let sumWb = new ExcelJS.Workbook();
+  if(state.summaryBuffer){
+    await sumWb.xlsx.load(state.summaryBuffer);
+  }
+  const wsSum = sumWb.worksheets[0] || sumWb.addWorksheet('Summary');
+  writeSummaryDayToWs(wsSum, targetRow, buckets);
+
+  const singleDetWb = buildDetailWorkbook(state.master, year, month);
+  const wsATC = singleDetWb.getWorksheet('ATC');
+  const wsCL = singleDetWb.getWorksheet('CL');
+  const wsNAPS = singleDetWb.getWorksheet('NAPS');
+
+  // Copy detail data for this date
+  ['ATC', 'CL', 'NAPS'].forEach(name => {
+    const src = detailWorkbook.getWorksheet(name);
+    const dest = singleDetWb.getWorksheet(name);
+    if(src && dest){
+      for(let r=2; r<=src.rowCount; r++){
+        const val = src.getCell(r, targetCol).value;
+        if(val !== null && val !== undefined && val !== 0 && val !== ''){
+          dest.getCell(r, targetCol).value = val;
+        }
+        // Also copy summary columns F, G, H, I
+        for(let sc=6; sc<=9; sc++){
+          const sVal = src.getCell(r, sc).value;
+          if(sVal !== null && sVal !== undefined && sVal !== 0 && sVal !== ''){
+            dest.getCell(r, sc).value = sVal;
+          }
+        }
+      }
+    }
+  });
+
+  const combined = new ExcelJS.Workbook();
+  if(wsSum) {
+    const clonedSum = cloneSheetInto(combined, wsSum);
+    applyExecutiveSummaryStyling(clonedSum, year, month);
+  }
+  ['ATC','CL','NAPS'].forEach(name=>{
+    const src = singleDetWb.getWorksheet(name);
+    if(src) cloneSheetInto(combined, src);
+  });
+  combined.calcProperties = { fullCalcOnLoad: true };
+
+  return await combined.xlsx.writeBuffer();
+}
+
+// Download single date workbook
+async function downloadSingleDateWorkbook(index){
+  if(!state.batchMultiResults || !state.batchMultiResults[index]) return;
+  const item = state.batchMultiResults[index];
+  const dateStr = formatDateToInput(item.date);
+  
+  const buf = await generateSingleDateWorkbookBuffer(item.date, item.buckets);
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `CTC_Output_${dateStr}.xlsx`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// Download All Daily Files in a ZIP
+document.getElementById('downloadAllZipBtn').addEventListener('click', async ()=>{
+  if(!state.batchMultiResults || !state.batchMultiResults.length){
+    alert('Please reconcile your attendance files first.');
+    return;
+  }
+  const btn = document.getElementById('downloadAllZipBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Zipping all date files…';
+
+  try {
+    const zip = new JSZip();
+    const { year, month } = getActiveYearMonth();
+    const monthName = MONTH_FULL_NAMES[month];
+
+    for(const item of state.batchMultiResults){
+      const dateStr = formatDateToInput(item.date);
+      const buf = await generateSingleDateWorkbookBuffer(item.date, item.buckets);
+      zip.file(`CTC_Output_${dateStr}.xlsx`, buf);
+    }
+
+    const zipBlob = await zip.generateAsync({type:'blob'});
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `Daily_CTC_Outputs_${monthName}_${year}.zip`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+
+    btn.textContent = 'Downloaded ZIP ✓';
+    setTimeout(()=>{ btn.textContent = '📦 Download All Daily Files (ZIP)'; btn.disabled = false; }, 2500);
+  } catch(err){
+    console.error(err);
+    alert('Error creating ZIP: ' + err.message);
+    btn.textContent = '📦 Download All Daily Files (ZIP)';
+    btn.disabled = false;
+  }
+});
+
+// Build Monthly Detail Sheet with ONLY Columns A to I (NO Gap, NO Merging)
+function buildMonthlySummaryDetailSheet(wb, title, employeeMap, statMap){
+  const ws = wb.addWorksheet(title);
+  const FONT_NAME = 'Segoe UI';
+  const cYellowHeader = 'FFFFE699'; // Simple warm professional yellow
+  const cTextDark = 'FF1F2937';     // Crisp dark slate
+  const cBorder = 'FFD1D5DB';       // Subtle minimalist border
+
+  const headerFill = { type:'pattern', pattern:'solid', fgColor:{argb: cYellowHeader} };
+  const headerFont = { name:FONT_NAME, size:10, bold:true, color:{argb: cTextDark} };
+  const border = {
+    top:{style:'thin', color:{argb: cBorder}}, bottom:{style:'thin', color:{argb: cBorder}},
+    left:{style:'thin', color:{argb: cBorder}}, right:{style:'thin', color:{argb: cBorder}}
+  };
+
+  const headers = {
+    1:'S.No',
+    2:'Emp Code',
+    3:'Name',
+    4:'Department',
+    5:'Total Work Hrs',
+    6:'No of days present',
+    7:'Total WOP Count',
+    8:'Total OT Hrs',
+    9:'Wages'
+  };
+  Object.entries(headers).forEach(([c,label])=>{
+    const cell = ws.getCell(1, Number(c));
+    cell.value = label;
+    cell.fill = headerFill;
+    cell.font = headerFont;
+    cell.border = border;
+    cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+  });
+
+  let r = 2, sno = 1;
+  employeeMap.forEach((info, code)=>{
+    const st = statMap && statMap.get(code) ? statMap.get(code) : { daysPresent:0, wopCount:0, workHrs:0, otHrs:0, wages:0 };
+
+    ws.getCell(r, 1).value = sno;
+    ws.getCell(r, 2).value = code;
+    ws.getCell(r, 3).value = info.name;
+    ws.getCell(r, 4).value = info.dept;
+    ws.getCell(r, 5).value = Math.round(st.workHrs * 100) / 100;
+    ws.getCell(r, 6).value = st.daysPresent;
+    ws.getCell(r, 7).value = st.wopCount;
+    ws.getCell(r, 8).value = Math.round(st.otHrs * 100) / 100;
+    ws.getCell(r, 9).value = Math.round(st.wages * 100) / 100;
+
+    const banded = sno % 2 === 0;
+    ws.getRow(r).height = 20;
+    for(let c=1; c<=9; c++){
+      const cell = ws.getCell(r, c);
+      cell.border = border;
+      cell.font = { name:FONT_NAME, size:10, color:{argb:'FF111827'} };
+      cell.alignment = (c===3)? { horizontal:'left', vertical:'middle' } : ( (c===5||c===8||c===9)? { horizontal:'right', vertical:'middle' } : { horizontal:'center', vertical:'middle' } );
+      if(banded) cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFAFAFA'} };
+      if(c===5||c===8) cell.numFmt = '#,##0.00';
+      else if(c===6||c===7||c===9) cell.numFmt = '#,##0';
+    }
+    r += 1; sno += 1;
+  });
+
+  ws.views = [{ state:'frozen', xSplit:0, ySplit:1, showGridLines:true }];
+  const widths = {1:7, 2:14, 3:28, 4:20, 5:16, 6:18, 7:18, 8:14, 9:14};
+  Object.entries(widths).forEach(([c,w])=>{ ws.getColumn(Number(c)).width = w; });
+  ws.getRow(1).height = 24;
+  return ws;
+}
+
+// ---------- WRITE ALL & DOWNLOAD (CONSOLIDATED WORKBOOK) ----------
+document.getElementById('writeAllBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('writeAllBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Writing workbook…';
+
+  let summaryWb = new ExcelJS.Workbook();
+  if(state.summaryBuffer){
+    await summaryWb.xlsx.load(state.summaryBuffer);
+  }
+  const wsSummary = summaryWb.worksheets[0] || summaryWb.addWorksheet('Summary');
+
+  const { year, month } = getActiveYearMonth();
+  const monthName = MONTH_FULL_NAMES[month];
+
+  const wsATC = detailWorkbook.getWorksheet('ATC');
+  const wsCL = detailWorkbook.getWorksheet('CL');
+  const wsNAPS = detailWorkbook.getWorksheet('NAPS');
+  const rMapATC = buildEmployeeRowMap(wsATC);
+  const rMapCL = buildEmployeeRowMap(wsCL);
+  const rMapNAPS = buildEmployeeRowMap(wsNAPS);
+
+  const empStats = {
+    OP: new Map(),
+    CL: new Map(),
+    NAPS: new Map()
+  };
+
+  function writeDet(list, map, wsDet, rMap, statMap, targetCol){
+    if(!list) return;
+    list.forEach(rec=>{
+      if(rec.status!=='P' && rec.status!=='WOP') return;
+      const info = map.get(rec.code);
+      if(info && rMap.has(rec.code)){
+        const r = rMap.get(rec.code);
+        wsDet.getCell(r.ctcRow, targetCol).value = info.dailyCTC;
+        wsDet.getCell(r.otRow, targetCol).value = rec.otHours * info.dailyOT;
+
+        if(!statMap.has(rec.code)){
+          statMap.set(rec.code, { daysPresent: 0, wopCount: 0, workHrs: 0, otHrs: 0, wages: 0 });
+        }
+        const st = statMap.get(rec.code);
+        if(rec.status === 'P'){
+          st.daysPresent += 1;
+        } else if(rec.status === 'WOP' || rec.isWop){
+          st.wopCount += 1;
+        }
+        st.workHrs += (rec.workHours || 0);
+        st.otHrs += (rec.otHours || 0);
+        st.wages += info.dailyCTC + (rec.otHours * info.dailyOT);
+      }
+    });
+  }
+
+  if(state.batchMultiResults && state.batchMultiResults.length){
+    state.batchMultiResults.forEach(r=>{
+      const dayNum = r.date.getUTCDate();
+      writeSummaryDayToWs(wsSummary, 3 + dayNum, r.buckets);
+
+      const targetCol = 10 + dayNum;
+      const dateKey = formatDateToInput(r.date);
+      const bDate = state.batchDates[dateKey];
+      if(bDate && !bDate.isOutputFile){
+        writeDet(bDate.CL, state.master.contract, wsCL, rMapCL, empStats.CL, targetCol);
+        writeDet(bDate.OP, state.master.operator, wsATC, rMapATC, empStats.OP, targetCol);
+        writeDet(bDate.NAPS, state.master.naps, wsNAPS, rMapNAPS, empStats.NAPS, targetCol);
+      }
+    });
+  } else if(state.computed && state.reportDate){
+    const dayNum = state.reportDate.getUTCDate();
+    const targetCol = 10 + dayNum;
+    const targetRow = 3 + dayNum;
+
+    writeDet(state.present.cl, state.master.contract, wsCL, rMapCL, empStats.CL, targetCol);
+    writeDet(state.present.op, state.master.operator, wsATC, rMapATC, empStats.OP, targetCol);
+    if(state.present.naps) writeDet(state.present.naps, state.master.naps, wsNAPS, rMapNAPS, empStats.NAPS, targetCol);
+
+    writeSummaryDayToWs(wsSummary, targetRow, state.computed);
+  }
+
+  // Populate Columns F, G, H, I (Total Work Hrs, Days Present, Total OT Hrs, Wages)
+  function applySummaryStats(wsDet, rMap, statMap){
+    statMap.forEach((st, code)=>{
+      if(rMap.has(code)){
+        const r = rMap.get(code);
+        wsDet.getCell(r.ctcRow, 6).value = Math.round(st.workHrs * 100) / 100;
+        wsDet.getCell(r.ctcRow, 7).value = st.daysPresent;
+        wsDet.getCell(r.ctcRow, 8).value = Math.round(st.otHrs * 100) / 100;
+        wsDet.getCell(r.ctcRow, 9).value = Math.round(st.wages * 100) / 100;
+      }
+    });
+  }
+  applySummaryStats(wsCL, rMapCL, empStats.CL);
+  applySummaryStats(wsATC, rMapATC, empStats.OP);
+  applySummaryStats(wsNAPS, rMapNAPS, empStats.NAPS);
+
+  const combined = new ExcelJS.Workbook();
+  if(wsSummary) {
+    const clonedSum = cloneSheetInto(combined, wsSummary);
+    applyExecutiveSummaryStyling(clonedSum, year, month);
+  }
+  
+  // Build clean monthly detail sheets (Columns B to I ONLY) matching Template Update
+  buildMonthlySummaryDetailSheet(combined, 'ATC', state.master.operator, empStats.OP);
+  buildMonthlySummaryDetailSheet(combined, 'CL', state.master.contract, empStats.CL);
+  buildMonthlySummaryDetailSheet(combined, 'NAPS', state.master.naps, empStats.NAPS);
+
+  combined.calcProperties = combined.calcProperties || {};
+  combined.calcProperties.fullCalcOnLoad = true;
+
+  const buf = await combined.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = state.batchMultiResults && state.batchMultiResults.length ? `${monthName}_${year}` : (state.reportDate ? formatDateToInput(state.reportDate) : `${monthName}_${year}`);
+  a.href = url; a.download = `CTC_Output_${dateStr}.xlsx`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+
+  btn.textContent = 'Downloaded ✓';
+  document.getElementById('nextDayBtn').disabled = false;
+  setTimeout(()=>{ btn.textContent = '📥 Download Combined Monthly Workbook (All Dates)'; btn.disabled = false; }, 2000);
+});
+
+// ---------- SWITCH TO ANOTHER DAY ----------
+document.getElementById('nextDayBtn').addEventListener('click', ()=>{
+  state.present = { cl:null, op:null, naps:null };
+  state.reportDate = null;
+  state.computed = null;
+  state.unmatched = [];
+  state.batchMultiResults = null;
+
+  ['clInput','opInput','napsInput'].forEach(id=>{ document.getElementById(id).value = ''; });
+  ['clFileName','opFileName','napsFileName'].forEach(id=>{ document.getElementById(id).textContent = 'No file loaded'; });
+  ['dropCL','dropOp','dropNaps'].forEach(id=>{ document.getElementById(id).classList.remove('filled'); });
+  document.getElementById('reportDate').value = '';
+  const dt = document.getElementById('dateDetected');
+  if(dt) dt.querySelector('span').textContent = '';
+  document.getElementById('computeBtn').disabled = true;
+  document.getElementById('writeAllBtn').disabled = true;
+  document.getElementById('nextDayBtn').disabled = true;
+  document.getElementById('tableHolder').innerHTML = '';
+  document.getElementById('unmatchedHolder').innerHTML = '';
+  document.getElementById('dateWiseContainer').style.display = 'none';
+  document.getElementById('stage3').classList.add('disabled');
+  document.getElementById('stage4').classList.add('disabled');
+  setNode(2,'active'); setFill(2,0);
+  setNode(3,''); setFill(3,0);
+  setNode(4,'');
+  document.getElementById('stage2').scrollIntoView({behavior:'smooth', block:'start'});
+});
+</script>
+</body>
+</html>
