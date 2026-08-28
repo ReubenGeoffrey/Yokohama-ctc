@@ -22,9 +22,9 @@ export function Header({
       <div className="ticker-bar">
         <div className="ticker-inner">
           <span className="ticker-dot" />
-          <span>Automated CTC Cost Mapping &amp; Overtime Analytics</span>
+          <span>Yokohama Tire Operations &bull; Automated CTC Mapping &amp; Overtime Analytics</span>
           <span className="ticker-divider">·</span>
-          <span>August 2026 Batch</span>
+          <span>Enterprise Cloud Sync</span>
           <span className="ticker-divider">·</span>
 
           <button
@@ -46,14 +46,14 @@ export function Header({
           {/* ── Brand ─────────────────────────── */}
           <div className="brand">
             <div className="brand-logo">
-              <span className="brand-letters">ATC</span>
-              <Sun className="brand-sun" />
+              <span className="brand-letters">YTC</span>
+              <div className="brand-badge-dot" />
             </div>
             <div className="brand-text">
               <h1 className="brand-name">
-                Attendance <span className="brand-accent">Hub</span>
+                Yokohama <span className="brand-accent">CTC</span>
               </h1>
-              <p className="brand-sub">Daily CTC Reconciliation &amp; Master Excel Generator</p>
+              <p className="brand-sub">Enterprise Attendance &amp; Cost Reconciliation</p>
             </div>
           </div>
 
