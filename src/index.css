@@ -203,33 +203,24 @@ code, pre, .font-mono {
 }
 
 /* Brand */
-.brand { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-.brand-logo {
-  position: relative;
-  width: 44px; height: 44px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #090d16 0%, #1e293b 100%);
-  border: 1.5px solid rgba(245, 158, 11, 0.4);
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
+.brand { display: flex; align-items: center; flex-shrink: 0; }
 .brand-text { display: flex; flex-direction: column; }
 .brand-name {
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 900;
   color: #0f172a;
-  letter-spacing: 0.5px;
-  line-height: 1.2;
+  letter-spacing: 0.6px;
+  line-height: 1.15;
   margin: 0;
   display: flex;
   align-items: center;
 }
 .brand-accent {
   font-weight: 900;
-  font-size: 12px;
+  font-size: 13px;
   color: #0f172a;
   margin-left: 8px;
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 6px;
   background: #f59e0b;
   letter-spacing: 0.8px;

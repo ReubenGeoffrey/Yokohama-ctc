@@ -45,13 +45,6 @@ export function Header({
 
           {/* ── Brand ─────────────────────────── */}
           <div className="brand">
-            <div className="brand-logo">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="9.5" stroke="#ef4444" strokeWidth="2" strokeDasharray="4 2" />
-                <circle cx="12" cy="12" r="6" stroke="#f59e0b" strokeWidth="1.8" />
-                <circle cx="12" cy="12" r="2.5" fill="#f8fafc" />
-              </svg>
-            </div>
             <div className="brand-text">
               <h1 className="brand-name">
                 YOKOHAMA <span className="brand-accent">CTC</span>
