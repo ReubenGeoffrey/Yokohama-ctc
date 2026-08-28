@@ -198,6 +198,43 @@ export function App() {
     setStepsStatus({ 1: 'pending', 2: 'pending', 3: 'pending', 4: 'pending' });
   };
 
+  // Delete a single date's attendance data
+  const handleDeleteDate = async (dateKey) => {
+    // Remove from batchDates
+    const newBatchDates = { ...batchDates };
+    delete newBatchDates[dateKey];
+
+    // Remove from batchResults (match by r.date === dateKey)
+    const newBatchResults = batchResults.filter(r => r.date !== dateKey);
+
+    setBatchDates(newBatchDates);
+    setBatchResults(newBatchResults);
+
+    // Persist locally
+    await StorageService.saveAttendanceFiles(newBatchDates);
+    await StorageService.saveBatchResults({ results: newBatchResults, empStats });
+
+    // Sync to cloud
+    await SupabaseService.saveCloudSharedState({
+      master,
+      masterMeta,
+      batchDates: newBatchDates,
+      batchResults: newBatchResults,
+      empStats
+    });
+
+    // Update step statuses
+    const stillHasAttendance = Object.keys(newBatchDates).length > 0;
+    const stillHasResults    = newBatchResults.length > 0;
+    setStepsStatus(prev => ({
+      ...prev,
+      2: stillHasAttendance ? 'done' : 'pending',
+      3: stillHasResults    ? 'done' : 'pending',
+      4: stillHasResults    ? 'done' : 'pending',
+    }));
+  };
+
+
   const handleOpenStoredFiles = () => {
     if (!currentUser) {
       setIsAuthModalOpen(true);
@@ -372,6 +409,7 @@ export function App() {
         master={master}
         empStats={empStats}
         onClearStorage={handleClearStorage}
+        onDeleteDate={handleDeleteDate}
         onRerunReconciliation={() => setCurrentStep(3)}
       />
 
