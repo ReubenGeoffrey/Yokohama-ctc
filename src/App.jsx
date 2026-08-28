@@ -368,8 +368,13 @@ export function App() {
         onClose={() => setIsFileManagerOpen(false)}
         masterMeta={masterMeta}
         batchDates={batchDates}
+        batchResults={batchResults}
+        master={master}
+        empStats={empStats}
         onClearStorage={handleClearStorage}
+        onRerunReconciliation={() => setCurrentStep(3)}
       />
+
 
       {/* Auth Modal (Login / Passcode) */}
       <AuthModal
