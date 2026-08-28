@@ -114,10 +114,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
               <span>Stage 02 • Daily Reports</span>
             </div>
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              Daily Attendance Sheets{' '}
-              <span className="text-blue-600 font-handwriting text-4xl ml-1 font-bold">
-                Smart Detection ⚡
-              </span>
+              Daily Attendance Sheets
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
               Upload individual daily attendance sheets or entire folders (<code className="text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md font-mono font-bold">INPUT AUG Present/</code>).
