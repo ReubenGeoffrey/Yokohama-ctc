@@ -389,8 +389,11 @@ export function App() {
           {/* Right Action Button */}
           <div className="flex-shrink-0 w-full sm:w-auto flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() => setCurrentStep(2)}
-              className="btn-yellow px-8 py-4 text-sm font-black flex items-center justify-center space-x-2 cursor-pointer shadow-2xl w-full sm:w-auto"
+              onClick={() => {
+                setCurrentStep(2);
+                window.scrollTo({ top: 100, behavior: 'smooth' });
+              }}
+              className="btn-yellow px-8 py-4 text-sm font-black flex items-center justify-center space-x-2 cursor-pointer shadow-2xl w-full sm:w-auto hover:scale-[1.02] active:scale-[0.98] transition"
             >
               <FolderUp className="w-5 h-5" />
               <span>Upload Attendance Files Now</span>
