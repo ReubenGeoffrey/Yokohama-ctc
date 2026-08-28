@@ -4,7 +4,7 @@ import {
   X, HardDrive, FileSpreadsheet, Calendar, Trash2,
   CheckCircle2, Download, RefreshCw, FileDown,
   Package, BarChart3, AlertCircle, Play, ChevronDown, ChevronRight,
-  FileText, ArrowUpRight, Check
+  FileText, ArrowUpRight, Check, LayoutGrid, List
 } from 'lucide-react';
 import { formatDateDisplay } from '../services/parser';
 import {
@@ -35,6 +35,7 @@ export function FileManagerModal({
   master, empStats, onClearStorage, onRerunReconciliation, onDeleteDate
 }) {
   const [downloading, setDownloading] = useState(null);
+  const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'list'
   const [selectedYear, setSelectedYear] = useState('ALL'); // 'ALL' or number (2025, 2026, 2027)
   const [selectedMonth, setSelectedMonth] = useState('ALL'); // 'ALL' or 0..11 (number)
 
@@ -251,6 +252,117 @@ export function FileManagerModal({
     });
     return Object.values(groups).sort((a, b) => a.key.localeCompare(b.key));
   }, [filteredDates]);
+
+  // Render interactive 7-column calendar cells for a month group
+  const renderCalendarCells = (group) => {
+    const daysInMonth = new Date(group.year, group.monthIdx + 1, 0).getDate();
+    // Monday-first index: (dayOfWeek + 6) % 7
+    const firstDayOfWeek = (new Date(group.year, group.monthIdx, 1).getDay() + 6) % 7;
+
+    const dayMap = {};
+    group.items.forEach(item => {
+      const dayNum = item.dateObj.getUTCDate();
+      dayMap[dayNum] = item;
+    });
+
+    const cells = [];
+    // Lead-in empty days
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      cells.push(
+        <div key={`empty-${i}`} className="min-h-[86px] rounded-xl bg-slate-50/40 border border-dashed border-slate-200/50" />
+      );
+    }
+
+    // Days 1 to daysInMonth
+    for (let d = 1; d <= daysInMonth; d++) {
+      const item = dayMap[d];
+      const isWeekend = (firstDayOfWeek + d - 1) % 7 >= 5;
+
+      if (item) {
+        const r = item.result;
+        cells.push(
+          <div
+            key={`day-${d}`}
+            className="min-h-[86px] p-2 rounded-xl bg-amber-50/90 border-2 border-amber-300 hover:border-amber-400 hover:shadow-md transition flex flex-col justify-between"
+          >
+            {/* Top row: Day number & Green active indicator */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-slate-900 bg-white px-1.5 py-0.5 rounded-md shadow-2xs border border-amber-200">
+                {d}
+              </span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs" title="Attendance Stored" />
+            </div>
+
+            {/* Middle: Metrics */}
+            <div className="my-1">
+              {r ? (
+                <div className="space-y-0.5">
+                  <div className="text-[10px] font-bold text-slate-700 leading-none">
+                    HC: <strong className="text-slate-900">{r.gHC}</strong>
+                  </div>
+                  <div className="text-[11px] font-mono font-black text-emerald-800 leading-none">
+                    ₹{fmt(r.gTot)}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[10px] font-bold text-amber-800 leading-tight">
+                  {item.files?.length || 1} file(s)
+                </div>
+              )}
+            </div>
+
+            {/* Bottom: Quick Excel & Trash Buttons */}
+            <div className="flex items-center justify-between gap-1 pt-1 border-t border-amber-200/70">
+              <button
+                onClick={() => handleDownloadDay(item)}
+                disabled={downloading === item.dateKey}
+                className="flex-1 py-1 px-1 bg-white hover:bg-amber-100 text-slate-800 hover:text-amber-950 rounded text-[10px] font-black border border-slate-200 shadow-2xs flex items-center justify-center space-x-1 cursor-pointer"
+                title="Download single day Excel"
+              >
+                {downloading === item.dateKey ? (
+                  <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                ) : (
+                  <Download className="w-2.5 h-2.5 text-blue-600" />
+                )}
+                <span>Excel</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (confirm(`Are you sure you want to delete attendance data for ${formatDateDisplay(item.dateObj)}?\nThis cannot be undone.`)) {
+                    onDeleteDate && onDeleteDate(item.dateKey || item.dateObj);
+                  }
+                }}
+                className="w-5 h-5 rounded bg-rose-50 hover:bg-rose-100 text-rose-500 hover:text-rose-700 border border-rose-200 flex items-center justify-center cursor-pointer flex-shrink-0"
+                title="Delete this date"
+              >
+                <Trash2 className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          </div>
+        );
+      } else {
+        cells.push(
+          <div
+            key={`day-${d}`}
+            className={`min-h-[86px] p-2 rounded-xl border border-slate-100 flex flex-col justify-between ${
+              isWeekend ? 'bg-slate-50/70 text-slate-400' : 'bg-white text-slate-300'
+            }`}
+          >
+            <div className="text-xs font-bold text-slate-400">
+              {d}
+            </div>
+            <div className="text-[10px] text-slate-300 text-center font-medium">
+              —
+            </div>
+            <div className="h-4" />
+          </div>
+        );
+      }
+    }
+
+    return cells;
+  };
 
   if (!isOpen) return null;
 
@@ -496,14 +608,41 @@ export function FileManagerModal({
 
             {/* ── STORED DAILY ATTENDANCE FILES ────────── */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div className="flex items-center space-x-2 text-xs font-black uppercase tracking-wider text-slate-700">
                   <Calendar className="w-4 h-4 text-amber-600" />
                   <span>
                     Stored Daily Attendance Records ({filteredDates.length} Active in Filter)
                   </span>
                 </div>
-                <span className="text-[11px] font-bold text-slate-400">Download or remove per-day records</span>
+
+                {/* View Mode Switcher */}
+                <div className="flex items-center space-x-2">
+                  <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs">
+                    <button
+                      onClick={() => setViewMode('calendar')}
+                      className={`px-3 py-1 text-xs font-black rounded-lg transition flex items-center space-x-1.5 cursor-pointer ${
+                        viewMode === 'calendar'
+                          ? 'bg-amber-400 text-slate-950 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                      <span>Calendar Mode</span>
+                    </button>
+                    <button
+                      onClick={() => setViewMode('list')}
+                      className={`px-3 py-1 text-xs font-black rounded-lg transition flex items-center space-x-1.5 cursor-pointer ${
+                        viewMode === 'list'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <List className="w-3.5 h-3.5" />
+                      <span>List Mode</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {monthGroups.length === 0 ? (
@@ -514,7 +653,7 @@ export function FileManagerModal({
                 </div>
               ) : (
                 monthGroups.map(group => (
-                  <div key={group.key} className="rounded-2xl border-2 border-amber-200 bg-amber-50/30 overflow-hidden shadow-2xs">
+                  <div key={group.key} className="rounded-2xl border-2 border-amber-200 bg-white overflow-hidden shadow-2xs">
                     {/* Month Group Header */}
                     <div className="px-5 py-3 bg-amber-100/80 border-b border-amber-200 flex items-center justify-between">
                       <div className="flex items-center space-x-2.5">
@@ -532,79 +671,100 @@ export function FileManagerModal({
                       )}
                     </div>
 
-                    {/* Day Rows */}
-                    <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-white">
-                      {group.items.map(item => {
-                        const r = item.result;
-                        const filesCount = item.files ? item.files.length : 0;
-                        return (
-                          <div
-                            key={item.dateKey}
-                            className="p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-amber-300 transition flex flex-col justify-between space-y-2"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <div className="text-xs font-black text-slate-900">{formatDateDisplay(item.dateObj)}</div>
-                                <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                                  {r ? (
-                                    <>
-                                      HC: <strong className="text-slate-800">{r.gHC}</strong> &bull; Total: <strong className="text-emerald-700 font-mono">₹{fmt(r.gTot)}</strong>
-                                    </>
-                                  ) : (
-                                    <span className="text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[10px]">
-                                      {filesCount} files loaded (Pending Reconcile)
-                                    </span>
+                    {/* ── CALENDAR MODE ── */}
+                    {viewMode === 'calendar' ? (
+                      <div className="p-3 bg-slate-50/40">
+                        {/* Weekday Names */}
+                        <div className="grid grid-cols-7 text-center pb-2 text-[11px] font-black text-slate-500 uppercase tracking-wider">
+                          <div>Mon</div>
+                          <div>Tue</div>
+                          <div>Wed</div>
+                          <div>Thu</div>
+                          <div>Fri</div>
+                          <div className="text-amber-700">Sat</div>
+                          <div className="text-rose-700">Sun</div>
+                        </div>
+
+                        {/* 7-Column Days Grid */}
+                        <div className="grid grid-cols-7 gap-2">
+                          {renderCalendarCells(group)}
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── LIST MODE ── */
+                      <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-white">
+                        {group.items.map(item => {
+                          const r = item.result;
+                          const filesCount = item.files ? item.files.length : 0;
+                          return (
+                            <div
+                              key={item.dateKey}
+                              className="p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-amber-300 transition flex flex-col justify-between space-y-2"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <div className="text-xs font-black text-slate-900">{formatDateDisplay(item.dateObj)}</div>
+                                  <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                                    {r ? (
+                                      <>
+                                        HC: <strong className="text-slate-800">{r.gHC}</strong> &bull; Total: <strong className="text-emerald-700 font-mono">₹{fmt(r.gTot)}</strong>
+                                      </>
+                                    ) : (
+                                      <span className="text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[10px]">
+                                        {filesCount} files loaded (Pending Reconcile)
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Action buttons */}
+                                <div className="flex items-center space-x-1.5 flex-shrink-0">
+                                  {r && (
+                                    <button
+                                      onClick={() => handleDownloadDay(item)}
+                                      disabled={downloading === item.dateKey}
+                                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-400 hover:text-slate-950 text-slate-700 text-[11px] font-bold border border-slate-200 transition cursor-pointer flex items-center space-x-1"
+                                      title="Download single day Excel"
+                                    >
+                                      {downloading === item.dateKey ? (
+                                        <RefreshCw className="w-3 h-3 animate-spin" />
+                                      ) : (
+                                        <Download className="w-3 h-3" />
+                                      )}
+                                      <span>Excel</span>
+                                    </button>
                                   )}
+
+                                  <button
+                                    onClick={() => {
+                                      if (confirm(`Are you sure you want to delete attendance data for ${formatDateDisplay(item.dateObj)}?\nThis cannot be undone.`)) {
+                                        onDeleteDate && onDeleteDate(item.dateKey || item.dateObj);
+                                      }
+                                    }}
+                                    className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 hover:text-rose-700 border border-rose-200 transition cursor-pointer flex items-center justify-center"
+                                    title={`Delete ${formatDateDisplay(item.dateObj)}`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                               </div>
 
-                              {/* Action buttons */}
-                              <div className="flex items-center space-x-1.5 flex-shrink-0">
-                                {r && (
-                                  <button
-                                    onClick={() => handleDownloadDay(item)}
-                                    disabled={downloading === item.dateKey}
-                                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-400 hover:text-slate-950 text-slate-700 text-[11px] font-bold border border-slate-200 transition cursor-pointer flex items-center space-x-1"
-                                    title="Download single day Excel"
-                                  >
-                                    {downloading === item.dateKey ? (
-                                      <RefreshCw className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <Download className="w-3 h-3" />
-                                    )}
-                                    <span>Excel</span>
-                                  </button>
-                                )}
-
-                                <button
-                                  onClick={() => {
-                                    if (confirm(`Are you sure you want to delete attendance data for ${formatDateDisplay(item.dateObj)}?\nThis cannot be undone.`)) {
-                                      onDeleteDate && onDeleteDate(item.dateKey);
-                                    }
-                                  }}
-                                  className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 hover:text-rose-700 border border-rose-200 transition cursor-pointer flex items-center justify-center"
-                                  title={`Delete ${formatDateDisplay(item.dateObj)}`}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
+                              {/* Show uploaded filenames if available */}
+                              {item.files && item.files.length > 0 && (
+                                <div className="pt-1.5 border-t border-slate-200/60 flex flex-wrap gap-1">
+                                  {item.files.map((f, fi) => (
+                                    <span key={fi} className="inline-flex items-center text-[10px] text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 font-mono">
+                                      <FileText className="w-2.5 h-2.5 mr-1 text-blue-500" />
+                                      {f.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-
-                            {/* Show uploaded filenames if available */}
-                            {item.files && item.files.length > 0 && (
-                              <div className="pt-1.5 border-t border-slate-200/60 flex flex-wrap gap-1">
-                                {item.files.map((f, fi) => (
-                                  <span key={fi} className="inline-flex items-center text-[10px] text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 font-mono">
-                                    <FileText className="w-2.5 h-2.5 mr-1 text-blue-500" />
-                                    {f.name}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 ))
               )}
