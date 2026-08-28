@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Vault, RefreshCw, LogOut, UserCheck,
-  ShieldCheck, Zap, Trash2, Sun, ChevronDown
+  ShieldCheck, Zap, Sun, ChevronDown
 } from 'lucide-react';
 
 export function Header({
@@ -132,17 +132,6 @@ export function Header({
                 <span>Sign In</span>
               </motion.button>
             )}
-
-            {/* Reset / Trash */}
-            <motion.button
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 0.94 }}
-              onClick={onClearStorage}
-              className="nav-btn-danger cursor-pointer"
-              title="Reset All Stored Data"
-            >
-              <Trash2 className="w-4 h-4" />
-            </motion.button>
           </div>
         </div>
       </nav>
