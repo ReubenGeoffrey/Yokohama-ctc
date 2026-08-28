@@ -121,10 +121,10 @@ export function FileManagerModal({
     }
   }, [allStoredDates, selectedDayKey]);
 
-  // Extract comprehensive years (2020 to 2035 + any custom years found in stored data)
+  // Extract comprehensive years (1990 to 2060 + any custom years found in stored data)
   const availableYears = useMemo(() => {
     const yearsSet = new Set();
-    for (let y = 2020; y <= 2035; y++) {
+    for (let y = 1990; y <= 2060; y++) {
       yearsSet.add(y);
     }
     allStoredDates.forEach(item => yearsSet.add(item.year));
@@ -391,27 +391,32 @@ export function FileManagerModal({
                 {/* Left Column: Google Calendar Mini Month Picker (col 1-7) */}
                 <div className="lg:col-span-7 bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
                   {/* Calendar Top Month Navigation Bar (Exact Google Calendar Style) */}
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <div className="flex items-center space-x-2">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 gap-2 flex-wrap">
+                    <div className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 rounded-2xl p-1 shadow-2xs">
+                      {/* Month Dropdown */}
                       <select
                         value={calMonth}
                         onChange={(e) => setCalMonth(Number(e.target.value))}
-                        className="text-base sm:text-lg font-black text-slate-900 bg-transparent hover:bg-slate-100 rounded-lg px-2 py-0.5 cursor-pointer focus:outline-none"
+                        className="text-sm sm:text-base font-black text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl px-2.5 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
                       >
                         {MONTH_NAMES.map((name, idx) => (
                           <option key={idx} value={idx}>{name}</option>
                         ))}
                       </select>
 
-                      <select
+                      {/* Direct Editable Year Input */}
+                      <input
+                        type="number"
                         value={calYear}
-                        onChange={(e) => setCalYear(Number(e.target.value))}
-                        className="text-base sm:text-lg font-black text-slate-900 bg-transparent hover:bg-slate-100 rounded-lg px-2 py-0.5 cursor-pointer focus:outline-none"
-                      >
-                        {availableYears.map(y => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (!isNaN(val)) setCalYear(val);
+                        }}
+                        className="w-20 text-sm sm:text-base font-black text-slate-900 bg-white border border-slate-200 rounded-xl px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                        min="1900"
+                        max="2100"
+                        title="Type any year freely"
+                      />
                     </div>
 
                     <div className="flex items-center space-x-1">
@@ -427,17 +432,17 @@ export function FileManagerModal({
                       </button>
                       <button
                         onClick={handlePrevMonth}
-                        className="p-1.5 text-slate-600 hover:text-slate-950 hover:bg-slate-100 rounded-full transition cursor-pointer"
+                        className="p-1.5 text-slate-600 hover:text-slate-950 hover:bg-slate-100 rounded-full transition cursor-pointer border border-slate-200"
                         title="Previous Month"
                       >
-                        <ChevronLeft className="w-5 h-5" />
+                        <ChevronLeft className="w-4 h-4" />
                       </button>
                       <button
                         onClick={handleNextMonth}
-                        className="p-1.5 text-slate-600 hover:text-slate-950 hover:bg-slate-100 rounded-full transition cursor-pointer"
+                        className="p-1.5 text-slate-600 hover:text-slate-950 hover:bg-slate-100 rounded-full transition cursor-pointer border border-slate-200"
                         title="Next Month"
                       >
-                        <ChevronRight className="w-5 h-5" />
+                        <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
