@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Download, FileSpreadsheet, Archive, CheckCircle, Sparkles, ArrowRight, Calendar } from 'lucide-react';
+import { Download, FileSpreadsheet, Archive, CheckCircle, Sparkles, ArrowRight, Calendar, Check } from 'lucide-react';
 import { generateMonthlyWorkbook, generateZipBundle, downloadBlob } from '../services/excelEngine';
 
 const MONTH_NAMES = [
@@ -92,7 +92,7 @@ export function ExportPanel({ batchResults, master, empStats }) {
               Executive Excel Packages
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
-              Download professionally styled workbooks formatted with warm minimalist yellow headers, 0 merged rows, and Total WOP counts.
+              Download unified monthly summary reports and daily workbooks formatted for plant management and payroll reconciliation.
             </p>
           </div>
 
@@ -147,30 +147,20 @@ export function ExportPanel({ batchResults, master, empStats }) {
               <h3 className="text-2xl font-black text-slate-900 mt-4">
                 Consolidated Master Excel
               </h3>
-              <p className="text-xs text-slate-600 mt-1 font-medium leading-relaxed">
-                Contains the Master <strong>Summary</strong> worksheet plus full employee rosters in <strong>ATC</strong>, <strong>CL</strong>, and <strong>NAPS</strong> sheets for {currentMonthConfig.label}.
-              </p>
 
-              <div className="mt-6 space-y-2.5 text-xs text-slate-700 font-medium">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span>Minimalist Yellow Headers (<code className="text-amber-900 bg-amber-200/60 px-1.5 py-0.5 rounded font-mono font-bold">#FFE699</code>)</span>
+              {/* Clean 2-line explanation */}
+              <div className="mt-4 space-y-2 text-sm text-slate-700 font-medium leading-relaxed">
+                <div className="flex items-start space-x-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 flex-shrink-0" />
+                  <span>
+                    Full monthly executive breakdown combining <strong>Master Summary</strong> with <strong>ATC</strong>, <strong>CL</strong>, and <strong>NAPS</strong> employee rosters.
+                  </span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span>Columns A to I (NO Column A Gap, starts at Col 1)</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span>Includes <strong className="text-amber-900">Total WOP Count</strong> (Weekly Off Present)</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span>0 Merged Rows (1 single row per employee)</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span>Clean Number Formatting (<code className="text-slate-800 bg-white px-1.5 py-0.5 rounded font-mono font-bold border border-slate-200">#,##0</code> without ₹ symbol)</span>
+                <div className="flex items-start space-x-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 flex-shrink-0" />
+                  <span>
+                    Formatted with standard yellow headers, shift counts, overtime totals, and zero merged rows.
+                  </span>
                 </div>
               </div>
             </div>
@@ -203,22 +193,20 @@ export function ExportPanel({ batchResults, master, empStats }) {
               <h3 className="text-2xl font-black text-slate-900 mt-4">
                 Complete Daily ZIP Archive
               </h3>
-              <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed">
-                Bundles all individual date workbooks along with the Combined Monthly Master into a single zip file for {currentMonthConfig.label}.
-              </p>
 
-              <div className="mt-6 space-y-2.5 text-xs text-slate-700 font-medium">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                  <span>All individual single-day Excel workbooks</span>
+              {/* Clean 2-line explanation */}
+              <div className="mt-4 space-y-2 text-sm text-slate-700 font-medium leading-relaxed">
+                <div className="flex items-start space-x-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
+                  <span>
+                    All individual daily Excel workbooks packaged with the Monthly Consolidated Master into one archive.
+                  </span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                  <span>Monthly Master Consolidated Workbook</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                  <span>Ready for plant management sharing & archiving</span>
+                <div className="flex items-start space-x-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
+                  <span>
+                    Ready for management review, plant audit, and long-term offline record-keeping.
+                  </span>
                 </div>
               </div>
             </div>
