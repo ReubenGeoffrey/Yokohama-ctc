@@ -220,7 +220,12 @@ code, pre, .font-mono {
 @keyframes slow-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .brand-text { display: flex; flex-direction: column; }
 .brand-name { font-size: 20px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; line-height: 1.2; margin: 0; }
-.brand-accent { font-family: 'Caveat', cursive; font-size: 22px; color: #f59e0b; margin-left: 3px; }
+.brand-accent {
+  font-weight: 900;
+  font-size: 20px;
+  color: #f59e0b;
+  margin-left: 2px;
+}
 .brand-sub { font-size: 11px; color: #94a3b8; font-weight: 500; margin: 0; }
 
 /* Nav Actions */

@@ -357,15 +357,16 @@ export function App() {
         >
           {/* Left Decorative Paper Tag */}
           <div className="flex items-center space-x-6 w-full lg:w-auto">
-            <div className="relative transform -rotate-3 hover:rotate-0 transition duration-300 hidden sm:block flex-shrink-0">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-amber-400 rounded-sm shadow-xs z-10 -rotate-2" style={{ backgroundColor: '#f59e0b' }} />
+            <div className="relative hidden sm:block flex-shrink-0">
               <div className="bg-white p-5 rounded-2xl shadow-xl w-48 text-center border border-slate-100" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
-                <div className="font-handwriting text-2xl font-black text-slate-900 leading-tight" style={{ color: '#0f172a' }}>
-                  Let's reconcile something amazing! ☀️
+                <div className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  Plant Operations
                 </div>
-                <div className="mt-2 flex justify-center space-x-1 text-amber-500">
-                  <span>💛</span>
-                  <span>✨</span>
+                <div className="text-base font-black text-slate-900 leading-snug mt-1" style={{ color: '#0f172a' }}>
+                  Unified CTC &amp; Shift Reconciliation
+                </div>
+                <div className="mt-2 inline-flex items-center space-x-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full border border-emerald-200">
+                  <span>● Live Ready</span>
                 </div>
               </div>
             </div>

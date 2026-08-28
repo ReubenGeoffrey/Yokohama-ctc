@@ -1,21 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Download, FileSpreadsheet, Archive, CheckCircle, Sparkles, ArrowRight } from 'lucide-react';
+import { Download, FileSpreadsheet, Archive, CheckCircle, Sparkles, ArrowRight, Calendar } from 'lucide-react';
 import { generateMonthlyWorkbook, generateZipBundle, downloadBlob } from '../services/excelEngine';
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export function ExportPanel({ batchResults, master, empStats }) {
   const [downloadingMonthly, setDownloadingMonthly] = useState(false);
   const [downloadingZip, setDownloadingZip] = useState(false);
 
-  const year = batchResults && batchResults.length ? new Date(batchResults[0].date).getUTCFullYear() : 2026;
-  const month = batchResults && batchResults.length ? new Date(batchResults[0].date).getUTCMonth() : 7;
+  // Detect months present in batchResults
+  const availableMonths = useMemo(() => {
+    if (!batchResults || !batchResults.length) return [{ year: 2026, month: 7, label: 'August 2026', key: '2026-08' }];
+    const map = {};
+    batchResults.forEach(r => {
+      const d = new Date(r.date);
+      const y = d.getUTCFullYear();
+      const m = d.getUTCMonth();
+      const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+      if (!map[key]) {
+        map[key] = { year: y, month: m, label: `${MONTH_NAMES[m]} ${y}`, key, count: 0 };
+      }
+      map[key].count++;
+    });
+    return Object.values(map).sort((a, b) => a.key.localeCompare(b.key));
+  }, [batchResults]);
+
+  const [selectedMonthKey, setSelectedMonthKey] = useState(availableMonths[0]?.key || '2026-08');
+
+  const currentMonthConfig = useMemo(() => {
+    return availableMonths.find(m => m.key === selectedMonthKey) || availableMonths[0] || { year: 2026, month: 7, label: 'August 2026' };
+  }, [availableMonths, selectedMonthKey]);
+
+  // Filter batchResults for selected month
+  const targetBatchResults = useMemo(() => {
+    if (!batchResults) return [];
+    if (availableMonths.length <= 1) return batchResults;
+    return batchResults.filter(r => {
+      const d = new Date(r.date);
+      return d.getUTCFullYear() === currentMonthConfig.year && d.getUTCMonth() === currentMonthConfig.month;
+    });
+  }, [batchResults, currentMonthConfig, availableMonths]);
 
   const handleDownloadMonthly = async () => {
     setDownloadingMonthly(true);
     try {
-      const buffer = await generateMonthlyWorkbook(batchResults, master, empStats, year, month);
+      const monthName = MONTH_NAMES[currentMonthConfig.month];
+      const buffer = await generateMonthlyWorkbook(targetBatchResults, master, empStats, currentMonthConfig.year, currentMonthConfig.month);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, 'CTC_Output_August_2026.xlsx');
+      downloadBlob(blob, `CTC_Output_${monthName}_${currentMonthConfig.year}.xlsx`);
     } catch (err) {
       console.error(err);
       alert('Error exporting Monthly Master Workbook: ' + err.message);
@@ -27,8 +63,9 @@ export function ExportPanel({ batchResults, master, empStats }) {
   const handleDownloadZip = async () => {
     setDownloadingZip(true);
     try {
-      const blob = await generateZipBundle(batchResults, master, empStats, year, month);
-      downloadBlob(blob, 'ATC_CTC_Reconciliation_August_2026.zip');
+      const monthName = MONTH_NAMES[currentMonthConfig.month];
+      const blob = await generateZipBundle(targetBatchResults, master, empStats, currentMonthConfig.year, currentMonthConfig.month);
+      downloadBlob(blob, `ATC_CTC_Reconciliation_${monthName}_${currentMonthConfig.year}.zip`);
     } catch (err) {
       console.error(err);
       alert('Error exporting ZIP bundle: ' + err.message);
@@ -49,13 +86,10 @@ export function ExportPanel({ batchResults, master, empStats }) {
           <div>
             <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-xs font-black uppercase tracking-wider mb-3">
               <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-              <span>Stage 04 • Export Center</span>
+              <span>Stage 04 &bull; Export Center</span>
             </div>
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              Executive Excel Packages{' '}
-              <span className="text-amber-500 font-handwriting text-4xl ml-1 font-bold">
-                Big Impact ☀️
-              </span>
+              Executive Excel Packages
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
               Download professionally styled workbooks formatted with warm minimalist yellow headers, 0 merged rows, and Total WOP counts.
@@ -68,9 +102,32 @@ export function ExportPanel({ batchResults, master, empStats }) {
           </span>
         </div>
 
-        {/* Packages Grid (Exact Maya Style with "MOST POPULAR" Badge) */}
+        {/* If multiple months exist, show month selection tabs */}
+        {availableMonths.length > 1 && (
+          <div className="mt-6 flex items-center space-x-3 bg-warm-canvas p-3 rounded-2xl border border-slate-200">
+            <Calendar className="w-4 h-4 text-blue-600 ml-2" />
+            <span className="text-xs font-black uppercase tracking-wider text-slate-700">Choose Export Month:</span>
+            <div className="flex gap-2">
+              {availableMonths.map(m => (
+                <button
+                  key={m.key}
+                  onClick={() => setSelectedMonthKey(m.key)}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition cursor-pointer ${
+                    selectedMonthKey === m.key
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {m.label} ({m.count} dates)
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Packages Grid */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Package 1 - Highlighting "MOST POPULAR" */}
+          {/* Package 1 - Consolidated Master Excel */}
           <div className="maya-card-highlight p-8 relative flex flex-col justify-between bg-amber-50/20">
             {/* Top Golden Most Popular Badge */}
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 font-black text-[11px] uppercase tracking-wider px-4 py-1 rounded-full shadow-md">
@@ -80,7 +137,7 @@ export function ExportPanel({ batchResults, master, empStats }) {
             <div>
               <div className="flex items-center justify-between mt-2">
                 <span className="text-xs font-black uppercase tracking-wider text-amber-900 bg-amber-200/80 px-3 py-1 rounded-full">
-                  Monthly Master
+                  {currentMonthConfig.label} Master
                 </span>
                 <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center shadow-md">
                   <FileSpreadsheet className="w-5 h-5" />
@@ -91,7 +148,7 @@ export function ExportPanel({ batchResults, master, empStats }) {
                 Consolidated Master Excel
               </h3>
               <p className="text-xs text-slate-600 mt-1 font-medium leading-relaxed">
-                Contains the Master <strong>Summary</strong> worksheet plus full employee rosters in <strong>ATC</strong>, <strong>CL</strong>, and <strong>NAPS</strong> sheets.
+                Contains the Master <strong>Summary</strong> worksheet plus full employee rosters in <strong>ATC</strong>, <strong>CL</strong>, and <strong>NAPS</strong> sheets for {currentMonthConfig.label}.
               </p>
 
               <div className="mt-6 space-y-2.5 text-xs text-slate-700 font-medium">
@@ -126,7 +183,7 @@ export function ExportPanel({ batchResults, master, empStats }) {
               className="btn-yellow mt-8 w-full py-4 text-sm flex items-center justify-center space-x-2 cursor-pointer shadow-lg"
             >
               <Download className="w-4 h-4" />
-              <span>{downloadingMonthly ? 'Building Master Excel...' : 'Get Consolidated Master (.xlsx)'}</span>
+              <span>{downloadingMonthly ? 'Building Master Excel...' : `Get Consolidated Master (${currentMonthConfig.label})`}</span>
               <ArrowRight className="w-4 h-4 ml-1" />
             </motion.button>
           </div>
@@ -136,7 +193,7 @@ export function ExportPanel({ batchResults, master, empStats }) {
             <div>
               <div className="flex items-center justify-between mt-2">
                 <span className="text-xs font-black uppercase tracking-wider text-blue-700 bg-blue-50 px-3 py-1 rounded-full">
-                  Batch Archive
+                  {currentMonthConfig.label} Archive
                 </span>
                 <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25">
                   <Archive className="w-5 h-5" />
@@ -147,7 +204,7 @@ export function ExportPanel({ batchResults, master, empStats }) {
                 Complete Daily ZIP Archive
               </h3>
               <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed">
-                Bundles all individual date workbooks (21-Aug, 22-Aug, 23-Aug, 24-Aug...) along with the Combined Monthly Master into a single zip file.
+                Bundles all individual date workbooks along with the Combined Monthly Master into a single zip file for {currentMonthConfig.label}.
               </p>
 
               <div className="mt-6 space-y-2.5 text-xs text-slate-700 font-medium">
@@ -174,7 +231,7 @@ export function ExportPanel({ batchResults, master, empStats }) {
               className="btn-blue mt-8 w-full py-4 text-sm flex items-center justify-center space-x-2 cursor-pointer shadow-lg"
             >
               <Archive className="w-4 h-4" />
-              <span>{downloadingZip ? 'Compressing Files...' : 'Download All Daily Files (ZIP)'}</span>
+              <span>{downloadingZip ? 'Compressing Files...' : `Download Daily Files ZIP (${currentMonthConfig.label})`}</span>
               <ArrowRight className="w-4 h-4 ml-1" />
             </motion.button>
           </div>
@@ -183,3 +240,5 @@ export function ExportPanel({ batchResults, master, empStats }) {
     </motion.div>
   );
 }
+
+export default ExportPanel;
