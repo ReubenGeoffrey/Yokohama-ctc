@@ -59,10 +59,7 @@ export function MasterUpload({ master, masterMeta, onMasterLoaded, onNext }) {
           </div>
 
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">
-            Mapping CTC Rates{' '}
-            <span className="text-amber-500 font-handwriting text-4xl sm:text-5xl ml-1 font-bold">
-              Smooth & Precise ☀️
-            </span>
+            Mapping CTC Rates
           </h2>
 
           <p className="text-slate-600 text-sm sm:text-base mt-3 leading-relaxed font-medium">
