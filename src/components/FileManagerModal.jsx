@@ -4,7 +4,7 @@ import {
   X, HardDrive, FileSpreadsheet, Calendar, Trash2,
   CheckCircle2, Download, RefreshCw, FileDown,
   Package, BarChart3, AlertCircle, Play, ChevronDown, ChevronRight,
-  FileText, ArrowUpRight, Check, LayoutGrid, List
+  ChevronLeft, FileText, ArrowUpRight, Check, LayoutGrid, List
 } from 'lucide-react';
 import { formatDateDisplay } from '../services/parser';
 import {
@@ -97,11 +97,21 @@ export function FileManagerModal({
     return Object.values(map).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
   }, [safeBatchDates, safeBatchResults]);
 
-  // Extract available years
+  // Extract comprehensive years (2020 to 2035 + any custom years found in stored data)
   const availableYears = useMemo(() => {
-    const yearsSet = new Set([2024, 2025, 2026, 2027]);
+    const yearsSet = new Set();
+    for (let y = 2020; y <= 2035; y++) {
+      yearsSet.add(y);
+    }
     allStoredDates.forEach(item => yearsSet.add(item.year));
-    return Array.from(yearsSet).sort((a, b) => b - a);
+    return Array.from(yearsSet).sort((a, b) => a - b);
+  }, [allStoredDates]);
+
+  // Extract years that currently have stored attendance data
+  const yearsWithData = useMemo(() => {
+    const s = new Set();
+    allStoredDates.forEach(item => s.add(item.year));
+    return Array.from(s).sort((a, b) => a - b);
   }, [allStoredDates]);
 
   // File count per month for selected year
@@ -400,10 +410,14 @@ export function FileManagerModal({
           <div className="px-6 py-3.5 bg-warm-canvas border-b border-slate-200 flex-shrink-0 space-y-3">
             {/* Year Selector */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center space-x-2">
-                <Calendar className="w-4 h-4 text-blue-600" />
-                <span className="text-xs font-black uppercase tracking-wider text-slate-700">Year:</span>
-                <div className="flex bg-white rounded-xl border border-slate-200 p-1 shadow-2xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center space-x-1.5">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-700">Year:</span>
+                </div>
+                
+                <div className="flex items-center space-x-1 bg-white rounded-xl border border-slate-200 p-1 shadow-2xs">
+                  {/* All Years Button */}
                   <button
                     onClick={() => setSelectedYear('ALL')}
                     className={`px-3 py-1 text-xs font-black rounded-lg transition cursor-pointer ${
@@ -414,20 +428,69 @@ export function FileManagerModal({
                   >
                     All Years
                   </button>
-                  {availableYears.map(y => (
-                    <button
-                      key={y}
-                      onClick={() => setSelectedYear(y)}
-                      className={`px-3 py-1 text-xs font-black rounded-lg transition cursor-pointer ${
-                        selectedYear === y
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                      }`}
-                    >
-                      {y}
-                    </button>
-                  ))}
+
+                  {/* Year Stepper < */}
+                  <button
+                    onClick={() => {
+                      const cur = selectedYear === 'ALL' ? (yearsWithData[0] || 2026) : Number(selectedYear);
+                      setSelectedYear(cur - 1);
+                    }}
+                    className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                    title="Previous Year"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Comprehensive Year Dropdown Selector (2020 to 2035+) */}
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
+                    className="text-xs font-black text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="ALL">All Years (Full Vault)</option>
+                    {availableYears.map(y => {
+                      const count = allStoredDates.filter(i => i.year === y).length;
+                      return (
+                        <option key={y} value={y}>
+                          {y} {count > 0 ? `(${count} dates)` : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+
+                  {/* Year Stepper > */}
+                  <button
+                    onClick={() => {
+                      const cur = selectedYear === 'ALL' ? (yearsWithData[0] || 2026) : Number(selectedYear);
+                      setSelectedYear(cur + 1);
+                    }}
+                    className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                    title="Next Year"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
+
+                {/* Quick shortcut pills for years with active data */}
+                {yearsWithData.length > 0 && (
+                  <div className="hidden sm:flex items-center space-x-1">
+                    {yearsWithData.map(y => (
+                      <button
+                        key={y}
+                        onClick={() => setSelectedYear(y)}
+                        className={`px-2.5 py-1 text-xs font-black rounded-lg transition cursor-pointer flex items-center space-x-1.5 ${
+                          selectedYear === y
+                            ? 'bg-amber-400 text-slate-950 shadow-xs'
+                            : 'bg-white text-slate-700 hover:bg-amber-50 border border-amber-200'
+                        }`}
+                        title={`Jump to ${y}`}
+                      >
+                        <span>{y}</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Status Pill */}
