@@ -1,17 +1,18 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { FileSpreadsheet, Calendar, Table2, Download, CheckCircle2 } from 'lucide-react';
 
 export function Stepper({ currentStep, onStepClick, stepsStatus }) {
   const steps = [
-    { id: 1, label: 'CTC Master Roster', icon: FileSpreadsheet, sub: 'Load Master Rates' },
-    { id: 2, label: 'Attendance Upload', icon: Calendar, sub: 'Daily / Batch Files' },
-    { id: 3, label: 'Reconciliation Matrix', icon: Table2, sub: 'Direct vs Indirect' },
-    { id: 4, label: 'Executive Export', icon: Download, sub: 'Yellow Excel & ZIP' }
+    { id: 1, label: 'CTC Master', icon: FileSpreadsheet, tag: '01. Setup' },
+    { id: 2, label: 'Attendance', icon: Calendar, tag: '02. Upload' },
+    { id: 3, label: 'Reconciliation', icon: Table2, tag: '03. Review' },
+    { id: 4, label: 'Export Excel', icon: Download, tag: '04. Download' }
   ];
 
   return (
-    <div className="bg-slate-900/60 border-b border-slate-800/80 backdrop-blur py-4 px-4 sm:px-8 shadow-sm">
-      <div className="max-w-5xl mx-auto flex items-center justify-between relative">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 mt-8 w-full">
+      <div className="bg-white rounded-3xl p-3 shadow-sm border border-slate-200/80 flex items-center justify-between">
         {steps.map((s, idx) => {
           const Icon = s.icon;
           const isDone = stepsStatus[s.id] === 'done';
@@ -20,48 +21,43 @@ export function Stepper({ currentStep, onStepClick, stepsStatus }) {
 
           return (
             <React.Fragment key={s.id}>
-              {/* Step Node */}
-              <button
+              <motion.button
+                whileHover={{ scale: isPending ? 1 : 1.02 }}
+                whileTap={{ scale: isPending ? 1 : 0.98 }}
                 onClick={() => onStepClick(s.id)}
                 disabled={isPending && s.id > 2}
-                className={`flex items-center space-x-3 text-left transition-all ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-2xl transition-all ${
                   isActive
-                    ? 'scale-105 opacity-100'
+                    ? 'bg-amber-400 text-slate-900 shadow-md shadow-amber-400/25 font-black'
                     : isDone
-                    ? 'opacity-90 hover:opacity-100 cursor-pointer'
-                    : 'opacity-40 cursor-not-allowed'
+                    ? 'hover:bg-slate-50 text-slate-800 cursor-pointer font-bold'
+                    : 'opacity-40 cursor-not-allowed text-slate-400 font-medium'
                 }`}
               >
                 <div
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shadow-md transition-all ${
-                    isDone
-                      ? 'bg-emerald-500 text-slate-950 shadow-emerald-500/20'
-                      : isActive
-                      ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 ring-4 ring-amber-500/20 shadow-amber-500/30'
-                      : 'bg-slate-800 text-slate-400 border border-slate-700'
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition-all ${
+                    isActive
+                      ? 'bg-slate-900 text-amber-400'
+                      : isDone
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-slate-100 text-slate-400'
                   }`}
                 >
-                  {isDone ? <CheckCircle2 className="w-6 h-6" /> : <Icon className="w-5 h-5" />}
+                  {isDone ? <CheckCircle2 className="w-5 h-5" /> : <Icon className="w-4 h-4" />}
                 </div>
-                <div className="hidden md:block">
-                  <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Step {s.id}
+
+                <div className="text-left hidden sm:block">
+                  <div className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
+                    {s.tag}
                   </div>
-                  <div className={`text-sm font-extrabold ${isActive ? 'text-amber-400' : 'text-slate-200'}`}>
+                  <div className={`text-xs font-black ${isActive ? 'text-slate-900' : 'text-slate-700'}`}>
                     {s.label}
                   </div>
                 </div>
-              </button>
+              </motion.button>
 
-              {/* Connecting Line */}
               {idx < steps.length - 1 && (
-                <div className="flex-1 mx-4 h-0.5 bg-slate-800 relative hidden sm:block">
-                  <div
-                    className={`h-full transition-all duration-500 ${
-                      stepsStatus[s.id] === 'done' ? 'bg-emerald-500' : 'bg-slate-800'
-                    }`}
-                  />
-                </div>
+                <div className="w-4 sm:w-8 h-0.5 bg-slate-200 rounded-full mx-1 hidden md:block" />
               )}
             </React.Fragment>
           );

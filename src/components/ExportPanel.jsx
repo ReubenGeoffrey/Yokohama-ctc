@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Download, FileSpreadsheet, Archive, CheckCircle, Sparkles, Layers } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Download, FileSpreadsheet, Archive, CheckCircle, Sparkles, ArrowRight } from 'lucide-react';
 import { generateMonthlyWorkbook, generateZipBundle, downloadBlob } from '../services/excelEngine';
 
 export function ExportPanel({ batchResults, master, empStats }) {
@@ -37,114 +38,148 @@ export function ExportPanel({ batchResults, master, empStats }) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
-        <div className="flex items-center justify-between pb-6 border-b border-slate-800">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="space-y-8"
+    >
+      <div className="maya-card p-8 sm:p-12">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-8 border-b border-slate-100 gap-4">
           <div>
-            <h2 className="text-lg font-bold text-white flex items-center space-x-2">
-              <Download className="w-5 h-5 text-amber-400" />
-              <span>Stage 4: Executive Excel & Archive Export Center</span>
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-xs font-black uppercase tracking-wider mb-3">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <span>Stage 04 • Export Center</span>
+            </div>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+              Executive Excel Packages{' '}
+              <span className="text-amber-500 font-handwriting text-4xl ml-1 font-bold">
+                Big Impact ☀️
+              </span>
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
               Download professionally styled workbooks formatted with warm minimalist yellow headers, 0 merged rows, and Total WOP counts.
             </p>
           </div>
 
-          <span className="inline-flex items-center space-x-1.5 px-3 py-1 bg-amber-400/10 text-amber-400 border border-amber-400/30 rounded-full text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center space-x-1.5 px-4 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-black self-start sm:self-auto shadow-2xs">
+            <CheckCircle className="w-4 h-4 text-emerald-600" />
             <span>Ready for Export</span>
           </span>
         </div>
 
-        {/* Action Export Cards */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Card 1: Combined Monthly Master Workbook */}
-          <div className="p-6 rounded-2xl bg-gradient-to-br from-amber-500/10 via-slate-950/80 to-slate-950 border border-amber-500/30 flex flex-col justify-between shadow-xl">
+        {/* Packages Grid (Exact Maya Style with "MOST POPULAR" Badge) */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Package 1 - Highlighting "MOST POPULAR" */}
+          <div className="maya-card-highlight p-8 relative flex flex-col justify-between bg-amber-50/20">
+            {/* Top Golden Most Popular Badge */}
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 font-black text-[11px] uppercase tracking-wider px-4 py-1 rounded-full shadow-md">
+              ⭐ Most Popular Output
+            </div>
+
             <div>
-              <div className="w-12 h-12 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-bold text-xl shadow-lg shadow-amber-500/30">
-                <FileSpreadsheet className="w-6 h-6" />
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-900 bg-amber-200/80 px-3 py-1 rounded-full">
+                  Monthly Master
+                </span>
+                <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center shadow-md">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
               </div>
-              <h3 className="text-base font-extrabold text-white mt-4">
-                Combined Monthly Master Workbook
+
+              <h3 className="text-2xl font-black text-slate-900 mt-4">
+                Consolidated Master Excel
               </h3>
-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              <p className="text-xs text-slate-600 mt-1 font-medium leading-relaxed">
                 Contains the Master <strong>Summary</strong> worksheet plus full employee rosters in <strong>ATC</strong>, <strong>CL</strong>, and <strong>NAPS</strong> sheets.
               </p>
 
-              <div className="mt-4 space-y-1.5 text-xs text-slate-300">
+              <div className="mt-6 space-y-2.5 text-xs text-slate-700 font-medium">
                 <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-emerald-400" />
-                  <span>Minimalist Yellow Headers (<code className="text-amber-300 font-mono">#FFE699</code>)</span>
+                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>Minimalist Yellow Headers (<code className="text-amber-900 bg-amber-200/60 px-1.5 py-0.5 rounded font-mono font-bold">#FFE699</code>)</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                   <span>Columns A to I (NO Column A Gap, starts at Col 1)</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-emerald-400" />
-                  <span>Includes <strong className="text-amber-300">Total WOP Count</strong> (Weekly Off Present)</span>
+                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>Includes <strong className="text-amber-900">Total WOP Count</strong> (Weekly Off Present)</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                   <span>0 Merged Rows (1 single row per employee)</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-emerald-400" />
-                  <span>Clean Number Formatting (<code className="text-amber-300 font-mono">#,##0</code> without ₹ symbol)</span>
+                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>Clean Number Formatting (<code className="text-slate-800 bg-white px-1.5 py-0.5 rounded font-mono font-bold border border-slate-200">#,##0</code> without ₹ symbol)</span>
                 </div>
               </div>
             </div>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={handleDownloadMonthly}
               disabled={downloadingMonthly}
-              className="mt-6 w-full flex items-center justify-center space-x-2 px-5 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-bold text-sm shadow-xl shadow-amber-500/20 transition cursor-pointer"
+              className="btn-yellow mt-8 w-full py-4 text-sm flex items-center justify-center space-x-2 cursor-pointer shadow-lg"
             >
               <Download className="w-4 h-4" />
-              <span>{downloadingMonthly ? 'Building Master Excel...' : '📥 Download Monthly Workbook (.xlsx)'}</span>
-            </button>
+              <span>{downloadingMonthly ? 'Building Master Excel...' : 'Get Consolidated Master (.xlsx)'}</span>
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </motion.button>
           </div>
 
-          {/* Card 2: Complete ZIP Archive */}
-          <div className="p-6 rounded-2xl bg-slate-950/80 border border-slate-800 flex flex-col justify-between shadow-xl">
+          {/* Package 2 - Complete ZIP Archive */}
+          <div className="maya-card p-8 relative flex flex-col justify-between">
             <div>
-              <div className="w-12 h-12 rounded-xl bg-blue-500 text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-blue-500/20">
-                <Archive className="w-6 h-6" />
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs font-black uppercase tracking-wider text-blue-700 bg-blue-50 px-3 py-1 rounded-full">
+                  Batch Archive
+                </span>
+                <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25">
+                  <Archive className="w-5 h-5" />
+                </div>
               </div>
-              <h3 className="text-base font-extrabold text-white mt-4">
-                Complete ZIP Archive Bundle
+
+              <h3 className="text-2xl font-black text-slate-900 mt-4">
+                Complete Daily ZIP Archive
               </h3>
-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed">
                 Bundles all individual date workbooks (21-Aug, 22-Aug, 23-Aug, 24-Aug...) along with the Combined Monthly Master into a single zip file.
               </p>
 
-              <div className="mt-4 space-y-1.5 text-xs text-slate-300">
+              <div className="mt-6 space-y-2.5 text-xs text-slate-700 font-medium">
                 <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-blue-400" />
+                  <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
                   <span>All individual single-day Excel workbooks</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-blue-400" />
+                  <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
                   <span>Monthly Master Consolidated Workbook</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-blue-400" />
+                  <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
                   <span>Ready for plant management sharing & archiving</span>
                 </div>
               </div>
             </div>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={handleDownloadZip}
               disabled={downloadingZip}
-              className="mt-6 w-full flex items-center justify-center space-x-2 px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-slate-700 transition cursor-pointer"
+              className="btn-blue mt-8 w-full py-4 text-sm flex items-center justify-center space-x-2 cursor-pointer shadow-lg"
             >
-              <Archive className="w-4 h-4 text-blue-400" />
-              <span>{downloadingZip ? 'Compressing Files...' : '📦 Download All Daily Files (ZIP)'}</span>
-            </button>
+              <Archive className="w-4 h-4" />
+              <span>{downloadingZip ? 'Compressing Files...' : 'Download All Daily Files (ZIP)'}</span>
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </motion.button>
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

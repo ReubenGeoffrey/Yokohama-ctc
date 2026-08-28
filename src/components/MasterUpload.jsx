@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { UploadCloud, FileSpreadsheet, CheckCircle, Users, HardDrive, ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { UploadCloud, FileSpreadsheet, CheckCircle, Users, ArrowRight, Sparkles } from 'lucide-react';
 import { parseMasterWorkbook } from '../services/parser';
 import { StorageService } from '../services/storage';
 
@@ -43,24 +44,48 @@ export function MasterUpload({ master, masterMeta, onMasterLoaded, onNext }) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
-        <div className="flex items-center justify-between pb-6 border-b border-slate-800">
-          <div>
-            <h2 className="text-lg font-bold text-white flex items-center space-x-2">
-              <FileSpreadsheet className="w-5 h-5 text-amber-400" />
-              <span>Stage 1: CTC Master Roster Configuration</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Upload <code className="text-amber-300 font-mono">CL CTC Input 2.xlsx</code> containing Contract, NAPS, and Operator CTC rate master sheets.
-            </p>
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="space-y-8"
+    >
+      {/* Hero Banner Section */}
+      <div className="maya-card p-8 sm:p-12 relative overflow-hidden">
+        <div className="max-w-3xl">
+          <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-black uppercase tracking-wider mb-4">
+            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+            <span>Stage 01 • Master Roster</span>
           </div>
-          {master && (
-            <span className="inline-flex items-center space-x-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full text-xs font-semibold">
-              <CheckCircle className="w-3.5 h-3.5" />
-              <span>Roster Active & Stored</span>
+
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+            Mapping CTC Rates{' '}
+            <span className="text-amber-500 font-handwriting text-4xl sm:text-5xl ml-1 font-bold">
+              Smooth & Precise ☀️
             </span>
-          )}
+          </h2>
+
+          <p className="text-slate-600 text-sm sm:text-base mt-3 leading-relaxed font-medium">
+            Upload your master rate workbook (<code className="text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md font-mono font-bold">CL CTC Input 2.xlsx</code>) containing Contract Labour, NAPS apprentices, and Company Operator standard wages.
+          </p>
+
+          <div className="mt-6 flex flex-wrap items-center gap-4">
+            <button
+              onClick={() => inputRef.current?.click()}
+              className="btn-blue px-6 py-3 text-sm flex items-center space-x-2 cursor-pointer"
+            >
+              <UploadCloud className="w-4 h-4" />
+              <span>Browse Master Excel</span>
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </button>
+
+            {master && (
+              <span className="inline-flex items-center space-x-1.5 px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold shadow-2xs">
+                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                <span>Roster Active in Storage</span>
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Dropzone */}
@@ -69,12 +94,12 @@ export function MasterUpload({ master, masterMeta, onMasterLoaded, onNext }) {
           onDragLeave={() => setIsDragging(false)}
           onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFiles(e.dataTransfer.files); }}
           onClick={() => inputRef.current?.click()}
-          className={`mt-6 border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 ${
+          className={`mt-8 border-2 border-dashed rounded-3xl p-10 text-center cursor-pointer transition-all ${
             isDragging
-              ? 'border-amber-400 bg-amber-400/5 scale-[0.99]'
+              ? 'border-amber-500 bg-amber-50/60 scale-[1.01]'
               : master
-              ? 'border-emerald-500/40 bg-emerald-950/10 hover:border-emerald-500'
-              : 'border-slate-700 bg-slate-950/40 hover:border-amber-400 hover:bg-slate-800/50'
+              ? 'border-emerald-300 bg-emerald-50/20 hover:border-emerald-400'
+              : 'border-slate-300 bg-slate-50/60 hover:border-amber-400 hover:bg-amber-50/20'
           }`}
         >
           <input
@@ -86,11 +111,11 @@ export function MasterUpload({ master, masterMeta, onMasterLoaded, onNext }) {
           />
 
           <div className="flex flex-col items-center justify-center space-y-3">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg transition ${
-              master ? 'bg-emerald-500 text-slate-950 shadow-emerald-500/20' : 'bg-amber-400/10 text-amber-400 border border-amber-400/20'
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-md ${
+              master ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-slate-900'
             }`}>
               {loading ? (
-                <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
               ) : master ? (
                 <CheckCircle className="w-8 h-8" />
               ) : (
@@ -99,73 +124,105 @@ export function MasterUpload({ master, masterMeta, onMasterLoaded, onNext }) {
             </div>
 
             <div>
-              <div className="text-sm font-bold text-slate-200">
-                {masterMeta?.fileName || 'Drop "CL CTC Input 2.xlsx" or Click to Browse'}
+              <div className="text-base font-black text-slate-900">
+                {masterMeta?.fileName || 'Drag & Drop "CL CTC Input 2.xlsx" Here'}
               </div>
-              <div className="text-xs text-slate-500 mt-1">
-                Supports .xlsx workbooks with Contract, NAPS, and OPERATOR sheets
+              <div className="text-xs text-slate-500 mt-1 font-medium">
+                Supports Contract, NAPS, and OPERATOR sheets with single-rate and multi-component CTC
               </div>
             </div>
           </div>
         </div>
 
         {error && (
-          <div className="mt-4 p-4 rounded-xl bg-rose-950/40 border border-rose-900/60 text-rose-300 text-xs font-semibold">
+          <div className="mt-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
             ⚠️ {error}
           </div>
         )}
 
-        {/* Master Stats Breakdown */}
+        {/* Breakdown Feature Cards (Pricing/Package Style like the Reference Image!) */}
         {master && (
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-400">Operators (ATC)</span>
-                <Users className="w-4 h-4 text-amber-400" />
+          <div className="mt-8">
+            <div className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">
+              Roster Employee Distribution
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              {/* Card 1 */}
+              <div className="maya-card p-6 relative flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
+                      ATC Operators
+                    </span>
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                      <Users className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-3xl font-black text-slate-900 mt-4">
+                    {Object.keys(master.operator || {}).length}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 font-medium">
+                    Permanent & Company Technical Roles
+                  </p>
+                </div>
               </div>
-              <div className="text-2xl font-extrabold text-white mt-2">
-                {Object.keys(master.operator || {}).length}
+
+              {/* Card 2 - Highlighted */}
+              <div className="maya-card-highlight p-6 relative flex flex-col justify-between bg-amber-50/20">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase text-amber-900 bg-amber-300 px-2.5 py-1 rounded-full">
+                      Contract Labour
+                    </span>
+                    <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-900 font-bold">
+                      CL
+                    </div>
+                  </div>
+                  <div className="text-3xl font-black text-slate-900 mt-4">
+                    {Object.keys(master.contract || {}).length}
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 font-medium">
+                    Direct & Indirect Line Contractors
+                  </p>
+                </div>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">Production & Support</div>
+
+              {/* Card 3 */}
+              <div className="maya-card p-6 relative flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
+                      NAPS Scheme
+                    </span>
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                      <Users className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-3xl font-black text-slate-900 mt-4">
+                    {Object.keys(master.naps || {}).length}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 font-medium">
+                    National Apprenticeship Scheme
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-400">Contract Labour (CL)</span>
-                <Users className="w-4 h-4 text-blue-400" />
-              </div>
-              <div className="text-2xl font-extrabold text-white mt-2">
-                {Object.keys(master.contract || {}).length}
-              </div>
-              <div className="text-[10px] text-slate-500 mt-1">Direct & Indirect Contractors</div>
+            {/* Next Step Action */}
+            <div className="mt-8 flex justify-end">
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={onNext}
+                className="btn-yellow px-8 py-3.5 text-sm flex items-center space-x-2 cursor-pointer shadow-lg"
+              >
+                <span>Proceed to Attendance Upload</span>
+                <ArrowRight className="w-4 h-4" />
+              </motion.button>
             </div>
-
-            <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-400">NAPS Apprentices</span>
-                <Users className="w-4 h-4 text-emerald-400" />
-              </div>
-              <div className="text-2xl font-extrabold text-white mt-2">
-                {Object.keys(master.naps || {}).length}
-              </div>
-              <div className="text-[10px] text-slate-500 mt-1">National Apprenticeship Scheme</div>
-            </div>
-          </div>
-        )}
-
-        {/* Next Step Action */}
-        {master && (
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={onNext}
-              className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition cursor-pointer"
-            >
-              <span>Proceed to Attendance Upload</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

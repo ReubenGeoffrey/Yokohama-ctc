@@ -8,12 +8,13 @@ export function getSupabaseConfig() {
   const localConfig = localStorage.getItem(SUPABASE_CONFIG_KEY);
   if (localConfig) {
     try {
-      return JSON.parse(localConfig);
+      const parsed = JSON.parse(localConfig);
+      if (parsed.url && parsed.anonKey) return parsed;
     } catch (e) {}
   }
   return {
-    url: import.meta.env.VITE_SUPABASE_URL || '',
-    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+    url: import.meta.env.VITE_SUPABASE_URL || 'https://xtpxoccsfxcethstsxns.supabase.co',
+    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0cHhvY2NzZnhjZXRoc3RzeG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3Mzg4MTksImV4cCI6MjEwMzMxNDgxOX0.EZWLmLDzR26qwAbpZxBxl2aUkdoDFvyONyfJXBAPKoE'
   };
 }
 
@@ -45,8 +46,53 @@ export const SupabaseService = {
     }
   },
 
+  // Save entire shared workspace state across all laptops
+  async saveCloudSharedState(state) {
+    const client = getSupabaseClient();
+    if (!client) return false;
+
+    try {
+      const payload = JSON.stringify({
+        ...state,
+        lastSyncedAt: new Date().toISOString()
+      });
+      const blob = new Blob([payload], { type: 'application/json' });
+      const { error } = await client.storage
+        .from(BUCKET_NAME)
+        .upload('shared_state/live_app_state.json', blob, { upsert: true });
+
+      if (error) {
+        console.warn('Supabase storage save error:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn('Supabase saveCloudSharedState error:', err);
+      return false;
+    }
+  },
+
+  // Load entire shared workspace state uploaded by Sir or another laptop
+  async loadCloudSharedState() {
+    const client = getSupabaseClient();
+    if (!client) return null;
+
+    try {
+      const { data, error } = await client.storage
+        .from(BUCKET_NAME)
+        .download('shared_state/live_app_state.json');
+
+      if (error) return null;
+      const text = await data.text();
+      return JSON.parse(text);
+    } catch (err) {
+      console.warn('Supabase loadCloudSharedState error:', err);
+      return null;
+    }
+  },
+
   // Upload Master Roster File to Cloud (Year/Month/master)
-  async uploadMasterFile(file, year, month) {
+  async uploadMasterFile(file, year = 2026, month = 7) {
     const client = getSupabaseClient();
     if (!client) return null;
 
@@ -67,7 +113,7 @@ export const SupabaseService = {
   },
 
   // Upload Attendance File (Year/Month/attendance)
-  async uploadAttendanceFile(file, year, month) {
+  async uploadAttendanceFile(file, year = 2026, month = 7) {
     const client = getSupabaseClient();
     if (!client) return null;
 
@@ -88,7 +134,7 @@ export const SupabaseService = {
   },
 
   // Upload Generated Output Workbook (Year/Month/output)
-  async uploadOutputWorkbook(buffer, fileName, year, month) {
+  async uploadOutputWorkbook(buffer, fileName, year = 2026, month = 7) {
     const client = getSupabaseClient();
     if (!client) return null;
 

@@ -1,0 +1,25 @@
+# Dependencies
+node_modules
+dist
+dist-ssr
+
+# Large Local Data & Output Files
+Output
+Date *
+INPUT AUG Present
+UPdate template *
+*.xlsx
+*.bak
+*.exe
+
+# Python files & caches
+__pycache__
+*.py
+*.pyc
+
+# Local Config & Logs
+.git
+.gemini
+*.log
+.env
+.env.local
