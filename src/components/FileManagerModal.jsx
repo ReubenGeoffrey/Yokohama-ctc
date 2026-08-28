@@ -35,7 +35,7 @@ export function FileManagerModal({
   master, empStats, onClearStorage, onRerunReconciliation, onDeleteDate
 }) {
   const [downloading, setDownloading] = useState(null);
-  const [selectedYear, setSelectedYear] = useState(2026);
+  const [selectedYear, setSelectedYear] = useState('ALL'); // 'ALL' or number (2025, 2026, 2027)
   const [selectedMonth, setSelectedMonth] = useState('ALL'); // 'ALL' or 0..11 (number)
 
   const hasMaster = !!masterMeta;
@@ -98,7 +98,7 @@ export function FileManagerModal({
 
   // Extract available years
   const availableYears = useMemo(() => {
-    const yearsSet = new Set([2025, 2026, 2027]);
+    const yearsSet = new Set([2024, 2025, 2026, 2027]);
     allStoredDates.forEach(item => yearsSet.add(item.year));
     return Array.from(yearsSet).sort((a, b) => b - a);
   }, [allStoredDates]);
@@ -107,7 +107,7 @@ export function FileManagerModal({
   const monthCounts = useMemo(() => {
     const counts = Array(12).fill(0);
     allStoredDates.forEach(item => {
-      if (item.year === Number(selectedYear)) {
+      if (selectedYear === 'ALL' || item.year === Number(selectedYear)) {
         if (item.month >= 0 && item.month < 12) {
           counts[item.month]++;
         }
@@ -119,7 +119,7 @@ export function FileManagerModal({
   // Filtered dates based on selected Year & Month
   const filteredDates = useMemo(() => {
     return allStoredDates.filter(item => {
-      const yMatch = item.year === Number(selectedYear);
+      const yMatch = selectedYear === 'ALL' || item.year === Number(selectedYear);
       const mMatch = selectedMonth === 'ALL' || item.month === Number(selectedMonth);
       return yMatch && mMatch;
     });
@@ -147,6 +147,12 @@ export function FileManagerModal({
     return 7; // August default
   };
 
+  const getExportYear = () => {
+    if (selectedYear !== 'ALL') return Number(selectedYear);
+    if (filteredDates.length > 0) return filteredDates[0].year;
+    return 2026;
+  };
+
   const handleDownloadMonthly = async () => {
     if (!filteredResults.length) {
       alert('Please run reconciliation (Stage 3) first to generate the Monthly Master Excel.');
@@ -155,10 +161,11 @@ export function FileManagerModal({
     setDownloading('monthly');
     try {
       const mIdx = getExportMonthIndex();
+      const expYear = getExportYear();
       const monthName = MONTH_NAMES[mIdx];
-      const buffer = await generateMonthlyWorkbook(filteredResults, master, empStats, Number(selectedYear), mIdx);
+      const buffer = await generateMonthlyWorkbook(filteredResults, master, empStats, expYear, mIdx);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `ATC_Monthly_Summary_${monthName}_${selectedYear}.xlsx`);
+      downloadBlob(blob, `ATC_Monthly_Summary_${monthName}_${expYear}.xlsx`);
     } catch (e) {
       alert('Error generating monthly workbook: ' + e.message);
     } finally {
@@ -174,9 +181,10 @@ export function FileManagerModal({
     setDownloading('zip');
     try {
       const mIdx = getExportMonthIndex();
+      const expYear = getExportYear();
       const monthName = MONTH_NAMES[mIdx];
-      const blob = await generateZipBundle(filteredResults, master, empStats, Number(selectedYear), mIdx);
-      downloadBlob(blob, `ATC_Daily_Files_${monthName}_${selectedYear}.zip`);
+      const blob = await generateZipBundle(filteredResults, master, empStats, expYear, mIdx);
+      downloadBlob(blob, `ATC_Daily_Files_${monthName}_${expYear}.zip`);
     } catch (e) {
       alert('Error generating zip bundle: ' + e.message);
     } finally {
@@ -241,7 +249,7 @@ export function FileManagerModal({
       }
       groups[key].items.push(item);
     });
-    return Object.values(groups).sort((a, b) => a.monthIdx - b.monthIdx);
+    return Object.values(groups).sort((a, b) => a.key.localeCompare(b.key));
   }, [filteredDates]);
 
   if (!isOpen) return null;
@@ -284,6 +292,16 @@ export function FileManagerModal({
                 <Calendar className="w-4 h-4 text-blue-600" />
                 <span className="text-xs font-black uppercase tracking-wider text-slate-700">Year:</span>
                 <div className="flex bg-white rounded-xl border border-slate-200 p-1 shadow-2xs">
+                  <button
+                    onClick={() => setSelectedYear('ALL')}
+                    className={`px-3 py-1 text-xs font-black rounded-lg transition cursor-pointer ${
+                      selectedYear === 'ALL'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    All Years
+                  </button>
                   {availableYears.map(y => (
                     <button
                       key={y}
@@ -302,8 +320,12 @@ export function FileManagerModal({
 
               {/* Status Pill */}
               <div className="text-xs font-bold text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-2xs">
-                {selectedMonth === 'ALL'
-                  ? `Showing All Months (${filteredDates.length} dates stored)`
+                {selectedYear === 'ALL' && selectedMonth === 'ALL'
+                  ? `Showing All Years & All Months (${filteredDates.length} dates stored)`
+                  : selectedYear === 'ALL'
+                  ? `Showing All ${MONTH_NAMES[selectedMonth]} Records (${filteredDates.length} dates stored)`
+                  : selectedMonth === 'ALL'
+                  ? `Showing All Months in ${selectedYear} (${filteredDates.length} dates stored)`
                   : `Showing ${MONTH_NAMES[selectedMonth]} ${selectedYear} (${filteredDates.length} dates stored)`}
               </div>
             </div>
@@ -320,7 +342,7 @@ export function FileManagerModal({
               >
                 <span>All Months</span>
                 <span className="px-1.5 py-0.2 bg-slate-900/10 text-slate-900 rounded-full text-[10px]">
-                  {allStoredDates.filter(item => item.year === Number(selectedYear)).length}
+                  {allStoredDates.filter(item => selectedYear === 'ALL' || item.year === Number(selectedYear)).length}
                 </span>
               </button>
 
@@ -373,7 +395,7 @@ export function FileManagerModal({
                 </div>
                 <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-center">
                   <div className="text-lg font-black text-emerald-900">₹{fmt(filteredTotCost)}</div>
-                  <div className="text-[11px] font-bold text-emerald-700 mt-0.5">Month Grand Total</div>
+                  <div className="text-[11px] font-bold text-emerald-700 mt-0.5">Selection Grand Total</div>
                 </div>
               </div>
             )}
@@ -384,7 +406,7 @@ export function FileManagerModal({
                 <div className="flex items-center space-x-2">
                   <Download className="w-3.5 h-3.5 text-blue-600" />
                   <span>
-                    Download Packages &bull; {selectedMonth === 'ALL' ? `Year ${selectedYear}` : `${MONTH_NAMES[selectedMonth]} ${selectedYear}`}
+                    Download Packages &bull; {selectedMonth === 'ALL' ? (selectedYear === 'ALL' ? 'All Years & All Months' : `Year ${selectedYear}`) : `${MONTH_NAMES[selectedMonth]} ${selectedYear}`}
                   </span>
                 </div>
                 <span className="text-[11px] font-bold text-slate-500 normal-case">
@@ -397,10 +419,10 @@ export function FileManagerModal({
                   <div className="p-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
                     <AlertCircle className="w-6 h-6 text-slate-400 mx-auto mb-1.5" />
                     <div className="text-xs font-black text-slate-700">
-                      No files stored for {selectedMonth === 'ALL' ? `Year ${selectedYear}` : `${MONTH_NAMES[selectedMonth]} ${selectedYear}`}
+                      No files stored for {selectedMonth === 'ALL' ? (selectedYear === 'ALL' ? 'All Years' : `Year ${selectedYear}`) : `${MONTH_NAMES[selectedMonth]} ${selectedYear}`}
                     </div>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      Upload daily attendance sheets in Stage 2 to store and generate workbooks for this month.
+                      Upload daily attendance sheets in Stage 2 to store and generate workbooks.
                     </p>
                   </div>
                 ) : (
