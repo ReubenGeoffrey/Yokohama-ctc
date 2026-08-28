@@ -198,23 +198,45 @@ export function App() {
     setStepsStatus({ 1: 'pending', 2: 'pending', 3: 'pending', 4: 'pending' });
   };
 
-  // Delete a single date's attendance data
-  const handleDeleteDate = async (dateKey) => {
-    // Remove from batchDates
-    const newBatchDates = { ...batchDates };
-    delete newBatchDates[dateKey];
+  // Helper to normalize any date string or Date object to YYYY-MM-DD
+  const normalizeDateKey = (val) => {
+    if (!val) return '';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val).trim();
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
 
-    // Remove from batchResults (match by r.date === dateKey)
-    const newBatchResults = batchResults.filter(r => r.date !== dateKey);
+  // Delete a single date's attendance data
+  const handleDeleteDate = async (targetDate) => {
+    const targetIso = normalizeDateKey(targetDate);
+
+    // 1. Remove from batchDates by matching key or date property
+    const newBatchDates = {};
+    Object.keys(batchDates || {}).forEach(k => {
+      const item = batchDates[k];
+      const itemIso = normalizeDateKey(item?.date || k);
+      if (itemIso !== targetIso && k !== targetDate) {
+        newBatchDates[k] = item;
+      }
+    });
+
+    // 2. Remove from batchResults by matching normalized date
+    const newBatchResults = (batchResults || []).filter(r => {
+      const rIso = normalizeDateKey(r?.date);
+      return rIso !== targetIso && r?.date !== targetDate;
+    });
 
     setBatchDates(newBatchDates);
     setBatchResults(newBatchResults);
 
-    // Persist locally
+    // 3. Persist locally to IndexedDB
     await StorageService.saveAttendanceFiles(newBatchDates);
     await StorageService.saveBatchResults({ results: newBatchResults, empStats });
 
-    // Sync to cloud
+    // 4. Sync to Supabase Cloud
     await SupabaseService.saveCloudSharedState({
       master,
       masterMeta,
@@ -223,14 +245,14 @@ export function App() {
       empStats
     });
 
-    // Update step statuses
+    // 5. Update step statuses
     const stillHasAttendance = Object.keys(newBatchDates).length > 0;
-    const stillHasResults    = newBatchResults.length > 0;
+    const stillHasResults = newBatchResults.length > 0;
     setStepsStatus(prev => ({
       ...prev,
       2: stillHasAttendance ? 'done' : 'pending',
-      3: stillHasResults    ? 'done' : 'pending',
-      4: stillHasResults    ? 'done' : 'pending',
+      3: stillHasResults ? 'done' : 'pending',
+      4: stillHasResults ? 'done' : 'pending',
     }));
   };
 
