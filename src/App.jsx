@@ -254,7 +254,7 @@ export function App() {
     setIsFileManagerOpen(false);
   };
 
-  const storedFilesCount = (master ? 1 : 0) + Object.keys(batchDates).length;
+  const storedFilesCount = (master ? 1 : 0) + Object.keys(batchDates || {}).length;
 
   return (
     <div className="min-h-screen bg-warm-canvas text-slate-900 font-sans antialiased selection:bg-amber-400 selection:text-slate-950 flex flex-col">
