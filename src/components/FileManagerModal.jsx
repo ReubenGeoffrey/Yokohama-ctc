@@ -38,8 +38,6 @@ export function FileManagerModal({
   const [selectedYear, setSelectedYear] = useState(2026);
   const [selectedMonth, setSelectedMonth] = useState('ALL'); // 'ALL' or 0..11 (number)
 
-  if (!isOpen) return null;
-
   const hasMaster = !!masterMeta;
   const safeBatchDates = batchDates || {};
   const safeBatchResults = Array.isArray(batchResults) ? batchResults : [];
@@ -245,6 +243,8 @@ export function FileManagerModal({
     });
     return Object.values(groups).sort((a, b) => a.monthIdx - b.monthIdx);
   }, [filteredDates]);
+
+  if (!isOpen) return null;
 
   return (
     <AnimatePresence>
