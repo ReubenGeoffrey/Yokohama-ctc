@@ -4,7 +4,7 @@ import {
   X, HardDrive, FileSpreadsheet, Calendar, Trash2,
   CheckCircle2, Download, RefreshCw, FileDown,
   Package, BarChart3, AlertCircle, Play, ChevronDown, ChevronRight,
-  Filter, Layers, ArrowUpRight
+  FileText, ArrowUpRight, Check
 } from 'lucide-react';
 import { formatDateDisplay } from '../services/parser';
 import {
@@ -24,86 +24,136 @@ const MONTH_SHORT = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 ];
 
+function safeParseDate(val) {
+  if (!val) return null;
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 export function FileManagerModal({
   isOpen, onClose, masterMeta, batchDates, batchResults,
   master, empStats, onClearStorage, onRerunReconciliation, onDeleteDate
 }) {
-  const [downloading, setDownloading] = useState(null); // 'monthly' | 'zip' | dayKey | 'json'
+  const [downloading, setDownloading] = useState(null);
   const [selectedYear, setSelectedYear] = useState(2026);
   const [selectedMonth, setSelectedMonth] = useState('ALL'); // 'ALL' or 0..11 (number)
 
   if (!isOpen) return null;
 
-  const hasResults = batchResults && batchResults.length > 0;
   const hasMaster = !!masterMeta;
+  const safeBatchDates = batchDates || {};
+  const safeBatchResults = Array.isArray(batchResults) ? batchResults : [];
 
-  // Extract all available years from batchResults or default to [2025, 2026, 2027]
+  // Merge all unique dates from both batchDates and batchResults
+  const allStoredDates = useMemo(() => {
+    const map = {};
+
+    // 1. Ingest from batchDates
+    Object.keys(safeBatchDates).forEach(dKey => {
+      const item = safeBatchDates[dKey] || {};
+      const d = safeParseDate(item.date) || safeParseDate(dKey);
+      if (d) {
+        const y = d.getUTCFullYear();
+        const m = d.getUTCMonth();
+        const isoKey = `${y}-${String(m + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+        map[isoKey] = {
+          dateKey: dKey,
+          dateObj: d,
+          year: y,
+          month: m,
+          files: item.files || [],
+          CL: item.CL || null,
+          OP: item.OP || null,
+          NAPS: item.NAPS || null,
+          result: null
+        };
+      }
+    });
+
+    // 2. Ingest or merge from batchResults
+    safeBatchResults.forEach(r => {
+      const d = safeParseDate(r.date);
+      if (d) {
+        const y = d.getUTCFullYear();
+        const m = d.getUTCMonth();
+        const isoKey = `${y}-${String(m + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+        if (!map[isoKey]) {
+          map[isoKey] = {
+            dateKey: typeof r.date === 'string' ? r.date : isoKey,
+            dateObj: d,
+            year: y,
+            month: m,
+            files: [],
+            CL: null,
+            OP: null,
+            NAPS: null,
+            result: r
+          };
+        } else {
+          map[isoKey].result = r;
+        }
+      }
+    });
+
+    return Object.values(map).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+  }, [safeBatchDates, safeBatchResults]);
+
+  // Extract available years
   const availableYears = useMemo(() => {
     const yearsSet = new Set([2025, 2026, 2027]);
-    if (batchResults) {
-      batchResults.forEach(r => {
-        const y = new Date(r.date).getUTCFullYear();
-        if (!isNaN(y)) yearsSet.add(y);
-      });
-    }
-    if (batchDates) {
-      Object.keys(batchDates).forEach(dKey => {
-        const y = new Date(dKey).getUTCFullYear();
-        if (!isNaN(y)) yearsSet.add(y);
-      });
-    }
+    allStoredDates.forEach(item => yearsSet.add(item.year));
     return Array.from(yearsSet).sort((a, b) => b - a);
-  }, [batchResults, batchDates]);
+  }, [allStoredDates]);
 
-  // Compute file count per month for the selected year
+  // File count per month for selected year
   const monthCounts = useMemo(() => {
     const counts = Array(12).fill(0);
-    if (batchResults) {
-      batchResults.forEach(r => {
-        const d = new Date(r.date);
-        if (d.getUTCFullYear() === Number(selectedYear)) {
-          counts[d.getUTCMonth()]++;
+    allStoredDates.forEach(item => {
+      if (item.year === Number(selectedYear)) {
+        if (item.month >= 0 && item.month < 12) {
+          counts[item.month]++;
         }
-      });
-    } else if (batchDates) {
-      Object.keys(batchDates).forEach(dKey => {
-        const d = new Date(dKey);
-        if (d.getUTCFullYear() === Number(selectedYear)) {
-          counts[d.getUTCMonth()]++;
-        }
-      });
-    }
-    return counts;
-  }, [batchResults, batchDates, selectedYear]);
-
-  // Filter batchResults based on selected Year & Month
-  const filteredResults = useMemo(() => {
-    if (!batchResults) return [];
-    return batchResults.filter(r => {
-      const d = new Date(r.date);
-      const yearMatch = d.getUTCFullYear() === Number(selectedYear);
-      const monthMatch = selectedMonth === 'ALL' || d.getUTCMonth() === Number(selectedMonth);
-      return yearMatch && monthMatch;
+      }
     });
-  }, [batchResults, selectedYear, selectedMonth]);
+    return counts;
+  }, [allStoredDates, selectedYear]);
 
-  // Calculations for filtered data
-  const filteredTotCTC = filteredResults.reduce((s, r) => s + r.gCTC, 0);
-  const filteredTotOT = filteredResults.reduce((s, r) => s + r.gOT, 0);
+  // Filtered dates based on selected Year & Month
+  const filteredDates = useMemo(() => {
+    return allStoredDates.filter(item => {
+      const yMatch = item.year === Number(selectedYear);
+      const mMatch = selectedMonth === 'ALL' || item.month === Number(selectedMonth);
+      return yMatch && mMatch;
+    });
+  }, [allStoredDates, selectedYear, selectedMonth]);
+
+  // Filtered batchResults for exports
+  const filteredResults = useMemo(() => {
+    return filteredDates
+      .map(item => item.result)
+      .filter(Boolean);
+  }, [filteredDates]);
+
+  // Metrics
+  const filteredTotCTC = filteredResults.reduce((s, r) => s + (r.gCTC || 0), 0);
+  const filteredTotOT = filteredResults.reduce((s, r) => s + (r.gOT || 0), 0);
   const filteredTotCost = filteredTotCTC + filteredTotOT;
-  const filteredTotHC = filteredResults.reduce((s, r) => s + r.gHC, 0);
+  const filteredTotHC = filteredResults.reduce((s, r) => s + (r.gHC || 0), 0);
 
   const fmt = (n) => (Math.round(n) || 0).toLocaleString('en-IN');
   const fmtN = (n) => (n || 0).toLocaleString('en-IN');
 
   const getExportMonthIndex = () => {
     if (selectedMonth !== 'ALL') return Number(selectedMonth);
-    if (filteredResults.length > 0) return new Date(filteredResults[0].date).getUTCMonth();
+    if (filteredDates.length > 0) return filteredDates[0].month;
     return 7; // August default
   };
 
   const handleDownloadMonthly = async () => {
-    if (!filteredResults.length) return alert('No reconciled data found for selected period.');
+    if (!filteredResults.length) {
+      alert('Please run reconciliation (Stage 3) first to generate the Monthly Master Excel.');
+      return;
+    }
     setDownloading('monthly');
     try {
       const mIdx = getExportMonthIndex();
@@ -119,7 +169,10 @@ export function FileManagerModal({
   };
 
   const handleDownloadZip = async () => {
-    if (!filteredResults.length) return alert('No reconciled data found for selected period.');
+    if (!filteredResults.length) {
+      alert('Please run reconciliation (Stage 3) first to generate the ZIP archive.');
+      return;
+    }
     setDownloading('zip');
     try {
       const mIdx = getExportMonthIndex();
@@ -133,15 +186,19 @@ export function FileManagerModal({
     }
   };
 
-  const handleDownloadDay = async (r) => {
-    setDownloading(r.date);
+  const handleDownloadDay = async (item) => {
+    if (!item.result) {
+      alert('This date has not been reconciled yet. Click "Re-Open Reconciliation" below.');
+      return;
+    }
+    const dKey = item.dateKey;
+    setDownloading(dKey);
     try {
-      const d = new Date(r.date);
-      const buffer = await generateSingleDayWorkbook(r, master, d.getUTCFullYear(), d.getUTCMonth());
+      const buffer = await generateSingleDayWorkbook(item.result, master, item.year, item.month);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `CTC_Output_${formatDateDisplay(r.date)}.xlsx`);
+      downloadBlob(blob, `CTC_Output_${formatDateDisplay(item.dateObj)}.xlsx`);
     } catch (e) {
-      alert('Error: ' + e.message);
+      alert('Error downloading day workbook: ' + e.message);
     } finally {
       setDownloading(null);
     }
@@ -154,12 +211,15 @@ export function FileManagerModal({
         exportedAt: new Date().toISOString(),
         filter: { year: selectedYear, month: selectedMonth === 'ALL' ? 'All Months' : MONTH_NAMES[selectedMonth] },
         masterMeta,
-        recordCount: filteredResults.length,
-        batchResults: filteredResults,
-        empStats
+        recordCount: filteredDates.length,
+        dates: filteredDates.map(item => ({
+          date: item.dateKey,
+          files: item.files,
+          result: item.result
+        }))
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      downloadBlob(blob, `ATC_Audit_Export_${selectedYear}_${selectedMonth !== 'ALL' ? MONTH_SHORT[selectedMonth] : 'All'}.json`);
+      downloadBlob(blob, `ATC_Vault_Backup_${selectedYear}_${selectedMonth !== 'ALL' ? MONTH_SHORT[selectedMonth] : 'All'}.json`);
     } catch (e) {
       alert('Error exporting JSON: ' + e.message);
     } finally {
@@ -167,64 +227,62 @@ export function FileManagerModal({
     }
   };
 
-  // Group filtered results by month for display
+  // Group filtered dates by month for display
   const monthGroups = useMemo(() => {
     const groups = {};
-    filteredResults.forEach(r => {
-      const d = new Date(r.date);
-      const mIdx = d.getUTCMonth();
-      const key = `${d.getUTCFullYear()}-${String(mIdx + 1).padStart(2, '0')}`;
+    filteredDates.forEach(item => {
+      const key = `${item.year}-${String(item.month + 1).padStart(2, '0')}`;
       if (!groups[key]) {
         groups[key] = {
-          year: d.getUTCFullYear(),
-          monthIdx: mIdx,
-          monthName: MONTH_NAMES[mIdx],
+          year: item.year,
+          monthIdx: item.month,
+          monthName: MONTH_NAMES[item.month],
           key,
-          rows: []
+          items: []
         };
       }
-      groups[key].rows.push(r);
+      groups[key].items.push(item);
     });
     return Object.values(groups).sort((a, b) => a.monthIdx - b.monthIdx);
-  }, [filteredResults]);
+  }, [filteredDates]);
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
         <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 15 }}
+          initial={{ scale: 0.96, opacity: 0, y: 15 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 15 }}
+          exit={{ scale: 0.96, opacity: 0, y: 15 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border-2 border-amber-300 relative z-50 overflow-hidden flex flex-col"
           style={{ maxHeight: '92vh' }}
         >
-          {/* ── Header ──────────────────────────────────── */}
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/80 flex-shrink-0">
+          {/* ── Modal Header ───────────────────────────── */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 flex-shrink-0">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-md shadow-amber-400/30">
+              <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-md shadow-amber-400/30 flex-shrink-0">
                 <HardDrive className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-base font-black text-slate-900">Stored Files &amp; Month Vault</h3>
-                <p className="text-xs text-slate-500 font-medium">Select Year and Month to browse, download, or delete stored plant data</p>
+                <p className="text-xs text-slate-500 font-medium">Browse, download, or remove plant attendance records by Month &amp; Year</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl hover:bg-slate-200/70 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+              className="p-2 rounded-xl hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* ── YEAR & MONTH INTERACTIVE SELECTOR ────── */}
-          <div className="px-6 py-4 bg-warm-canvas border-b border-slate-200/80 flex-shrink-0 space-y-3">
-            {/* Year Selector + Month Filter Bar */}
+          {/* ── YEAR & MONTH INTERACTIVE SELECTOR ─────── */}
+          <div className="px-6 py-3.5 bg-warm-canvas border-b border-slate-200 flex-shrink-0 space-y-3">
+            {/* Year Selector */}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center space-x-2">
                 <Calendar className="w-4 h-4 text-blue-600" />
-                <span className="text-xs font-black uppercase tracking-wider text-slate-700">Select Year:</span>
+                <span className="text-xs font-black uppercase tracking-wider text-slate-700">Year:</span>
                 <div className="flex bg-white rounded-xl border border-slate-200 p-1 shadow-2xs">
                   {availableYears.map(y => (
                     <button
@@ -242,16 +300,16 @@ export function FileManagerModal({
                 </div>
               </div>
 
-              {/* Quick Status Pill */}
+              {/* Status Pill */}
               <div className="text-xs font-bold text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-2xs">
                 {selectedMonth === 'ALL'
-                  ? `Showing All Months (${filteredResults.length} dates)`
-                  : `Showing ${MONTH_NAMES[selectedMonth]} ${selectedYear} (${filteredResults.length} dates)`}
+                  ? `Showing All Months (${filteredDates.length} dates stored)`
+                  : `Showing ${MONTH_NAMES[selectedMonth]} ${selectedYear} (${filteredDates.length} dates stored)`}
               </div>
             </div>
 
-            {/* 12 Months Tabs with Badges */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 no-scrollbar">
+            {/* 12 Months Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 no-scrollbar">
               <button
                 onClick={() => setSelectedMonth('ALL')}
                 className={`px-3 py-1.5 text-xs font-black rounded-xl transition cursor-pointer flex-shrink-0 flex items-center space-x-1.5 ${
@@ -262,7 +320,7 @@ export function FileManagerModal({
               >
                 <span>All Months</span>
                 <span className="px-1.5 py-0.2 bg-slate-900/10 text-slate-900 rounded-full text-[10px]">
-                  {batchResults ? batchResults.filter(r => new Date(r.date).getUTCFullYear() === Number(selectedYear)).length : 0}
+                  {allStoredDates.filter(item => item.year === Number(selectedYear)).length}
                 </span>
               </button>
 
@@ -295,15 +353,15 @@ export function FileManagerModal({
             </div>
           </div>
 
-          {/* ── Scrollable Content Area ───────────────── */}
-          <div className="overflow-y-auto flex-1 p-6 space-y-6">
+          {/* ── Scrollable Content ────────────────────── */}
+          <div className="overflow-y-auto flex-1 p-6 space-y-6 bg-white">
 
-            {/* Quick Metrics for Filtered Month */}
+            {/* Quick Metrics */}
             {filteredResults.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200 text-center">
-                  <div className="text-lg font-black text-blue-900">{filteredResults.length}</div>
-                  <div className="text-[11px] font-bold text-blue-700 mt-0.5">Dates Active</div>
+                  <div className="text-lg font-black text-blue-900">{filteredDates.length}</div>
+                  <div className="text-[11px] font-bold text-blue-700 mt-0.5">Dates in Selection</div>
                 </div>
                 <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-center">
                   <div className="text-lg font-black text-indigo-900">{fmtN(filteredTotHC)}</div>
@@ -320,8 +378,8 @@ export function FileManagerModal({
               </div>
             )}
 
-            {/* ── DOWNLOAD EXCEL PACKAGES FOR SELECTED MONTH ── */}
-            <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
+            {/* ── DOWNLOAD PACKAGES FOR SELECTED MONTH ── */}
+            <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-xs">
               <div className="bg-slate-50 px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-700 flex items-center justify-between border-b border-slate-200">
                 <div className="flex items-center space-x-2">
                   <Download className="w-3.5 h-3.5 text-blue-600" />
@@ -330,13 +388,13 @@ export function FileManagerModal({
                   </span>
                 </div>
                 <span className="text-[11px] font-bold text-slate-500 normal-case">
-                  {filteredResults.length} records available
+                  {filteredDates.length} dates stored
                 </span>
               </div>
 
               <div className="p-4 space-y-3">
-                {filteredResults.length === 0 ? (
-                  <div className="p-5 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                {filteredDates.length === 0 ? (
+                  <div className="p-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
                     <AlertCircle className="w-6 h-6 text-slate-400 mx-auto mb-1.5" />
                     <div className="text-xs font-black text-slate-700">
                       No files stored for {selectedMonth === 'ALL' ? `Year ${selectedYear}` : `${MONTH_NAMES[selectedMonth]} ${selectedYear}`}
@@ -394,10 +452,10 @@ export function FileManagerModal({
                       <div>
                         <div className="flex items-center space-x-2 text-amber-700">
                           <BarChart3 className="w-4 h-4" />
-                          <span className="text-xs font-black">Audit Export (JSON)</span>
+                          <span className="text-xs font-black">Vault Backup (JSON)</span>
                         </div>
                         <p className="text-[11px] text-slate-500 mt-1">
-                          Full parsed numbers for historical auditing and backup.
+                          Full parsed numbers and file references for backup.
                         </p>
                       </div>
                       <button
@@ -406,7 +464,7 @@ export function FileManagerModal({
                         className="w-full py-2 text-xs font-bold bg-white text-slate-800 border border-slate-300 rounded-full hover:bg-slate-100 transition cursor-pointer flex items-center justify-center space-x-1.5"
                       >
                         {downloading === 'json' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <FileDown className="w-3.5 h-3.5 text-slate-600" />}
-                        <span>Export JSON</span>
+                        <span>Export Backup</span>
                       </button>
                     </div>
                   </div>
@@ -414,13 +472,13 @@ export function FileManagerModal({
               </div>
             </div>
 
-            {/* ── STORED ATTENDANCE FILES LIST BY MONTH ── */}
+            {/* ── STORED DAILY ATTENDANCE FILES ────────── */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2 text-xs font-black uppercase tracking-wider text-slate-700">
                   <Calendar className="w-4 h-4 text-amber-600" />
                   <span>
-                    Individual Stored Daily Files ({filteredResults.length} Active in Filter)
+                    Stored Daily Attendance Records ({filteredDates.length} Active in Filter)
                   </span>
                 </div>
                 <span className="text-[11px] font-bold text-slate-400">Download or remove per-day records</span>
@@ -436,72 +494,101 @@ export function FileManagerModal({
                 monthGroups.map(group => (
                   <div key={group.key} className="rounded-2xl border-2 border-amber-200 bg-amber-50/30 overflow-hidden shadow-2xs">
                     {/* Month Group Header */}
-                    <div className="px-5 py-3.5 bg-amber-100/70 border-b border-amber-200 flex items-center justify-between">
+                    <div className="px-5 py-3 bg-amber-100/80 border-b border-amber-200 flex items-center justify-between">
                       <div className="flex items-center space-x-2.5">
                         <span className="px-2.5 py-0.5 bg-amber-400 text-slate-950 font-black text-xs rounded-md shadow-2xs">
                           {group.monthName} {group.year}
                         </span>
                         <span className="text-xs font-bold text-amber-950">
-                          {group.rows.length} attendance date{group.rows.length > 1 ? 's' : ''} stored
+                          {group.items.length} attendance date{group.items.length > 1 ? 's' : ''} stored
                         </span>
                       </div>
-                      <span className="text-xs font-mono font-black text-amber-900">
-                        ₹{fmt(group.rows.reduce((s, r) => s + r.gTot, 0))} total
-                      </span>
+                      {group.items.some(i => i.result) && (
+                        <span className="text-xs font-mono font-black text-amber-900">
+                          ₹{fmt(group.items.reduce((s, i) => s + (i.result ? i.result.gTot : 0), 0))} total
+                        </span>
+                      )}
                     </div>
 
                     {/* Day Rows */}
-                    <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white">
-                      {group.rows.map(r => (
-                        <div
-                          key={r.date}
-                          className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-amber-300 transition"
-                        >
-                          <div>
-                            <div className="text-xs font-black text-slate-900">{formatDateDisplay(r.date)}</div>
-                            <div className="text-[10px] text-slate-500 font-semibold mt-0.5">
-                              HC: <strong className="text-slate-800">{r.gHC}</strong> &bull; Total: <strong className="text-emerald-700 font-mono">₹{fmt(r.gTot)}</strong>
+                    <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-white">
+                      {group.items.map(item => {
+                        const r = item.result;
+                        const filesCount = item.files ? item.files.length : 0;
+                        return (
+                          <div
+                            key={item.dateKey}
+                            className="p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-amber-300 transition flex flex-col justify-between space-y-2"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <div className="text-xs font-black text-slate-900">{formatDateDisplay(item.dateObj)}</div>
+                                <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                                  {r ? (
+                                    <>
+                                      HC: <strong className="text-slate-800">{r.gHC}</strong> &bull; Total: <strong className="text-emerald-700 font-mono">₹{fmt(r.gTot)}</strong>
+                                    </>
+                                  ) : (
+                                    <span className="text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[10px]">
+                                      {filesCount} files loaded (Pending Reconcile)
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Action buttons */}
+                              <div className="flex items-center space-x-1.5 flex-shrink-0">
+                                {r && (
+                                  <button
+                                    onClick={() => handleDownloadDay(item)}
+                                    disabled={downloading === item.dateKey}
+                                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-400 hover:text-slate-950 text-slate-700 text-[11px] font-bold border border-slate-200 transition cursor-pointer flex items-center space-x-1"
+                                    title="Download single day Excel"
+                                  >
+                                    {downloading === item.dateKey ? (
+                                      <RefreshCw className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <Download className="w-3 h-3" />
+                                    )}
+                                    <span>Excel</span>
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Are you sure you want to delete attendance data for ${formatDateDisplay(item.dateObj)}?\nThis cannot be undone.`)) {
+                                      onDeleteDate && onDeleteDate(item.dateKey);
+                                    }
+                                  }}
+                                  className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 hover:text-rose-700 border border-rose-200 transition cursor-pointer flex items-center justify-center"
+                                  title={`Delete ${formatDateDisplay(item.dateObj)}`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
-                          </div>
 
-                          <div className="flex items-center space-x-1.5 flex-shrink-0">
-                            {/* Download Single Day */}
-                            <button
-                              onClick={() => handleDownloadDay(r)}
-                              disabled={downloading === r.date}
-                              className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-400 hover:text-slate-950 text-slate-700 text-[11px] font-bold border border-slate-200 transition cursor-pointer flex items-center space-x-1"
-                              title="Download single day Excel"
-                            >
-                              {downloading === r.date ? (
-                                <RefreshCw className="w-3 h-3 animate-spin" />
-                              ) : (
-                                <Download className="w-3 h-3" />
-                              )}
-                              <span>Excel</span>
-                            </button>
-
-                            {/* Delete Single Day */}
-                            <button
-                              onClick={() => {
-                                if (confirm(`Are you sure you want to delete attendance data for ${formatDateDisplay(r.date)}?\nThis cannot be undone.`)) {
-                                  onDeleteDate && onDeleteDate(r.date);
-                                }
-                              }}
-                              className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 hover:text-rose-700 border border-rose-200 transition cursor-pointer flex items-center justify-center"
-                              title={`Delete ${formatDateDisplay(r.date)}`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            {/* Show uploaded filenames if available */}
+                            {item.files && item.files.length > 0 && (
+                              <div className="pt-1.5 border-t border-slate-200/60 flex flex-wrap gap-1">
+                                {item.files.map((f, fi) => (
+                                  <span key={fi} className="inline-flex items-center text-[10px] text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 font-mono">
+                                    <FileText className="w-2.5 h-2.5 mr-1 text-blue-500" />
+                                    {f.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ))
               )}
             </div>
 
-            {/* ── ACTIVE MASTER ROSTER INFO ────────── */}
+            {/* ── ACTIVE RATE MASTER ROSTER ────────────── */}
             <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white">
               <div className="bg-slate-50 px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-700 flex items-center space-x-2 border-b border-slate-200">
                 <FileSpreadsheet className="w-4 h-4 text-blue-600" />
@@ -527,8 +614,8 @@ export function FileManagerModal({
               </div>
             </div>
 
-            {/* ── RE-OPEN RECONCILIATION BUTTON ────── */}
-            {hasResults && onRerunReconciliation && (
+            {/* ── RE-OPEN RECONCILIATION BUTTON ────────── */}
+            {allStoredDates.length > 0 && onRerunReconciliation && (
               <button
                 onClick={() => {
                   onRerunReconciliation();
@@ -544,7 +631,7 @@ export function FileManagerModal({
           </div>
 
           {/* ── Footer Actions ───────────────────────── */}
-          <div className="flex items-center justify-between p-5 border-t border-slate-100 bg-slate-50/80 flex-shrink-0">
+          <div className="flex items-center justify-between p-5 border-t border-slate-200 bg-slate-50 flex-shrink-0">
             <button
               onClick={() => {
                 if (confirm('Reset ALL stored files and start fresh? This cannot be undone.')) {
