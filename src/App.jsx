@@ -11,6 +11,7 @@ import { StorageService } from './services/storage';
 import { SupabaseService, getSupabaseClient } from './services/supabase';
 import { AuthService } from './services/auth';
 import { generateMonthlyWorkbook, downloadBlob } from './services/excelEngine';
+import { YokohamaLogo } from './components/YokohamaLogo';
 import {
   Menu,
   HardDrive,
@@ -304,14 +305,18 @@ export function App() {
               <Menu className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center space-x-2">
-              <span className="text-xs font-black text-slate-950 uppercase tracking-wider">
-                YOKOHAMA CTC
-              </span>
-              <span className="text-slate-300">/</span>
-              <span className="text-xs font-bold text-slate-500 capitalize">
-                {activeView}
-              </span>
+            {/* Logo in Tab Section */}
+            <div className="flex items-center space-x-2.5">
+              <YokohamaLogo className="w-6 h-6" />
+              <div className="flex items-center space-x-1.5">
+                <span className="text-xs font-black text-slate-950 uppercase tracking-wider">
+                  YOKOHAMA CTC
+                </span>
+                <span className="text-slate-300">/</span>
+                <span className="text-xs font-bold text-slate-500 capitalize">
+                  {activeView}
+                </span>
+              </div>
             </div>
           </div>
 

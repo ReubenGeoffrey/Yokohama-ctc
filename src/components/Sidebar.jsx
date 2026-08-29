@@ -11,10 +11,10 @@ import {
   LogOut,
   ChevronRight,
   ShieldCheck,
-  Building2,
   Menu,
   X
 } from 'lucide-react';
+import { YokohamaLogo } from './YokohamaLogo';
 
 export function Sidebar({
   activeView,
@@ -98,9 +98,7 @@ export function Sidebar({
         {/* Brand Header */}
         <div className="h-16 px-6 flex items-center justify-between border-b border-slate-100">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-xs">
-              <Building2 className="w-4 h-4 text-amber-400" />
-            </div>
+            <YokohamaLogo className="w-8 h-8 rounded-xl" />
             <div>
               <div className="text-sm font-black tracking-tight text-slate-950 flex items-center space-x-1">
                 <span>YOKOHAMA</span>
