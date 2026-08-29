@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Header } from './components/Header';
-import { Stepper } from './components/Stepper';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Sidebar } from './components/Sidebar';
+import { DashboardOverview } from './components/DashboardOverview';
 import { MasterUpload } from './components/MasterUpload';
 import { AttendanceUpload } from './components/AttendanceUpload';
 import { ReconciliationMatrix } from './components/ReconciliationMatrix';
@@ -10,17 +10,28 @@ import { AuthModal } from './components/AuthModal';
 import { StorageService } from './services/storage';
 import { SupabaseService, getSupabaseClient } from './services/supabase';
 import { AuthService } from './services/auth';
-import { ArrowRight, Sparkles, Sun, CheckCircle, FolderUp, Lock, ShieldCheck } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { generateMonthlyWorkbook, downloadBlob } from './services/excelEngine';
+import {
+  Menu,
+  HardDrive,
+  Calendar,
+  Cloud,
+  Lock,
+  ShieldCheck,
+  Building2,
+  Sparkles,
+  ArrowRight
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export function App() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [stepsStatus, setStepsStatus] = useState({
-    1: 'pending',
-    2: 'pending',
-    3: 'pending',
-    4: 'pending'
-  });
+  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' | 'master' | 'attendance' | 'reconciliation' | 'export'
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [master, setMaster] = useState(null);
   const [masterMeta, setMasterMeta] = useState(null);
@@ -60,24 +71,6 @@ export function App() {
         if (cloudState.batchDates) await StorageService.saveAttendanceFiles(cloudState.batchDates);
         if (cloudState.batchResults) await StorageService.saveBatchResults({ results: cloudState.batchResults, empStats: cloudState.empStats });
 
-        const isReconciled = cloudState.batchResults && cloudState.batchResults.length > 0;
-        const hasAttendance = cloudState.batchDates && Object.keys(cloudState.batchDates).length > 0;
-
-        setStepsStatus({
-          1: 'done',
-          2: hasAttendance ? 'done' : 'pending',
-          3: isReconciled ? 'done' : 'pending',
-          4: isReconciled ? 'done' : 'pending'
-        });
-
-        if (isReconciled) {
-          setCurrentStep(3);
-        } else if (hasAttendance) {
-          setCurrentStep(2);
-        } else {
-          setCurrentStep(2);
-        }
-
         setIsSyncing(false);
         return;
       }
@@ -91,20 +84,17 @@ export function App() {
       if (savedMaster) {
         setMaster(savedMaster);
         setMasterMeta(savedMeta);
-        setStepsStatus(prev => ({ ...prev, 1: 'done' }));
       }
 
       const savedAttendance = await StorageService.loadAttendanceFiles();
       if (savedAttendance && Object.keys(savedAttendance).length > 0) {
         setBatchDates(savedAttendance);
-        setStepsStatus(prev => ({ ...prev, 2: 'done' }));
       }
 
       const savedBatch = await StorageService.loadBatchResults();
       if (savedBatch && savedBatch.results && savedBatch.results.length > 0) {
         setBatchResults(savedBatch.results);
         setEmpStats(savedBatch.empStats);
-        setStepsStatus(prev => ({ ...prev, 3: 'done', 4: 'done' }));
       }
     } catch (err) {
       console.warn('Could not restore from IndexedDB:', err);
@@ -120,9 +110,8 @@ export function App() {
   const handleMasterLoaded = async (masterData, meta) => {
     setMaster(masterData);
     setMasterMeta(meta);
-    setStepsStatus(prev => ({ ...prev, 1: 'done' }));
 
-    // Sync to Supabase Cloud so Sir's and other laptops see it immediately
+    // Sync to Supabase Cloud
     await SupabaseService.saveCloudSharedState({
       master: masterData,
       masterMeta: meta,
@@ -147,7 +136,7 @@ export function App() {
   const handleReconciled = async (results, stats) => {
     setBatchResults(results);
     setEmpStats(stats);
-    setStepsStatus(prev => ({ ...prev, 2: 'done', 3: 'done', 4: 'done' }));
+    setActiveView('dashboard');
 
     // Sync to Supabase Cloud
     await SupabaseService.saveCloudSharedState({
@@ -194,8 +183,7 @@ export function App() {
     setBatchDates({});
     setBatchResults([]);
     setEmpStats(null);
-    setCurrentStep(1);
-    setStepsStatus({ 1: 'pending', 2: 'pending', 3: 'pending', 4: 'pending' });
+    setActiveView('dashboard');
   };
 
   // Helper to normalize any date string or Date object to YYYY-MM-DD
@@ -213,7 +201,7 @@ export function App() {
   const handleDeleteDate = async (targetDate) => {
     const targetIso = normalizeDateKey(targetDate);
 
-    // 1. Remove from batchDates by matching key or date property
+    // 1. Remove from batchDates
     const newBatchDates = {};
     Object.keys(batchDates || {}).forEach(k => {
       const item = batchDates[k];
@@ -223,7 +211,7 @@ export function App() {
       }
     });
 
-    // 2. Remove from batchResults by matching normalized date
+    // 2. Remove from batchResults
     const newBatchResults = (batchResults || []).filter(r => {
       const rIso = normalizeDateKey(r?.date);
       return rIso !== targetIso && r?.date !== targetDate;
@@ -244,18 +232,7 @@ export function App() {
       batchResults: newBatchResults,
       empStats
     });
-
-    // 5. Update step statuses
-    const stillHasAttendance = Object.keys(newBatchDates).length > 0;
-    const stillHasResults = newBatchResults.length > 0;
-    setStepsStatus(prev => ({
-      ...prev,
-      2: stillHasAttendance ? 'done' : 'pending',
-      3: stillHasResults ? 'done' : 'pending',
-      4: stillHasResults ? 'done' : 'pending',
-    }));
   };
-
 
   const handleOpenStoredFiles = () => {
     if (!currentUser) {
@@ -276,158 +253,258 @@ export function App() {
     setIsFileManagerOpen(false);
   };
 
-  const storedFilesCount = (master ? 1 : 0) + Object.keys(batchDates || {}).length;
+  // Instant Monthly Consolidated Master Export
+  const handleExportMonthlyConsolidated = async () => {
+    if (!batchResults.length) {
+      alert('Please upload daily attendance files and run reconciliation first.');
+      return;
+    }
+    try {
+      const d = new Date(batchResults[0].date);
+      const year = d.getUTCFullYear();
+      const month = d.getUTCMonth();
+      const monthName = MONTH_NAMES[month] || 'Month';
+      const buffer = await generateMonthlyWorkbook(batchResults, master, empStats, year, month);
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      downloadBlob(blob, `CTC_Consolidated_Master_${monthName}_${year}.xlsx`);
+    } catch (err) {
+      alert('Export failed: ' + err.message);
+    }
+  };
+
+  const batchDatesCount = Object.keys(batchDates || {}).length;
 
   return (
-    <div className="min-h-screen bg-warm-canvas text-slate-900 font-sans antialiased selection:bg-amber-400 selection:text-slate-950 flex flex-col">
-      {/* Top Navigation */}
-      <Header
-        masterMeta={masterMeta}
-        storedFilesCount={storedFilesCount}
-        onOpenFileManager={handleOpenStoredFiles}
-        onClearStorage={handleClearStorage}
-        onRefreshCloudSync={fetchLatestState}
-        isSyncing={isSyncing}
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans antialiased flex">
+      {/* ── Left Sidebar Navigation (Reference UI) ── */}
+      <Sidebar
+        activeView={activeView}
+        onSelectView={(v) => setActiveView(v)}
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
         currentUser={currentUser}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
+        onOpenVault={handleOpenStoredFiles}
+        masterMeta={masterMeta}
+        batchDatesCount={batchDatesCount}
+        isSyncing={isSyncing}
       />
 
-      {/* Modern Friendly Stepper */}
-      <Stepper
-        currentStep={currentStep}
-        onStepClick={(id) => setCurrentStep(id)}
-        stepsStatus={stepsStatus}
-      />
-
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-        {/* Unauthenticated Stored Data Protected Banner */}
-        {!currentUser && (
-          <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-5 rounded-3xl bg-amber-50 border-2 border-amber-300 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
-          >
-            <div className="flex items-center space-x-3 text-left">
-              <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black flex-shrink-0 shadow-md">
-                <Lock className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-sm font-black text-slate-900">
-                  Protected Stored Roster & Rates Data
-                </div>
-                <div className="text-xs text-slate-600 font-medium mt-0.5">
-                  Sign in with Executive Passcode (<strong className="text-slate-900">atc2026</strong>) to view active employee rosters and downloaded files.
-                </div>
-              </div>
-            </div>
-
+      {/* ── Main Content Area with Desktop Sidebar Offset ── */}
+      <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
+        {/* Top Sticky Bar for Mobile Header & Global Actions */}
+        <header className="h-16 px-4 sm:px-8 bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            {/* Mobile Hamburger Toggle */}
             <button
-              onClick={() => setIsAuthModalOpen(true)}
-              className="btn-yellow px-6 py-2.5 text-xs flex items-center space-x-1.5 cursor-pointer shadow-md flex-shrink-0"
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl lg:hidden cursor-pointer"
             >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Unlock Stored Data</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <Menu className="w-5 h-5" />
             </button>
-          </motion.div>
-        )}
 
-        {/* Active Stage View */}
-        {currentStep === 1 && (
-          <MasterUpload
-            master={master}
-            masterMeta={masterMeta}
-            onMasterLoaded={handleMasterLoaded}
-            onNext={() => setCurrentStep(2)}
-          />
-        )}
-
-        {currentStep === 2 && (
-          <AttendanceUpload
-            master={master}
-            batchDates={batchDates}
-            setBatchDates={handleAttendanceUpdated}
-            onReconciled={handleReconciled}
-            onNext={() => setCurrentStep(3)}
-          />
-        )}
-
-        {currentStep === 3 && (
-          <ReconciliationMatrix
-            batchResults={batchResults}
-            master={master}
-            onNext={() => setCurrentStep(4)}
-          />
-        )}
-
-        {currentStep === 4 && (
-          <ExportPanel
-            batchResults={batchResults}
-            master={master}
-            empStats={empStats}
-          />
-        )}
-
-        {/* PROMINENT SKY BLUE BANNER */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-maya-blue text-white rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden flex flex-col lg:flex-row items-center justify-between gap-8"
-          style={{ backgroundColor: '#2563eb', color: '#ffffff' }}
-        >
-          {/* Left Decorative Paper Tag */}
-          <div className="flex items-center space-x-6 w-full lg:w-auto">
-            <div className="relative hidden sm:block flex-shrink-0">
-              <div className="bg-white p-5 rounded-2xl shadow-xl w-48 text-center border border-slate-100" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
-                <div className="text-xs font-black uppercase tracking-wider text-slate-400">
-                  Plant Operations
-                </div>
-                <div className="text-base font-black text-slate-900 leading-snug mt-1" style={{ color: '#0f172a' }}>
-                  Unified CTC &amp; Shift Reconciliation
-                </div>
-                <div className="mt-2 inline-flex items-center space-x-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full border border-emerald-200">
-                  <span>● Live Ready</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Main Content with Solid Crisp Text */}
-            <div>
-              <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-blue-700 text-blue-100 rounded-full text-xs font-black uppercase tracking-wider mb-2">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>Need Instant Reconciliation?</span>
-              </div>
-              <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight" style={{ color: '#ffffff' }}>
-                Have monthly attendance files ready?
-              </h3>
-              <p className="text-xs sm:text-sm text-blue-100 mt-2 font-medium max-w-xl leading-relaxed" style={{ color: '#dbeafe' }}>
-                Drop all daily files at once to generate unified master summary, direct/indirect breakdown, and plant analytics.
-              </p>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-black text-slate-950 uppercase tracking-wider">
+                YOKOHAMA CTC
+              </span>
+              <span className="text-slate-300">/</span>
+              <span className="text-xs font-bold text-slate-500 capitalize">
+                {activeView}
+              </span>
             </div>
           </div>
 
-          {/* Right Action Button */}
-          <div className="flex-shrink-0 w-full sm:w-auto flex flex-col sm:flex-row gap-3">
+          <div className="flex items-center space-x-2.5">
+            {/* Stored Vault Quick Button */}
             <button
-              onClick={() => {
-                setCurrentStep(2);
-                window.scrollTo({ top: 100, behavior: 'smooth' });
-              }}
-              className="btn-yellow px-8 py-4 text-sm font-black flex items-center justify-center space-x-2 cursor-pointer shadow-2xl w-full sm:w-auto hover:scale-[1.02] active:scale-[0.98] transition"
+              onClick={handleOpenStoredFiles}
+              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer shadow-2xs"
             >
-              <FolderUp className="w-5 h-5" />
-              <span>Upload Attendance Files Now</span>
-              <ArrowRight className="w-4 h-4 ml-1" />
+              <Calendar className="w-3.5 h-3.5 text-amber-700" />
+              <span className="hidden sm:inline">Google Calendar Vault</span>
+            </button>
+
+            {/* Cloud Sync Indicator */}
+            <button
+              onClick={fetchLatestState}
+              disabled={isSyncing}
+              className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-slate-50 border border-slate-200 transition cursor-pointer"
+              title="Refresh Supabase Multi-Laptop Sync"
+            >
+              <Cloud className={`w-4 h-4 ${isSyncing ? 'text-blue-600 animate-spin' : 'text-emerald-500'}`} />
             </button>
           </div>
-        </motion.div>
-      </main>
+        </header>
 
-      {/* Stored Files Modal (Only accessible when logged in) */}
+        {/* View Content Body */}
+        <main className="flex-1 p-4 sm:p-7 max-w-7xl w-full mx-auto">
+          {/* Unauthenticated Security Warning Banner */}
+          {!currentUser && (
+            <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="flex items-center space-x-2.5">
+                <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="text-amber-950 font-medium">
+                  Executive Protection: Stored master rates &amp; rosters are view-locked. Use PIN (<strong className="font-bold">atc2026</strong>) to edit.
+                </span>
+              </div>
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-lg transition shrink-0 cursor-pointer shadow-xs"
+              >
+                Enter PIN
+              </button>
+            </div>
+          )}
+
+          {/* Active View Routing */}
+          <AnimatePresence mode="wait">
+            {activeView === 'dashboard' && (
+              <motion.div
+                key="dashboard"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+              >
+                <DashboardOverview
+                  master={master}
+                  masterMeta={masterMeta}
+                  batchDates={batchDates}
+                  batchResults={batchResults}
+                  empStats={empStats}
+                  onOpenVault={handleOpenStoredFiles}
+                  onExportMonthly={handleExportMonthlyConsolidated}
+                  onNavigateToModule={(v) => setActiveView(v)}
+                />
+              </motion.div>
+            )}
+
+            {activeView === 'master' && (
+              <motion.div
+                key="master"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900">Master Roster &amp; Rates (Input 02)</h2>
+                    <p className="text-xs text-slate-500">Upload active Operator, Contract Labour, and NAPS master rosters.</p>
+                  </div>
+                  <button
+                    onClick={() => setActiveView('dashboard')}
+                    className="px-3.5 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer"
+                  >
+                    Back to Dashboard
+                  </button>
+                </div>
+                <MasterUpload
+                  master={master}
+                  masterMeta={masterMeta}
+                  onMasterLoaded={handleMasterLoaded}
+                  onNext={() => setActiveView('attendance')}
+                />
+              </motion.div>
+            )}
+
+            {activeView === 'attendance' && (
+              <motion.div
+                key="attendance"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900">Daily Attendance Files (Input 01)</h2>
+                    <p className="text-xs text-slate-500">Upload or drop daily plant attendance spreadsheets.</p>
+                  </div>
+                  <button
+                    onClick={() => setActiveView('dashboard')}
+                    className="px-3.5 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer"
+                  >
+                    Back to Dashboard
+                  </button>
+                </div>
+                <AttendanceUpload
+                  master={master}
+                  batchDates={batchDates}
+                  setBatchDates={handleAttendanceUpdated}
+                  onReconciled={handleReconciled}
+                  onNext={() => setActiveView('reconciliation')}
+                />
+              </motion.div>
+            )}
+
+            {activeView === 'reconciliation' && (
+              <motion.div
+                key="reconciliation"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900">Shift Reconciliation Matrix</h2>
+                    <p className="text-xs text-slate-500">Detailed shift breakdowns, headcount, and overtime wages.</p>
+                  </div>
+                  <button
+                    onClick={() => setActiveView('dashboard')}
+                    className="px-3.5 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer"
+                  >
+                    Back to Dashboard
+                  </button>
+                </div>
+                <ReconciliationMatrix
+                  batchResults={batchResults}
+                  master={master}
+                  onNext={() => setActiveView('export')}
+                />
+              </motion.div>
+            )}
+
+            {activeView === 'export' && (
+              <motion.div
+                key="export"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900">Export Center</h2>
+                    <p className="text-xs text-slate-500">Download Consolidated Master Excel and Daily ZIP Archives.</p>
+                  </div>
+                  <button
+                    onClick={() => setActiveView('dashboard')}
+                    className="px-3.5 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer"
+                  >
+                    Back to Dashboard
+                  </button>
+                </div>
+                <ExportPanel
+                  batchResults={batchResults}
+                  master={master}
+                  empStats={empStats}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+      </div>
+
+      {/* ── MODALS ── */}
       <FileManagerModal
-        isOpen={isFileManagerOpen && !!currentUser}
+        isOpen={isFileManagerOpen}
         onClose={() => setIsFileManagerOpen(false)}
         masterMeta={masterMeta}
         batchDates={batchDates}
@@ -435,80 +512,15 @@ export function App() {
         master={master}
         empStats={empStats}
         onClearStorage={handleClearStorage}
+        onRerunReconciliation={() => setActiveView('reconciliation')}
         onDeleteDate={handleDeleteDate}
-        onRerunReconciliation={() => setCurrentStep(3)}
       />
 
-
-      {/* Auth Modal (Login / Passcode) */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onLoginSuccess={handleLoginSuccess}
       />
-
-      {/* Dark Navy Executive Footer */}
-      <footer className="bg-navy-dark text-slate-400 py-12 px-6 mt-12" style={{ backgroundColor: '#0b132b', color: '#94a3b8' }}>
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-4 gap-8 pb-8 border-b border-slate-800">
-          <div>
-            <div className="flex items-center space-x-2 text-white font-black text-xl" style={{ color: '#ffffff' }}>
-              <span className="h-8 w-8 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center font-black text-base" style={{ backgroundColor: '#f59e0b', color: '#0f172a' }}>
-                ATC
-              </span>
-              <span>Attendance Hub</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-3 font-medium leading-relaxed">
-              Automated CTC Cost Mapping & Overtime Analytics for ATC Tires.
-            </p>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-200 mb-3" style={{ color: '#e2e8f0' }}>
-              Workflow Stages
-            </h4>
-            <ul className="text-xs space-y-2 text-slate-400 font-medium">
-              <li>01. Rate Master Configuration</li>
-              <li>02. Daily Attendance Upload</li>
-              <li>03. Cost Reconciliation Matrix</li>
-              <li>04. Monthly Excel Export</li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-200 mb-3" style={{ color: '#e2e8f0' }}>
-              Output Specs
-            </h4>
-            <ul className="text-xs space-y-2 text-slate-400 font-medium">
-              <li>Minimalist Yellow Headers (#FFE699)</li>
-              <li>Total WOP Shift Tracking</li>
-              <li>0 Merged Rows Structure</li>
-              <li>IndexedDB & Supabase Cloud Storage</li>
-            </ul>
-          </div>
-
-          <div>
-            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-center" style={{ backgroundColor: '#0f172a' }}>
-              <div className="text-xs font-black text-amber-400 flex items-center justify-center space-x-1.5" style={{ color: '#fbbf24' }}>
-                <Sun className="w-4 h-4" />
-                <span>Reconciled with Precision</span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Built to streamline plant contractor billing and payroll audits.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 font-medium gap-4">
-          <p>© 2026 ATC Tires Executive Hub. All rights reserved.</p>
-          <div className="flex items-center space-x-4">
-            <span className="text-emerald-500 font-bold flex items-center space-x-1">
-              <CheckCircle className="w-3.5 h-3.5" />
-              <span>Cloud Sync & Security Active</span>
-            </span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
