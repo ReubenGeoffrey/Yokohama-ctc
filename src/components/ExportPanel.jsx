@@ -1,6 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Download, FileSpreadsheet, Archive, CheckCircle, Sparkles, ArrowRight, Calendar, Check } from 'lucide-react';
+import {
+  Download,
+  FileSpreadsheet,
+  Archive,
+  CheckCircle2,
+  Sparkles,
+  ArrowRight,
+  Calendar,
+  Check,
+  RefreshCw,
+  FileDown,
+  Layers,
+  ShieldCheck
+} from 'lucide-react';
 import { generateMonthlyWorkbook, generateZipBundle, downloadBlob } from '../services/excelEngine';
 
 const MONTH_NAMES = [
@@ -76,153 +89,167 @@ export function ExportPanel({ batchResults, master, empStats }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="space-y-8"
+      transition={{ duration: 0.3 }}
+      className="space-y-6 max-w-5xl mx-auto"
     >
-      <div className="maya-card p-8 sm:p-12">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-8 border-b border-slate-100 gap-4">
-          <div>
-            <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-xs font-black uppercase tracking-wider mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-              <span>Stage 04 &bull; Export Center</span>
-            </div>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              Executive Excel Packages
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
-              Download unified monthly summary reports and daily workbooks formatted for plant management and payroll reconciliation.
-            </p>
+      {/* ── Page Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[11px] font-black uppercase tracking-wider mb-2">
+            <Sparkles className="w-3 h-3 text-blue-600" />
+            <span>Stage 04 • Export Center</span>
           </div>
-
-          <span className="inline-flex items-center space-x-1.5 px-4 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-black self-start sm:self-auto shadow-2xs">
-            <CheckCircle className="w-4 h-4 text-emerald-600" />
-            <span>Ready for Export</span>
-          </span>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            Executive Excel Packages
+          </h2>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            Download unified monthly summary reports and daily workbooks formatted for plant management and payroll reconciliation.
+          </p>
         </div>
 
-        {/* If multiple months exist, show month selection tabs */}
-        {availableMonths.length > 1 && (
-          <div className="mt-6 flex items-center space-x-3 bg-warm-canvas p-3 rounded-2xl border border-slate-200">
-            <Calendar className="w-4 h-4 text-blue-600 ml-2" />
-            <span className="text-xs font-black uppercase tracking-wider text-slate-700">Choose Export Month:</span>
-            <div className="flex gap-2">
-              {availableMonths.map(m => (
-                <button
-                  key={m.key}
-                  onClick={() => setSelectedMonthKey(m.key)}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition cursor-pointer ${
-                    selectedMonthKey === m.key
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  {m.label} ({m.count} dates)
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <span className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold self-start sm:self-auto shadow-2xs">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <span>Ready for Export</span>
+        </span>
+      </div>
 
-        {/* Packages Grid */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Package 1 - Consolidated Master Excel */}
-          <div className="maya-card-highlight p-8 relative flex flex-col justify-between bg-amber-50/20">
-            {/* Top Golden Most Popular Badge */}
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 font-black text-[11px] uppercase tracking-wider px-4 py-1 rounded-full shadow-md">
-              ⭐ Most Popular Output
+      {/* Month Selection Tabs (if multiple months exist) */}
+      {availableMonths.length > 1 && (
+        <div className="flex items-center space-x-2 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
+          <Calendar className="w-4 h-4 text-slate-400 ml-2" />
+          <span className="text-xs font-black uppercase tracking-wider text-slate-700">Choose Month:</span>
+          <div className="flex gap-1.5">
+            {availableMonths.map(m => (
+              <button
+                key={m.key}
+                onClick={() => setSelectedMonthKey(m.key)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  selectedMonthKey === m.key
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                {m.label} ({m.count} dates)
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── 2 Enterprise Export Package Cards ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Package 1: Consolidated Master Excel */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 flex flex-col justify-between space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shadow-2xs">
+                <FileSpreadsheet className="w-5 h-5" />
+              </div>
+              <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-md text-[10px] font-black uppercase tracking-wider border border-blue-100">
+                Primary Output
+              </span>
             </div>
 
             <div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-900 bg-amber-200/80 px-3 py-1 rounded-full">
-                  {currentMonthConfig.label} Master
-                </span>
-                <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center shadow-md">
-                  <FileSpreadsheet className="w-5 h-5" />
-                </div>
-              </div>
-
-              <h3 className="text-2xl font-black text-slate-900 mt-4">
-                Consolidated Master Excel
+              <h3 className="text-base font-black text-slate-900">
+                {currentMonthConfig.label} Master Excel
               </h3>
-
-              {/* Clean 2-line explanation */}
-              <div className="mt-4 space-y-2 text-sm text-slate-700 font-medium leading-relaxed">
-                <div className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 flex-shrink-0" />
-                  <span>
-                    Full monthly executive breakdown combining <strong>Master Summary</strong> with <strong>ATC</strong>, <strong>CL</strong>, and <strong>NAPS</strong> employee rosters.
-                  </span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 flex-shrink-0" />
-                  <span>
-                    Formatted with standard yellow headers, shift counts, overtime totals, and zero merged rows.
-                  </span>
-                </div>
-              </div>
+              <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
+                Consolidated master workbook with executive plant summary, shift reconciliations, and complete employee rosters.
+              </p>
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleDownloadMonthly}
-              disabled={downloadingMonthly}
-              className="btn-yellow mt-8 w-full py-4 text-sm flex items-center justify-center space-x-2 cursor-pointer shadow-lg"
-            >
-              <Download className="w-4 h-4" />
-              <span>{downloadingMonthly ? 'Building Master Excel...' : `Get Consolidated Master (${currentMonthConfig.label})`}</span>
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </motion.button>
+            <div className="space-y-2 pt-2 border-t border-slate-100 text-xs text-slate-600 font-medium">
+              <div className="flex items-center space-x-2">
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Minimalist executive headers (#FFE699) with 0 merged rows</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Full employee rosters across ATC, CL, and NAPS sheets</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Weekly Off Present (WOP) counts and clean INR number formatting</span>
+              </div>
+            </div>
           </div>
 
-          {/* Package 2 - Complete ZIP Archive */}
-          <div className="maya-card p-8 relative flex flex-col justify-between">
+          <button
+            onClick={handleDownloadMonthly}
+            disabled={downloadingMonthly || !targetBatchResults.length}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-xs transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
+          >
+            {downloadingMonthly ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Generating Master Excel...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                <span>Download Consolidated Master (.xlsx)</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Package 2: Daily ZIP Archive */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 flex flex-col justify-between space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-700 border border-slate-200 flex items-center justify-center shadow-2xs">
+                <Archive className="w-5 h-5" />
+              </div>
+              <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-md text-[10px] font-black uppercase tracking-wider border border-slate-200">
+                Daily Archive
+              </span>
+            </div>
+
             <div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-xs font-black uppercase tracking-wider text-blue-700 bg-blue-50 px-3 py-1 rounded-full">
-                  {currentMonthConfig.label} Archive
-                </span>
-                <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25">
-                  <Archive className="w-5 h-5" />
-                </div>
-              </div>
-
-              <h3 className="text-2xl font-black text-slate-900 mt-4">
-                Complete Daily ZIP Archive
+              <h3 className="text-base font-black text-slate-900">
+                {currentMonthConfig.label} Daily ZIP
               </h3>
-
-              {/* Clean 2-line explanation */}
-              <div className="mt-4 space-y-2 text-sm text-slate-700 font-medium leading-relaxed">
-                <div className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
-                  <span>
-                    All individual daily Excel workbooks packaged with the Monthly Consolidated Master into one archive.
-                  </span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
-                  <span>
-                    Ready for management review, plant audit, and long-term offline record-keeping.
-                  </span>
-                </div>
-              </div>
+              <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
+                Complete compressed bundle containing single-day Excel workbooks for every reconciled date in the month.
+              </p>
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleDownloadZip}
-              disabled={downloadingZip}
-              className="btn-blue mt-8 w-full py-4 text-sm flex items-center justify-center space-x-2 cursor-pointer shadow-lg"
-            >
-              <Archive className="w-4 h-4" />
-              <span>{downloadingZip ? 'Compressing Files...' : `Download Daily Files ZIP (${currentMonthConfig.label})`}</span>
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </motion.button>
+            <div className="space-y-2 pt-2 border-t border-slate-100 text-xs text-slate-600 font-medium">
+              <div className="flex items-center space-x-2">
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>{targetBatchResults.length} individual daily workbooks bundled cleanly</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Shift A, Shift B, and Shift C breakdown per day</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Ready for department distribution and contractor auditing</span>
+              </div>
+            </div>
           </div>
+
+          <button
+            onClick={handleDownloadZip}
+            disabled={downloadingZip || !targetBatchResults.length}
+            className="w-full py-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 rounded-xl text-xs font-black shadow-2xs transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
+          >
+            {downloadingZip ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                <span>Compiling ZIP Archive...</span>
+              </>
+            ) : (
+              <>
+                <Archive className="w-4 h-4 text-slate-500" />
+                <span>Download Daily ZIP Bundle (.zip)</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </motion.div>
