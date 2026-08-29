@@ -132,13 +132,13 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
           <div>
             <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[11px] font-black uppercase tracking-wider mb-2">
               <Sparkles className="w-3 h-3 text-amber-600" />
-              <span>Input 01 • Daily Attendance Spreadsheets</span>
+              <span>Daily Attendance</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               Daily Attendance Sheets
             </h2>
             <p className="text-xs text-slate-500 font-medium mt-1">
-              Upload individual daily attendance sheets or entire folders (<code className="text-amber-700 bg-amber-50/70 border border-amber-200 px-1.5 py-0.5 rounded font-mono font-bold">INPUT AUG Present/</code>).
+              Upload daily plant attendance spreadsheets or select attendance folder.
             </p>
           </div>
 
@@ -295,7 +295,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100">
               <div className="text-xs text-slate-500 font-medium flex items-center space-x-1.5">
                 <Check className="w-4 h-4 text-emerald-600" />
-                <span>All daily attendance files mapped and verified against Master Roster.</span>
+                <span>Attendance records verified against Employee Rate Master.</span>
               </div>
 
               <button
@@ -303,7 +303,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
                 className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md transition flex items-center justify-center space-x-2 cursor-pointer"
               >
                 <Zap className="w-4 h-4 text-amber-300" />
-                <span>Compute Reconciliation Matrix</span>
+                <span>Generate Cost Summary</span>
                 <ArrowRight className="w-4 h-4 ml-1" />
               </button>
             </div>

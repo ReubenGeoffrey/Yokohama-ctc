@@ -41,38 +41,38 @@ export function Sidebar({
   const moduleNav = [
     {
       id: 'master',
-      label: 'Master Roster',
-      subtitle: 'Input 02: Rates & Roles',
+      label: 'Employee Rate Master',
+      subtitle: 'Wage & Rate Master',
       icon: FileSpreadsheet,
       badge: masterMeta ? 'Loaded' : null,
       badgeColor: 'bg-emerald-100 text-emerald-800'
     },
     {
       id: 'attendance',
-      label: 'Attendance Sheets',
-      subtitle: 'Input 01: Daily Plants',
+      label: 'Daily Attendance',
+      subtitle: 'Plant Attendance Sheets',
       icon: FolderUp,
       badge: batchDatesCount > 0 ? `${batchDatesCount} Dates` : null,
       badgeColor: 'bg-blue-100 text-blue-800'
     },
     {
       id: 'reconciliation',
-      label: 'Reconciliation Matrix',
-      subtitle: 'Stage 03: Wages & Shifts',
+      label: 'Cost Summary',
+      subtitle: 'Daily Wages & Headcount',
       icon: TableProperties,
       badge: null
     },
     {
       id: 'export',
-      label: 'Export Center',
-      subtitle: 'Stage 04: Master Excel & ZIP',
+      label: 'Report Center',
+      subtitle: 'Monthly Excel & ZIP',
       icon: Download,
       badge: null
     },
     {
       id: 'vault',
-      label: 'Stored Vault & Calendar',
-      subtitle: 'Google Calendar History',
+      label: 'Attendance Vault',
+      subtitle: 'Month & Year Records',
       icon: Calendar,
       badge: null,
       action: onOpenVault

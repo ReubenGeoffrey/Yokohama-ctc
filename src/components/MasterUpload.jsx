@@ -67,13 +67,13 @@ export function MasterUpload({ master, masterMeta, onMasterLoaded, onNext }) {
           <div>
             <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[11px] font-black uppercase tracking-wider mb-2">
               <Sparkles className="w-3 h-3 text-blue-600" />
-              <span>Input 02 • Master Roster &amp; Rates</span>
+              <span>Employee Rate Master</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Upload CTC Master Roster
+              Employee Compensation Master
             </h2>
             <p className="text-xs text-slate-500 font-medium mt-1">
-              Upload your employee rate configuration workbook (<code className="text-blue-600 bg-blue-50/70 border border-blue-200 px-1.5 py-0.5 rounded font-mono font-bold">CL CTC Input 2.xlsx</code>).
+              Upload the employee wage and CTC rate master workbook.
             </p>
           </div>
 
@@ -83,7 +83,7 @@ export function MasterUpload({ master, masterMeta, onMasterLoaded, onNext }) {
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-xs transition flex items-center space-x-2 cursor-pointer"
             >
               <UploadCloud className="w-4 h-4" />
-              <span>Browse Workbook</span>
+              <span>Select Rate Master</span>
             </button>
 
             {master && (
@@ -136,13 +136,13 @@ export function MasterUpload({ master, masterMeta, onMasterLoaded, onNext }) {
           <div>
             <div className="text-sm font-black text-slate-800">
               {loading
-                ? 'Parsing Master Roster workbook...'
+                ? 'Processing Rate Master...'
                 : master
-                ? 'Master Roster Active & Loaded'
-                : 'Click to select or drag & drop Master Workbook here'}
+                ? 'Employee Rate Master Active'
+                : 'Click to select or drag & drop Employee Rate Master'}
             </div>
             <p className="text-xs text-slate-400 font-medium mt-1">
-              Supports .xlsx and .xls formats containing Operator, Contract Labour, and NAPS sheets.
+              Supports Operator, Contract Labour, and Apprentice standard rate sheets.
             </p>
           </div>
         </div>
@@ -160,7 +160,7 @@ export function MasterUpload({ master, masterMeta, onMasterLoaded, onNext }) {
           <div className="space-y-4 pt-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black uppercase tracking-wider text-slate-700">
-                Loaded Roster Statistics
+                Employee Rate Master Records
               </span>
               <span className="text-xs text-slate-400 font-mono">
                 {masterMeta.fileName}

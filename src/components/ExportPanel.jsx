@@ -154,25 +154,25 @@ export function ExportPanel({ batchResults, master, empStats }) {
 
             <div>
               <h3 className="text-base font-black text-slate-900">
-                {currentMonthConfig.label} Master Excel
+                {currentMonthConfig.label} Master Report
               </h3>
               <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
-                Consolidated master workbook with executive plant summary, shift reconciliations, and complete employee rosters.
+                Monthly plant summary and employee wage records.
               </p>
             </div>
 
             <div className="space-y-2 pt-2 border-t border-slate-100 text-xs text-slate-600 font-medium">
               <div className="flex items-center space-x-2">
                 <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Minimalist executive headers (#FFE699) with 0 merged rows</span>
+                <span>Monthly plant summary</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Full employee rosters across ATC, CL, and NAPS sheets</span>
+                <span>Department employee rosters</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Weekly Off Present (WOP) counts and clean INR number formatting</span>
+                <span>Wage and overtime calculations</span>
               </div>
             </div>
           </div>
@@ -185,12 +185,12 @@ export function ExportPanel({ batchResults, master, empStats }) {
             {downloadingMonthly ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Generating Master Excel...</span>
+                <span>Generating Master Report...</span>
               </>
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                <span>Download Consolidated Master (.xlsx)</span>
+                <span>Download Master Report (.xlsx)</span>
               </>
             )}
           </button>
@@ -210,25 +210,25 @@ export function ExportPanel({ batchResults, master, empStats }) {
 
             <div>
               <h3 className="text-base font-black text-slate-900">
-                {currentMonthConfig.label} Daily ZIP
+                {currentMonthConfig.label} Daily Reports
               </h3>
               <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
-                Complete compressed bundle containing single-day Excel workbooks for every reconciled date in the month.
+                Individual daily shift attendance files.
               </p>
             </div>
 
             <div className="space-y-2 pt-2 border-t border-slate-100 text-xs text-slate-600 font-medium">
               <div className="flex items-center space-x-2">
                 <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>{targetBatchResults.length} individual daily workbooks bundled cleanly</span>
+                <span>Daily shift attendance</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Shift A, Shift B, and Shift C breakdown per day</span>
+                <span>Shift worker counts</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Ready for department distribution and contractor auditing</span>
+                <span>Daily audit records</span>
               </div>
             </div>
           </div>
@@ -246,7 +246,7 @@ export function ExportPanel({ batchResults, master, empStats }) {
             ) : (
               <>
                 <Archive className="w-4 h-4 text-slate-500" />
-                <span>Download Daily ZIP Bundle (.zip)</span>
+                <span>Download Daily Reports (.zip)</span>
               </>
             )}
           </button>

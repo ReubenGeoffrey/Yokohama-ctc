@@ -391,8 +391,8 @@ export function App() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-black text-slate-900">Master Roster &amp; Rates (Input 02)</h2>
-                    <p className="text-xs text-slate-500">Upload active Operator, Contract Labour, and NAPS master rosters.</p>
+                    <h2 className="text-xl font-black text-slate-900">Employee Rate Master</h2>
+                    <p className="text-xs text-slate-500">Employee standard wage and CTC rate database.</p>
                   </div>
                   <button
                     onClick={() => setActiveView('dashboard')}
@@ -421,8 +421,8 @@ export function App() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-black text-slate-900">Daily Attendance Files (Input 01)</h2>
-                    <p className="text-xs text-slate-500">Upload or drop daily plant attendance spreadsheets.</p>
+                    <h2 className="text-xl font-black text-slate-900">Daily Attendance Sheets</h2>
+                    <p className="text-xs text-slate-500">Upload or import daily plant attendance files.</p>
                   </div>
                   <button
                     onClick={() => setActiveView('dashboard')}
@@ -452,8 +452,8 @@ export function App() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-black text-slate-900">Shift Reconciliation Matrix</h2>
-                    <p className="text-xs text-slate-500">Detailed shift breakdowns, headcount, and overtime wages.</p>
+                    <h2 className="text-xl font-black text-slate-900">Daily Cost Summary</h2>
+                    <p className="text-xs text-slate-500">Worker headcount, standard working wages, and overtime compensation.</p>
                   </div>
                   <button
                     onClick={() => setActiveView('dashboard')}
@@ -481,8 +481,8 @@ export function App() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-black text-slate-900">Export Center</h2>
-                    <p className="text-xs text-slate-500">Download Consolidated Master Excel and Daily ZIP Archives.</p>
+                    <h2 className="text-xl font-black text-slate-900">Report Center</h2>
+                    <p className="text-xs text-slate-500">Download Monthly Master Excel and Daily ZIP Archives.</p>
                   </div>
                   <button
                     onClick={() => setActiveView('dashboard')}
