@@ -386,18 +386,18 @@ export function FileManagerModal({
 
             {viewMode === 'gcal' ? (
               /* ── GOOGLE CALENDAR MODE ────────────────── */
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
-                {/* Left Column: Google Calendar Mini Month Picker (col 1-7) */}
-                <div className="lg:col-span-7 bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-                  {/* Calendar Top Month Navigation Bar (Exact Google Calendar Style) */}
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 gap-2 flex-wrap">
-                    <div className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 rounded-2xl p-1 shadow-2xs">
+                {/* Left Column: Compact Google Calendar Mini Month Picker (col 1-5) */}
+                <div className="lg:col-span-5 max-w-sm mx-auto w-full bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+                  {/* Calendar Top Month Navigation Bar (Compact) */}
+                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 gap-1.5 flex-wrap">
+                    <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-xl p-0.5 shadow-2xs">
                       {/* Month Dropdown */}
                       <select
                         value={calMonth}
                         onChange={(e) => setCalMonth(Number(e.target.value))}
-                        className="text-sm sm:text-base font-black text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl px-2.5 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                        className="text-xs font-black text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg px-2 py-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
                       >
                         {MONTH_NAMES.map((name, idx) => (
                           <option key={idx} value={idx}>{name}</option>
@@ -412,43 +412,43 @@ export function FileManagerModal({
                           const val = parseInt(e.target.value, 10);
                           if (!isNaN(val)) setCalYear(val);
                         }}
-                        className="w-20 text-sm sm:text-base font-black text-slate-900 bg-white border border-slate-200 rounded-xl px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                        className="w-16 text-xs font-black text-slate-900 bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-center focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
                         min="1900"
                         max="2100"
-                        title="Type any year freely"
+                        title="Type year"
                       />
                     </div>
 
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center space-x-0.5">
                       <button
                         onClick={() => {
                           setCalYear(2026);
                           setCalMonth(7); // August 2026
                         }}
-                        className="px-2.5 py-1 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer border border-slate-200"
+                        className="px-2 py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer border border-slate-200"
                         title="Jump to August 2026"
                       >
-                        Aug 2026
+                        Aug 26
                       </button>
                       <button
                         onClick={handlePrevMonth}
-                        className="p-1.5 text-slate-600 hover:text-slate-950 hover:bg-slate-100 rounded-full transition cursor-pointer border border-slate-200"
+                        className="p-1 text-slate-600 hover:text-slate-950 hover:bg-slate-100 rounded-full transition cursor-pointer border border-slate-200"
                         title="Previous Month"
                       >
-                        <ChevronLeft className="w-4 h-4" />
+                        <ChevronLeft className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={handleNextMonth}
-                        className="p-1.5 text-slate-600 hover:text-slate-950 hover:bg-slate-100 rounded-full transition cursor-pointer border border-slate-200"
+                        className="p-1 text-slate-600 hover:text-slate-950 hover:bg-slate-100 rounded-full transition cursor-pointer border border-slate-200"
                         title="Next Month"
                       >
-                        <ChevronRight className="w-4 h-4" />
+                        <ChevronRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
 
                   {/* Days of Week Header (S M T W T F S) */}
-                  <div className="grid grid-cols-7 text-center text-xs font-black text-slate-400 py-1">
+                  <div className="grid grid-cols-7 text-center text-[11px] font-bold text-slate-400 py-0.5">
                     {WEEKDAYS_SHORT.map((wd, i) => (
                       <div key={i} className={i === 0 || i === 6 ? 'text-amber-600' : ''}>
                         {wd}
@@ -456,15 +456,15 @@ export function FileManagerModal({
                     ))}
                   </div>
 
-                  {/* 42-Slot Calendar Grid (Exact Google Calendar Design) */}
-                  <div className="grid grid-cols-7 gap-y-2.5 gap-x-1 text-center select-none">
+                  {/* Compact 42-Slot Calendar Grid */}
+                  <div className="grid grid-cols-7 gap-y-1 gap-x-0.5 text-center select-none">
                     {calendarGrid.map((cell, idx) => {
                       const hasData = !!cell.storedItem;
                       const isSelected = selectedDayKey === cell.dateIso;
                       const isCurrentM = cell.isCurrentMonth;
 
                       return (
-                        <div key={idx} className="flex flex-col items-center justify-center relative py-1">
+                        <div key={idx} className="flex flex-col items-center justify-center relative py-0.5">
                           <button
                             onClick={() => {
                               setSelectedDayKey(cell.dateIso);
@@ -473,15 +473,15 @@ export function FileManagerModal({
                                 setCalMonth(cell.month);
                               }
                             }}
-                            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full text-xs font-black flex items-center justify-center transition cursor-pointer relative ${
+                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full text-[11px] font-bold flex items-center justify-center transition cursor-pointer relative ${
                               hasData
                                 ? isSelected
-                                  ? 'bg-blue-600 text-white shadow-lg ring-4 ring-blue-200 scale-105'
-                                  : 'bg-amber-400 text-slate-950 hover:bg-amber-500 shadow-xs'
+                                  ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-300 scale-105 font-black'
+                                  : 'bg-amber-400 text-slate-950 hover:bg-amber-500 shadow-2xs font-black'
                                 : isSelected
-                                ? 'bg-slate-800 text-white ring-2 ring-slate-300'
+                                ? 'bg-slate-800 text-white ring-1 ring-slate-400'
                                 : isCurrentM
-                                ? 'text-slate-800 hover:bg-slate-100'
+                                ? 'text-slate-700 hover:bg-slate-100'
                                 : 'text-slate-300 hover:bg-slate-50'
                             }`}
                           >
@@ -490,7 +490,7 @@ export function FileManagerModal({
 
                           {/* Green active dot for stored attendance records */}
                           {hasData && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1 shadow-xs" />
+                            <span className="w-1 h-1 rounded-full bg-emerald-500 mt-0.5" />
                           )}
                         </div>
                       );
@@ -498,19 +498,19 @@ export function FileManagerModal({
                   </div>
 
                   {/* Month summary pill */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 font-medium">
-                    <span className="flex items-center space-x-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                      <span>= Stored Attendance Sheet</span>
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                    <span className="flex items-center space-x-1">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      <span>= Stored Sheet</span>
                     </span>
-                    <span className="font-bold text-slate-900">
-                      {currentMonthStoredDates.length} dates recorded in {MONTH_NAMES[calMonth]} {calYear}
+                    <span className="font-bold text-slate-800">
+                      {currentMonthStoredDates.length} recorded
                     </span>
                   </div>
                 </div>
 
-                {/* Right Column: Selected Date Details & Actions (col 8-12) */}
-                <div className="lg:col-span-5 space-y-4">
+                {/* Right Column: Selected Date Details & Actions (col 6-12) */}
+                <div className="lg:col-span-7 space-y-4">
                   {selectedDayItem ? (
                     <motion.div
                       key={selectedDayItem.isoKey}
