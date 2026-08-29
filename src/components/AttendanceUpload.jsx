@@ -1,6 +1,18 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FolderUp, UploadCloud, Calendar, Zap, CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
+import {
+  FolderUp,
+  UploadCloud,
+  Calendar,
+  Zap,
+  CheckCircle2,
+  ArrowRight,
+  Sparkles,
+  FileSpreadsheet,
+  Trash2,
+  Check,
+  Clock
+} from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
   sheetToRows,
@@ -74,7 +86,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
 
   const handleReconcileAll = async () => {
     if (!master) {
-      alert('Please upload the CTC Master Roster first.');
+      alert('Please upload the CTC Master Roster first in Stage 1.');
       return;
     }
 
@@ -97,64 +109,75 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
     onNext();
   };
 
+  const handleDeleteDate = async (e, dKey) => {
+    e.stopPropagation();
+    const updated = { ...batchDates };
+    delete updated[dKey];
+    setBatchDates(updated);
+    await StorageService.saveAttendanceFiles(updated);
+  };
+
   const detectedDateKeys = Object.keys(batchDates).sort();
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="space-y-8"
+      transition={{ duration: 0.3 }}
+      className="space-y-6 max-w-5xl mx-auto"
     >
-      <div className="maya-card p-8 sm:p-12">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-100 gap-4">
+      {/* Main Upload Card */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 sm:p-8 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
           <div>
-            <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-xs font-black uppercase tracking-wider mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-              <span>Stage 02 • Daily Reports</span>
+            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[11px] font-black uppercase tracking-wider mb-2">
+              <Sparkles className="w-3 h-3 text-amber-600" />
+              <span>Input 01 • Daily Attendance Spreadsheets</span>
             </div>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               Daily Attendance Sheets
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
-              Upload individual daily attendance sheets or entire folders (<code className="text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md font-mono font-bold">INPUT AUG Present/</code>).
+            <p className="text-xs text-slate-500 font-medium mt-1">
+              Upload individual daily attendance sheets or entire folders (<code className="text-amber-700 bg-amber-50/70 border border-amber-200 px-1.5 py-0.5 rounded font-mono font-bold">INPUT AUG Present/</code>).
             </p>
           </div>
 
-          <div className="flex space-x-3">
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold shadow-2xs transition flex items-center space-x-1.5 cursor-pointer"
+            >
+              <UploadCloud className="w-4 h-4 text-slate-500" />
+              <span>Select Files</span>
+            </button>
+
             <button
               onClick={() => folderInputRef.current?.click()}
-              className="btn-yellow px-5 py-2.5 text-xs flex items-center space-x-1.5 cursor-pointer shadow-md"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
             >
               <FolderUp className="w-4 h-4" />
               <span>Upload Folder</span>
             </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="btn-blue px-5 py-2.5 text-xs flex items-center space-x-1.5 cursor-pointer shadow-md"
-            >
-              <UploadCloud className="w-4 h-4" />
-              <span>Upload Files</span>
-            </button>
           </div>
         </div>
 
-        {/* Hidden Inputs */}
+        {/* Hidden File Inputs */}
         <input
-          type="file"
           ref={fileInputRef}
-          onChange={(e) => handleFiles(e.target.files)}
+          type="file"
           multiple
           accept=".xlsx,.xls"
+          onChange={(e) => handleFiles(e.target.files)}
           className="hidden"
         />
         <input
-          type="file"
           ref={folderInputRef}
-          onChange={(e) => handleFiles(e.target.files)}
+          type="file"
           webkitdirectory=""
           directory=""
           multiple
+          onChange={(e) => handleFiles(e.target.files)}
           className="hidden"
         />
 
@@ -163,77 +186,104 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFiles(e.dataTransfer.files); }}
-          className={`mt-6 border-2 border-dashed rounded-3xl p-10 text-center cursor-pointer transition-all ${
-            isDragging
-              ? 'border-blue-500 bg-blue-50/60 scale-[1.01]'
-              : 'border-slate-300 bg-slate-50/50 hover:border-blue-400 hover:bg-blue-50/20'
-          }`}
           onClick={() => folderInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-2xl p-8 sm:p-10 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center space-y-3 ${
+            isDragging
+              ? 'border-blue-500 bg-blue-50/50 scale-[1.005]'
+              : detectedDateKeys.length
+              ? 'border-emerald-300 bg-emerald-50/20 hover:border-emerald-400'
+              : 'border-slate-200 bg-slate-50/60 hover:border-blue-300 hover:bg-blue-50/20'
+          }`}
         >
-          <div className="flex flex-col items-center justify-center space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/25">
-              {isProcessing ? (
-                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <FolderUp className="w-8 h-8" />
-              )}
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition shadow-2xs ${
+            detectedDateKeys.length ? 'bg-emerald-100 text-emerald-700' : 'bg-white border border-slate-200 text-blue-600'
+          }`}>
+            {isProcessing ? (
+              <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            ) : detectedDateKeys.length ? (
+              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+            ) : (
+              <FolderUp className="w-6 h-6 text-blue-600" />
+            )}
+          </div>
+
+          <div>
+            <div className="text-sm font-black text-slate-800">
+              {isProcessing
+                ? 'Processing attendance workbooks...'
+                : detectedDateKeys.length
+                ? `${detectedDateKeys.length} Attendance Dates Loaded`
+                : 'Click to select daily attendance folder or drag & drop files here'}
             </div>
-            <div>
-              <div className="text-base font-black text-slate-900">
-                Drag & Drop Attendance Folder or Files Here
-              </div>
-              <div className="text-xs text-slate-500 mt-1 font-medium">
-                Auto-detects dates, Operator, CL, NAPS categories, and WOP (Weekly Off Present) shifts
-              </div>
-            </div>
+            <p className="text-xs text-slate-400 font-medium mt-1">
+              Automatically identifies Contract Labour, Operators, and NAPS attendance sheets.
+            </p>
           </div>
         </div>
 
-        {/* Detected Dates Breakdown Grid */}
+        {/* Detected Dates Grid */}
         {detectedDateKeys.length > 0 && (
-          <div className="mt-8 space-y-4">
+          <div className="space-y-4 pt-2">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-slate-900 flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Detected Dates ({detectedDateKeys.length} Days Ready for Reconciliation)</span>
-              </h3>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-700">
+                  Detected Attendance Dates ({detectedDateKeys.length})
+                </span>
+              </div>
+              <span className="text-xs text-slate-400 font-medium">
+                Click reconcile below to compute payroll
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {detectedDateKeys.map(dKey => {
                 const item = batchDates[dKey];
-                const clCount = item.CL ? item.CL.length : 0;
-                const opCount = item.OP ? item.OP.length : 0;
-                const napsCount = item.NAPS ? item.NAPS.length : 0;
-                const totalWop = (item.CL ? item.CL.filter(r => r.isWop).length : 0) +
-                                 (item.OP ? item.OP.filter(r => r.isWop).length : 0) +
-                                 (item.NAPS ? item.NAPS.filter(r => r.isWop).length : 0);
-
+                const totalFiles = item.files ? item.files.length : 0;
                 return (
                   <div
                     key={dKey}
-                    className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-amber-400 hover:shadow-md transition"
+                    className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition flex flex-col justify-between space-y-2.5"
                   >
-                    <div className="text-sm font-black text-slate-900 flex items-center justify-between">
-                      <span>{formatDateDisplay(item.date)}</span>
-                      <span className="text-[10px] bg-amber-100 text-amber-900 font-extrabold px-2.5 py-0.5 rounded-full">
-                        Ready
-                      </span>
-                    </div>
-                    <div className="mt-3 space-y-1.5 text-xs text-slate-600 font-medium">
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Operator:</span> <span className="font-mono font-bold text-slate-900">{opCount}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Contract:</span> <span className="font-mono font-bold text-slate-900">{clCount}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">NAPS:</span> <span className="font-mono font-bold text-slate-900">{napsCount}</span>
-                      </div>
-                      {totalWop > 0 && (
-                        <div className="flex justify-between text-amber-600 font-bold pt-1.5 border-t border-slate-100">
-                          <span>WOP Shifts:</span> <span className="font-mono">{totalWop}</span>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-2xs font-bold text-xs">
+                          <Calendar className="w-3.5 h-3.5 text-blue-600" />
                         </div>
+                        <div>
+                          <div className="text-xs font-black text-slate-900">
+                            {formatDateDisplay(item.date)}
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {totalFiles} file{totalFiles > 1 ? 's' : ''} parsed
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={(e) => handleDeleteDate(e, dKey)}
+                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition cursor-pointer"
+                        title="Remove this date"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Category Tags */}
+                    <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-200/60">
+                      {item.OP && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-100 text-blue-800">
+                          OP ({item.OP.length})
+                        </span>
+                      )}
+                      {item.CL && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800">
+                          CL ({item.CL.length})
+                        </span>
+                      )}
+                      {item.NAPS && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-800">
+                          NAPS ({item.NAPS.length})
+                        </span>
                       )}
                     </div>
                   </div>
@@ -241,18 +291,21 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
               })}
             </div>
 
-            {/* Reconcile Action Button */}
-            <div className="mt-8 flex justify-end">
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+            {/* Reconcile Bottom Action Bar */}
+            <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100">
+              <div className="text-xs text-slate-500 font-medium flex items-center space-x-1.5">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>All daily attendance files mapped and verified against Master Roster.</span>
+              </div>
+
+              <button
                 onClick={handleReconcileAll}
-                className="btn-yellow px-9 py-3.5 text-sm flex items-center space-x-2 cursor-pointer shadow-lg"
+                className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md transition flex items-center justify-center space-x-2 cursor-pointer"
               >
-                <Zap className="w-4 h-4" />
-                <span>Reconcile All Dates & Open Matrix</span>
+                <Zap className="w-4 h-4 text-amber-300" />
+                <span>Compute Reconciliation Matrix</span>
                 <ArrowRight className="w-4 h-4 ml-1" />
-              </motion.button>
+              </button>
             </div>
           </div>
         )}
@@ -260,3 +313,5 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
     </motion.div>
   );
 }
+
+export default AttendanceUpload;
