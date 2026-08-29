@@ -1,10 +1,23 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, HardDrive, FileSpreadsheet, Calendar, Trash2,
-  CheckCircle2, Download, RefreshCw, FileDown,
-  Package, BarChart3, AlertCircle, Play, ChevronDown, ChevronRight,
-  ChevronLeft, FileText, ArrowUpRight, Check, LayoutGrid, List, Sparkles
+  X,
+  FileSpreadsheet,
+  Calendar,
+  Trash2,
+  CheckCircle2,
+  Download,
+  RefreshCw,
+  FileDown,
+  Package,
+  AlertCircle,
+  Play,
+  ChevronRight,
+  ChevronLeft,
+  Sparkles,
+  List,
+  Clock,
+  Users
 } from 'lucide-react';
 import { formatDateDisplay } from '../services/parser';
 import {
@@ -24,8 +37,6 @@ const MONTH_SHORT = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 ];
 
-const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
 function safeParseDate(val) {
   if (!val) return null;
   const d = new Date(val);
@@ -33,18 +44,21 @@ function safeParseDate(val) {
 }
 
 export function FileManagerModal({
-  isOpen, onClose, masterMeta, batchDates, batchResults,
-  master, empStats, onClearStorage, onRerunReconciliation, onDeleteDate
+  isOpen,
+  onClose,
+  masterMeta,
+  batchDates,
+  batchResults,
+  master,
+  empStats,
+  onClearStorage,
+  onRerunReconciliation,
+  onDeleteDate
 }) {
   const [downloading, setDownloading] = useState(null);
-  const [viewMode, setViewMode] = useState('gcal'); // 'gcal' (Google Cal) or 'list'
-
-  // Google Calendar state
   const [calYear, setCalYear] = useState(2026);
   const [calMonth, setCalMonth] = useState(7); // 7 = August (0-indexed)
-  const [selectedDayKey, setSelectedDayKey] = useState(null);
 
-  const hasMaster = !!masterMeta;
   const safeBatchDates = batchDates || {};
   const safeBatchResults = Array.isArray(batchResults) ? batchResults : [];
 
@@ -112,611 +126,414 @@ export function FileManagerModal({
     return Object.values(allStoredDatesMap).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
   }, [allStoredDatesMap]);
 
-  // Set default selectedDayKey if available
+  // Set default calYear and calMonth based on available data
   useEffect(() => {
-    if (!selectedDayKey && allStoredDates.length > 0) {
-      setSelectedDayKey(allStoredDates[0].isoKey);
+    if (allStoredDates.length > 0) {
       setCalYear(allStoredDates[0].year);
       setCalMonth(allStoredDates[0].month);
     }
-  }, [allStoredDates, selectedDayKey]);
-
-  // Extract comprehensive years (1990 to 2060 + any custom years found in stored data)
-  const availableYears = useMemo(() => {
-    const yearsSet = new Set();
-    for (let y = 1990; y <= 2060; y++) {
-      yearsSet.add(y);
-    }
-    allStoredDates.forEach(item => yearsSet.add(item.year));
-    return Array.from(yearsSet).sort((a, b) => a - b);
   }, [allStoredDates]);
 
-  // Month navigation
-  const handlePrevMonth = () => {
-    if (calMonth === 0) {
-      setCalMonth(11);
-      setCalYear(prev => prev - 1);
-    } else {
-      setCalMonth(prev => prev - 1);
-    }
-  };
+  // Year navigation
+  const handlePrevYear = () => setCalYear(prev => prev - 1);
+  const handleNextYear = () => setCalYear(prev => prev + 1);
 
-  const handleNextMonth = () => {
-    if (calMonth === 11) {
-      setCalMonth(0);
-      setCalYear(prev => prev + 1);
-    } else {
-      setCalMonth(prev => prev + 1);
-    }
-  };
+  // Calculate monthly stats for all 12 months in calYear
+  const monthsData = useMemo(() => {
+    return Array.from({ length: 12 }, (_, mIdx) => {
+      const datesInMonth = allStoredDates.filter(
+        d => d.year === calYear && d.month === mIdx
+      );
 
-  // Google Calendar 42-day grid math (Sunday = 0)
-  const calendarGrid = useMemo(() => {
-    const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay(); // Sunday = 0, Saturday = 6
-    const daysInCurrentMonth = new Date(calYear, calMonth + 1, 0).getDate();
-    const daysInPrevMonth = new Date(calYear, calMonth, 0).getDate();
+      let totalHC = 0;
+      let totalCost = 0;
 
-    const cells = [];
-
-    // 1. Previous month trailing days
-    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-      const dayNum = daysInPrevMonth - i;
-      const prevM = calMonth === 0 ? 11 : calMonth - 1;
-      const prevY = calMonth === 0 ? calYear - 1 : calYear;
-      const dateObj = new Date(Date.UTC(prevY, prevM, dayNum));
-      const dateIso = `${prevY}-${String(prevM + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-      const storedItem = allStoredDatesMap[dateIso];
-      cells.push({
-        dayNum,
-        isCurrentMonth: false,
-        year: prevY,
-        month: prevM,
-        dateObj,
-        dateIso,
-        storedItem
+      datesInMonth.forEach(d => {
+        if (d.result) {
+          totalHC += (d.result.gHC || 0);
+          totalCost += (d.result.gTot || 0);
+        }
       });
-    }
 
-    // 2. Current month days (1 to daysInCurrentMonth)
-    for (let d = 1; d <= daysInCurrentMonth; d++) {
-      const dateObj = new Date(Date.UTC(calYear, calMonth, d));
-      const dateIso = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const storedItem = allStoredDatesMap[dateIso];
-      cells.push({
-        dayNum: d,
-        isCurrentMonth: true,
-        year: calYear,
-        month: calMonth,
-        dateObj,
-        dateIso,
-        storedItem
-      });
-    }
+      return {
+        monthIndex: mIdx,
+        name: MONTH_NAMES[mIdx],
+        shortName: MONTH_SHORT[mIdx],
+        datesCount: datesInMonth.length,
+        dates: datesInMonth,
+        totalHC,
+        totalCost,
+        hasData: datesInMonth.length > 0
+      };
+    });
+  }, [allStoredDates, calYear]);
 
-    // 3. Next month leading days (fill to 35 or 42 slots)
-    const remaining = (7 - (cells.length % 7)) % 7;
-    const nextM = calMonth === 11 ? 0 : calMonth + 1;
-    const nextY = calMonth === 11 ? calYear + 1 : calYear;
-    for (let d = 1; d <= remaining || (cells.length < 35 && d <= remaining + 7); d++) {
-      if (cells.length >= 35 && cells.length % 7 === 0) break;
-      const dateObj = new Date(Date.UTC(nextY, nextM, d));
-      const dateIso = `${nextY}-${String(nextM + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const storedItem = allStoredDatesMap[dateIso];
-      cells.push({
-        dayNum: d,
-        isCurrentMonth: false,
-        year: nextY,
-        month: nextM,
-        dateObj,
-        dateIso,
-        storedItem
-      });
-    }
+  // Current selected month data
+  const selectedMonthData = useMemo(() => {
+    return monthsData[calMonth] || monthsData[7] || {
+      monthIndex: calMonth,
+      name: MONTH_NAMES[calMonth],
+      datesCount: 0,
+      dates: [],
+      totalHC: 0,
+      totalCost: 0,
+      hasData: false
+    };
+  }, [monthsData, calMonth]);
 
-    return cells;
-  }, [calYear, calMonth, allStoredDatesMap]);
+  // Results for export for selected month
+  const selectedMonthResults = useMemo(() => {
+    return selectedMonthData.dates.map(d => d.result).filter(Boolean);
+  }, [selectedMonthData]);
 
-  // Current month's stored dates
-  const currentMonthStoredDates = useMemo(() => {
-    return allStoredDates.filter(i => i.year === calYear && i.month === calMonth);
-  }, [allStoredDates, calYear, calMonth]);
-
-  const currentMonthResults = useMemo(() => {
-    return currentMonthStoredDates.map(i => i.result).filter(Boolean);
-  }, [currentMonthStoredDates]);
-
-  // Current selected day's item
-  const selectedDayItem = useMemo(() => {
-    if (!selectedDayKey) return currentMonthStoredDates[0] || null;
-    return allStoredDatesMap[selectedDayKey] || null;
-  }, [selectedDayKey, allStoredDatesMap, currentMonthStoredDates]);
-
-  // Metrics for current month
-  const monthTotCTC = currentMonthResults.reduce((s, r) => s + (r.gCTC || 0), 0);
-  const monthTotOT = currentMonthResults.reduce((s, r) => s + (r.gOT || 0), 0);
-  const monthTotCost = monthTotCTC + monthTotOT;
-  const monthTotHC = currentMonthResults.reduce((s, r) => s + (r.gHC || 0), 0);
-
-  const fmt = (n) => (Math.round(n) || 0).toLocaleString('en-IN');
-  const fmtN = (n) => (n || 0).toLocaleString('en-IN');
-
+  // Download handlers
   const handleDownloadMonthly = async () => {
-    if (!currentMonthResults.length) {
-      alert(`No reconciled results found for ${MONTH_NAMES[calMonth]} ${calYear}.`);
+    if (!master || !selectedMonthResults.length) {
+      alert(`No reconciled records found for ${selectedMonthData.name} ${calYear}.`);
       return;
     }
     setDownloading('monthly');
     try {
-      const monthName = MONTH_NAMES[calMonth];
-      const buffer = await generateMonthlyWorkbook(currentMonthResults, master, empStats, calYear, calMonth);
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `CTC_Output_${monthName}_${calYear}.xlsx`);
+      const buffer = await generateMonthlyWorkbook(
+        selectedMonthResults,
+        master,
+        empStats,
+        calYear,
+        calMonth
+      );
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      downloadBlob(blob, `CTC_Output_${selectedMonthData.name}_${calYear}.xlsx`);
     } catch (e) {
-      alert('Error generating monthly workbook: ' + e.message);
+      console.error('Monthly export error:', e);
+      alert('Error generating Monthly Master Workbook: ' + e.message);
     } finally {
       setDownloading(null);
     }
   };
 
   const handleDownloadZip = async () => {
-    if (!currentMonthResults.length) {
-      alert(`No reconciled results found for ${MONTH_NAMES[calMonth]} ${calYear}.`);
+    if (!master || !selectedMonthResults.length) {
+      alert(`No reconciled records found for ${selectedMonthData.name} ${calYear}.`);
       return;
     }
     setDownloading('zip');
     try {
-      const monthName = MONTH_NAMES[calMonth];
-      const blob = await generateZipBundle(currentMonthResults, master, empStats, calYear, calMonth);
-      downloadBlob(blob, `ATC_CTC_Reconciliation_${monthName}_${calYear}.zip`);
+      const blob = await generateZipBundle(
+        selectedMonthResults,
+        master,
+        empStats,
+        calYear,
+        calMonth
+      );
+      downloadBlob(blob, `ATC_CTC_Reconciliation_${selectedMonthData.name}_${calYear}.zip`);
     } catch (e) {
-      alert('Error generating zip bundle: ' + e.message);
+      console.error('ZIP bundle error:', e);
+      alert('Error generating ZIP bundle: ' + e.message);
     } finally {
       setDownloading(null);
     }
   };
 
   const handleDownloadDay = async (item) => {
-    if (!item || !item.result) {
-      alert('This date has not been reconciled yet. Click "Re-Open Reconciliation" below.');
-      return;
-    }
-    const dKey = item.dateKey;
-    setDownloading(dKey);
+    if (!item.result || !master) return;
+    setDownloading(item.isoKey);
     try {
       const buffer = await generateSingleDayWorkbook(item.result, master, item.year, item.month);
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
       downloadBlob(blob, `CTC_Output_${formatDateDisplay(item.dateObj)}.xlsx`);
     } catch (e) {
-      alert('Error downloading day workbook: ' + e.message);
+      console.error('Single day export error:', e);
+      alert('Error generating single day workbook: ' + e.message);
     } finally {
       setDownloading(null);
     }
   };
 
-  const handleDownloadJson = () => {
-    setDownloading('json');
-    try {
-      const payload = {
-        exportedAt: new Date().toISOString(),
-        month: `${MONTH_NAMES[calMonth]} ${calYear}`,
-        masterMeta,
-        recordCount: currentMonthStoredDates.length,
-        dates: currentMonthStoredDates.map(item => ({
-          date: item.dateKey,
-          files: item.files,
-          result: item.result
-        }))
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      downloadBlob(blob, `ATC_Vault_Backup_${MONTH_NAMES[calMonth]}_${calYear}.json`);
-    } catch (e) {
-      alert('Error exporting JSON: ' + e.message);
-    } finally {
-      setDownloading(null);
-    }
-  };
+  const fmt = (n) => (Math.round(n) || 0).toLocaleString('en-IN');
+  const fmtN = (n) => (n || 0).toLocaleString('en-IN');
 
   if (!isOpen) return null;
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs">
         <motion.div
-          initial={{ scale: 0.96, opacity: 0, y: 15 }}
+          initial={{ scale: 0.96, opacity: 0, y: 12 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.96, opacity: 0, y: 15 }}
-          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          exit={{ scale: 0.96, opacity: 0, y: 12 }}
+          transition={{ duration: 0.2 }}
           className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 relative z-50 overflow-hidden flex flex-col"
           style={{ maxHeight: '92vh' }}
         >
           {/* ── Top Header ───────────────────────────── */}
-          <div className="p-4 sm:px-6 border-b border-slate-200 flex items-center justify-between bg-white flex-shrink-0">
+          <div className="p-4 sm:px-6 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
             <div className="flex items-center space-x-2.5">
               <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shadow-2xs">
                 <Calendar className="w-4 h-4" />
               </div>
               <div>
                 <h2 className="text-base font-black text-slate-900 tracking-tight">
-                  Attendance Calendar &amp; Vault
+                  Month &amp; Year Attendance Vault
                 </h2>
                 <p className="text-[11px] text-slate-500 font-medium">
-                  Inspect daily headcount, wages, and download Excel.
+                  Select month and year to view attendance summaries and download Excel.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              {/* View Switcher */}
-              <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 shadow-2xs">
-                <button
-                  onClick={() => setViewMode('gcal')}
-                  className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition flex items-center space-x-1 cursor-pointer ${
-                    viewMode === 'gcal'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Calendar className="w-3 h-3" />
-                  <span>Calendar</span>
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition flex items-center space-x-1 cursor-pointer ${
-                    viewMode === 'list'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <List className="w-3 h-3" />
-                  <span>List</span>
-                </button>
-              </div>
-
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
-          {/* ── Scrollable Body ────────────────────────── */}
+          {/* ── Body: Month & Year Selector ────────── */}
           <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-4 bg-slate-50/50">
 
-            {viewMode === 'gcal' ? (
-              /* ── GOOGLE CALENDAR MODE ────────────────── */
-              <div className="flex flex-col sm:flex-row gap-4 items-start">
-
-                {/* Left: Genuine Mini Month Picker (Width: 210px) */}
-                <div className="w-full sm:w-[215px] shrink-0 bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-2">
-                  {/* Calendar Top Month Navigation Bar (Exact Mini Google Calendar Style) */}
-                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 gap-1">
-                    <div className="flex items-center space-x-1">
-                      <select
-                        value={calMonth}
-                        onChange={(e) => setCalMonth(Number(e.target.value))}
-                        className="text-xs font-black text-slate-900 bg-transparent hover:bg-slate-50 rounded px-1 py-0.5 cursor-pointer focus:outline-none"
-                      >
-                        {MONTH_SHORT.map((name, idx) => (
-                          <option key={idx} value={idx}>{name}</option>
-                        ))}
-                      </select>
-
-                      <input
-                        type="number"
-                        value={calYear}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          if (!isNaN(val)) setCalYear(val);
-                        }}
-                        className="w-12 text-xs font-black text-slate-900 bg-transparent focus:outline-none text-center"
-                        min="1900"
-                        max="2100"
-                        title="Type year"
-                      />
-                    </div>
-
-                    <div className="flex items-center space-x-0.5">
-                      <button
-                        onClick={handlePrevMonth}
-                        className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition cursor-pointer"
-                        title="Previous Month"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={handleNextMonth}
-                        className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition cursor-pointer"
-                        title="Next Month"
-                      >
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Days of Week Header (S M T W T F S) */}
-                  <div className="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 py-0.5">
-                    {WEEKDAYS_SHORT.map((wd, i) => (
-                      <div key={i} className={i === 0 || i === 6 ? 'text-amber-600' : ''}>
-                        {wd}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Mini 42-Slot Calendar Grid (w-6 h-6 circles) */}
-                  <div className="grid grid-cols-7 gap-y-0.5 text-center select-none">
-                    {calendarGrid.map((cell, idx) => {
-                      const hasData = !!cell.storedItem;
-                      const isSelected = selectedDayKey === cell.dateIso;
-                      const isCurrentM = cell.isCurrentMonth;
-
-                      return (
-                        <div key={idx} className="flex flex-col items-center justify-center py-0.5">
-                          <button
-                            onClick={() => {
-                              setSelectedDayKey(cell.dateIso);
-                              if (!isCurrentM) {
-                                setCalYear(cell.year);
-                                setCalMonth(cell.month);
-                              }
-                            }}
-                            className={`w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center transition cursor-pointer relative ${
-                              hasData
-                                ? isSelected
-                                  ? 'bg-blue-600 text-white shadow-xs font-black ring-2 ring-blue-300'
-                                  : 'bg-amber-400 text-slate-950 hover:bg-amber-500 font-black'
-                                : isSelected
-                                ? 'bg-slate-800 text-white'
-                                : isCurrentM
-                                ? 'text-slate-700 hover:bg-slate-100'
-                                : 'text-slate-300'
-                            }`}
-                          >
-                            <span>{cell.dayNum}</span>
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Mini legend */}
-                  <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500 font-medium">
-                    <span className="flex items-center space-x-1">
-                      <span className="w-2 h-2 rounded-full bg-amber-400" />
-                      <span>= Stored</span>
-                    </span>
-                    <span className="font-bold text-slate-700">
-                      {currentMonthStoredDates.length} dates
-                    </span>
-                  </div>
-                </div>
-
-                {/* Right: Selected Date Inspector & Action Buttons */}
-                <div className="flex-1 w-full space-y-3">
-                  {selectedDayItem ? (
-                    <motion.div
-                      key={selectedDayItem.isoKey}
-                      initial={{ opacity: 0, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3"
-                    >
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                        <div>
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                            Selected Date
-                          </span>
-                          <h3 className="text-base font-black text-slate-900 mt-0.5">
-                            {formatDateDisplay(selectedDayItem.dateObj)}
-                          </h3>
-                        </div>
-                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold">
-                          ● Stored
-                        </span>
-                      </div>
-
-                      {/* Day Stats */}
-                      {selectedDayItem.result ? (
-                        <div className="space-y-2">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="p-2.5 rounded-lg bg-blue-50/50 border border-blue-100">
-                              <div className="text-[10px] font-bold text-blue-700">Headcount</div>
-                              <div className="text-lg font-black text-blue-950 mt-0.5">
-                                {fmtN(selectedDayItem.result.gHC)} HC
-                              </div>
-                            </div>
-                            <div className="p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-100">
-                              <div className="text-[10px] font-bold text-emerald-800">Total Wages</div>
-                              <div className="text-lg font-black text-emerald-950 mt-0.5 font-mono">
-                                ₹{fmt(selectedDayItem.result.gTot)}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1">
-                            <div className="flex justify-between text-slate-600">
-                              <span>Direct Labour:</span>
-                              <strong className="text-slate-900">₹{fmt(selectedDayItem.result.dTot)} ({selectedDayItem.result.dHC} HC)</strong>
-                            </div>
-                            <div className="flex justify-between text-slate-600">
-                              <span>Indirect Labour:</span>
-                              <strong className="text-slate-900">₹{fmt(selectedDayItem.result.iTot)} ({selectedDayItem.result.iHC} HC)</strong>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900 font-medium">
-                          {selectedDayItem.files?.length || 1} file(s) loaded for this date.
-                        </div>
-                      )}
-
-                      {/* Day Action Buttons */}
-                      <div className="pt-1 flex gap-2">
-                        {selectedDayItem.result && (
-                          <button
-                            onClick={() => handleDownloadDay(selectedDayItem)}
-                            disabled={downloading === selectedDayItem.dateKey}
-                            className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center justify-center space-x-1.5 cursor-pointer"
-                          >
-                            {downloading === selectedDayItem.dateKey ? (
-                              <RefreshCw className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <FileSpreadsheet className="w-3.5 h-3.5" />
-                            )}
-                            <span>Download Day Excel</span>
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => {
-                            if (confirm(`Delete attendance data for ${formatDateDisplay(selectedDayItem.dateObj)}?`)) {
-                              onDeleteDate && onDeleteDate(selectedDayItem.dateKey || selectedDayItem.dateObj);
-                            }
-                          }}
-                          className="px-2.5 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition cursor-pointer flex items-center justify-center"
-                          title="Delete this date"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <div className="p-6 rounded-xl bg-white border border-dashed border-slate-200 text-center space-y-1">
-                      <Calendar className="w-6 h-6 text-slate-300 mx-auto" />
-                      <div className="text-xs font-black text-slate-700">Select date from calendar</div>
-                      <p className="text-[11px] text-slate-400">
-                        Click on any highlighted day to inspect stats.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Month Export Quick Bar */}
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-black text-slate-800 uppercase tracking-wider text-[10px]">
-                        {MONTH_NAMES[calMonth]} {calYear} Total
-                      </span>
-                      <span className="font-mono font-bold text-slate-700">
-                        ₹{fmt(monthTotCost)}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={handleDownloadMonthly}
-                        disabled={downloading === 'monthly' || currentMonthResults.length === 0}
-                        className="py-2 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center justify-center space-x-1 cursor-pointer disabled:opacity-50"
-                      >
-                        <FileDown className="w-3 h-3" />
-                        <span>Master Excel</span>
-                      </button>
-
-                      <button
-                        onClick={handleDownloadZip}
-                        disabled={downloading === 'zip' || currentMonthResults.length === 0}
-                        className="py-2 px-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 rounded-lg text-xs font-bold shadow-2xs transition flex items-center justify-center space-x-1 cursor-pointer disabled:opacity-50"
-                      >
-                        <Package className="w-3 h-3 text-slate-500" />
-                        <span>Daily ZIP</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* ── LIST VIEW MODE ──────────────────────── */
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-700">
-                    All Stored Records ({allStoredDates.length} Dates Total)
-                  </span>
+            {/* Year Navigation Bar */}
+            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                  Select Year:
+                </span>
+                <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-lg p-0.5">
                   <button
-                    onClick={handleDownloadJson}
-                    className="text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center space-x-1"
+                    onClick={handlePrevYear}
+                    className="p-1 text-slate-600 hover:text-slate-950 hover:bg-slate-200 rounded transition cursor-pointer"
+                    title="Previous Year"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Backup Vault (JSON)</span>
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+
+                  <input
+                    type="number"
+                    value={calYear}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val)) setCalYear(val);
+                    }}
+                    className="w-14 text-xs font-black text-slate-900 bg-transparent text-center focus:outline-none"
+                    min="1900"
+                    max="2100"
+                  />
+
+                  <button
+                    onClick={handleNextYear}
+                    className="p-1 text-slate-600 hover:text-slate-950 hover:bg-slate-200 rounded transition cursor-pointer"
+                    title="Next Year"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {allStoredDates.map(item => {
-                    const r = item.result;
-                    return (
-                      <div
-                        key={item.isoKey}
-                        className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-amber-300 transition flex items-center justify-between gap-3 shadow-2xs"
-                      >
-                        <div>
-                          <div className="text-xs font-black text-slate-900">
-                            {formatDateDisplay(item.dateObj)}
-                          </div>
-                          <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                            {r ? (
-                              <>HC: <strong>{r.gHC}</strong> &bull; Total: <strong className="text-emerald-700 font-mono">₹{fmt(r.gTot)}</strong></>
-                            ) : (
-                              <span className="text-amber-700 font-bold">Pending Reconcile</span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-1.5">
-                          {r && (
-                            <button
-                              onClick={() => handleDownloadDay(item)}
-                              className="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-xs flex items-center space-x-1"
-                            >
-                              <Download className="w-3 h-3" />
-                              <span>Excel</span>
-                            </button>
-                          )}
-                          <button
-                            onClick={() => {
-                              if (confirm(`Delete attendance data for ${formatDateDisplay(item.dateObj)}?`)) {
-                                onDeleteDate && onDeleteDate(item.dateKey || item.dateObj);
-                              }
-                            }}
-                            className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
-            )}
 
-            {/* Active Master Roster Info Footer */}
-            <div className="p-4 rounded-2xl bg-white border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <div className="flex items-center space-x-2">
-                <FileSpreadsheet className="w-4 h-4 text-blue-600" />
-                <span className="font-black text-slate-900">Active Rate Master:</span>
-                <span className="text-slate-600 font-medium">{masterMeta?.fileName || 'Loaded'}</span>
-                {masterMeta && (
-                  <span className="text-slate-400 font-mono">({masterMeta.operatorCount + masterMeta.contractCount + masterMeta.napsCount} employees)</span>
+              {/* Quick Year Pill */}
+              <div className="flex gap-1">
+                {[2025, 2026, 2027].map(y => (
+                  <button
+                    key={y}
+                    onClick={() => setCalYear(y)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
+                      calYear === y
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {y}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 12 Months Grid */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {monthsData.map((m) => {
+                const isSelected = calMonth === m.monthIndex;
+                return (
+                  <button
+                    key={m.monthIndex}
+                    onClick={() => setCalMonth(m.monthIndex)}
+                    className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer relative ${
+                      isSelected
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                        : m.hasData
+                        ? 'bg-white border-blue-200 hover:border-blue-400 text-slate-900 shadow-2xs'
+                        : 'bg-white/60 border-slate-200 hover:bg-white text-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-black ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                        {m.shortName}
+                      </span>
+                      {m.hasData && (
+                        <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-amber-300' : 'bg-emerald-500'}`} />
+                      )}
+                    </div>
+
+                    <div className="mt-1.5">
+                      {m.hasData ? (
+                        <span className={`text-[10px] font-bold ${isSelected ? 'text-blue-100' : 'text-emerald-700 font-mono'}`}>
+                          {m.datesCount} date{m.datesCount > 1 ? 's' : ''}
+                        </span>
+                      ) : (
+                        <span className={`text-[10px] ${isSelected ? 'text-blue-200' : 'text-slate-300'}`}>
+                          —
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ── Selected Month Summary Card ── */}
+            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                    Selected Month
+                  </span>
+                  <h3 className="text-base font-black text-slate-900 mt-1">
+                    {selectedMonthData.name} {calYear}
+                  </h3>
+                </div>
+
+                {selectedMonthData.hasData ? (
+                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold">
+                    ● {selectedMonthData.datesCount} Dates Active
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[10px] font-medium">
+                    No records stored
+                  </span>
                 )}
               </div>
 
-              {onRerunReconciliation && (
-                <button
-                  onClick={() => {
-                    onRerunReconciliation();
-                    onClose();
-                  }}
-                  className="px-4 py-1.5 rounded-xl bg-blue-600 text-white font-black hover:bg-blue-700 transition cursor-pointer flex items-center space-x-1.5 shadow-xs"
-                >
-                  <Play className="w-3.5 h-3.5" />
-                  <span>Re-Open Reconciliation Matrix</span>
-                </button>
+              {selectedMonthData.hasData ? (
+                <>
+                  {/* Month Metrics */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                      <div className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                        Total Headcount
+                      </div>
+                      <div className="text-lg font-black text-blue-950 mt-0.5">
+                        {fmtN(selectedMonthData.totalHC)} HC
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-100">
+                      <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                        Total CTC Wages
+                      </div>
+                      <div className="text-lg font-black text-emerald-950 mt-0.5 font-mono">
+                        ₹{fmt(selectedMonthData.totalCost)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Monthly Download Action Buttons */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      onClick={handleDownloadMonthly}
+                      disabled={downloading === 'monthly'}
+                      className="py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-xs transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {downloading === 'monthly' ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <FileDown className="w-3.5 h-3.5" />
+                      )}
+                      <span>Download Master Excel</span>
+                    </button>
+
+                    <button
+                      onClick={handleDownloadZip}
+                      disabled={downloading === 'zip'}
+                      className="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 rounded-xl text-xs font-black shadow-2xs transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {downloading === 'zip' ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                      ) : (
+                        <Package className="w-3.5 h-3.5 text-slate-500" />
+                      )}
+                      <span>Daily ZIP Archive</span>
+                    </button>
+                  </div>
+
+                  {/* List of Dates in this month */}
+                  <div className="pt-2 border-t border-slate-100 space-y-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 block">
+                      Attendance Dates ({selectedMonthData.datesCount})
+                    </span>
+
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {selectedMonthData.dates.map(item => (
+                        <div
+                          key={item.isoKey}
+                          className="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-xs"
+                        >
+                          <div>
+                            <span className="font-black text-slate-900">
+                              {formatDateDisplay(item.dateObj)}
+                            </span>
+                            {item.result && (
+                              <span className="text-slate-500 text-[11px] ml-2">
+                                HC: <strong className="text-slate-800">{fmtN(item.result.gHC)}</strong> &bull; Total: <strong className="text-emerald-700 font-mono">₹{fmt(item.result.gTot)}</strong>
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center space-x-1">
+                            {item.result && (
+                              <button
+                                onClick={() => handleDownloadDay(item)}
+                                disabled={downloading === item.isoKey}
+                                className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[11px] font-bold shadow-2xs transition cursor-pointer flex items-center space-x-1"
+                                title="Download single day Excel"
+                              >
+                                {downloading === item.isoKey ? (
+                                  <RefreshCw className="w-3 h-3 animate-spin text-blue-600" />
+                                ) : (
+                                  <FileSpreadsheet className="w-3 h-3 text-blue-600" />
+                                )}
+                                <span>Excel</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => {
+                                if (confirm(`Delete attendance data for ${formatDateDisplay(item.dateObj)}?`)) {
+                                  onDeleteDate && onDeleteDate(item.dateKey || item.dateObj);
+                                }
+                              }}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
+                              title="Delete this date"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="py-6 text-center text-xs text-slate-400 font-medium">
+                  No attendance files uploaded for {selectedMonthData.name} {calYear}.
+                </div>
               )}
             </div>
-
           </div>
 
           {/* ── Modal Footer ───────────────────────────── */}
-          <div className="p-4 px-6 bg-slate-100 border-t border-slate-200 flex items-center justify-between">
+          <div className="p-3.5 px-5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
             <button
               onClick={() => {
                 if (confirm('Are you sure you want to RESET all stored plant files and start fresh? This cannot be undone.')) {
@@ -727,12 +544,12 @@ export function FileManagerModal({
               className="text-xs font-bold text-rose-600 hover:text-rose-800 flex items-center space-x-1.5 cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Reset All Stored Data</span>
+              <span>Reset All Data</span>
             </button>
 
             <button
               onClick={onClose}
-              className="px-6 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+              className="px-5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
             >
               Close
             </button>
