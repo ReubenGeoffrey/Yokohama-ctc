@@ -533,20 +533,7 @@ export function FileManagerModal({
           </div>
 
           {/* ── Modal Footer ───────────────────────────── */}
-          <div className="p-3.5 px-5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-            <button
-              onClick={() => {
-                if (confirm('Are you sure you want to RESET all stored plant files and start fresh? This cannot be undone.')) {
-                  onClearStorage && onClearStorage();
-                  onClose();
-                }
-              }}
-              className="text-xs font-bold text-rose-600 hover:text-rose-800 flex items-center space-x-1.5 cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Reset All Data</span>
-            </button>
-
+          <div className="p-3.5 px-5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
             <button
               onClick={onClose}
               className="px-5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
