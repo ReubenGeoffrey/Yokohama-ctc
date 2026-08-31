@@ -542,7 +542,7 @@ export function DashboardOverview({
           <button
             onClick={onOpenVault}
             className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-700 hover:border-slate-300 shadow-2xs flex items-center space-x-2 cursor-pointer"
-            title="Click to choose date range or view Google Calendar"
+            title="Click to choose month or view Attendance Vault"
           >
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
             <span>{dateRangeText}</span>

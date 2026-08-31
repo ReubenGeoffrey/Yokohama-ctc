@@ -333,8 +333,19 @@ export function FileManagerModal({
                 </div>
               </div>
 
-              {/* Quick Year Pill */}
-              <div className="flex gap-1">
+              {/* Quick Year Pill & Today Button */}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    const now = new Date();
+                    setCalYear(now.getFullYear());
+                    setCalMonth(now.getMonth());
+                  }}
+                  className="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition cursor-pointer shadow-2xs"
+                  title="Jump to current Month & Year"
+                >
+                  Today
+                </button>
                 {[2025, 2026, 2027].map(y => (
                   <button
                     key={y}

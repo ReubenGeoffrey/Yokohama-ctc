@@ -34,6 +34,15 @@ export function App() {
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' | 'master' | 'attendance' | 'reconciliation' | 'export'
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Today's Date automatically updating daily (e.g. 31-Aug-2026)
+  const todayDateStr = useMemo(() => {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = today.toLocaleString('en-US', { month: 'short' });
+    const year = today.getFullYear();
+    return `${day}-${month}-${year}`;
+  }, []);
+
   const [master, setMaster] = useState(null);
   const [masterMeta, setMasterMeta] = useState(null);
   const [batchDates, setBatchDates] = useState({});
@@ -321,13 +330,15 @@ export function App() {
           </div>
 
           <div className="flex items-center space-x-2.5">
-            {/* Stored Vault Quick Button */}
+            {/* Today's Date / Vault Quick Button (Automatically changes daily) */}
             <button
               onClick={handleOpenStoredFiles}
-              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer shadow-2xs"
+              className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer shadow-2xs"
+              title="Today's Date • Click to open Attendance Vault"
             >
-              <Calendar className="w-3.5 h-3.5 text-amber-700" />
-              <span className="hidden sm:inline">Google Calendar Vault</span>
+              <Calendar className="w-3.5 h-3.5 text-blue-600" />
+              <span className="text-slate-500 font-medium hidden sm:inline">Today:</span>
+              <span className="font-black text-slate-900">{todayDateStr}</span>
             </button>
 
             {/* Cloud Sync Indicator */}
