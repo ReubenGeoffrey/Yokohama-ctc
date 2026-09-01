@@ -358,7 +358,7 @@ export function App() {
         empStats: newStats
       });
 
-      alert(`✅ Workspace imported successfully!\nLoaded ${Object.keys(newBatchDates).length} attendance dates and reconciled cost summaries.`);
+      alert('Workspace imported successfully.');
     } catch (err) {
       console.error('Import error:', err);
       alert('Error importing workspace file: ' + err.message);
@@ -376,10 +376,9 @@ export function App() {
     });
 
     if (saveRes && saveRes.success) {
-      alert('✅ Cloud Sync Successful!\nAll rosters, rates, and attendance records are uploaded to Supabase and ready on Sir\'s Laptop & Mobile.');
+      alert('Cloud Sync Successful');
     } else {
-      const errMsg = saveRes?.error || 'Bucket not found';
-      alert(`⚠️ Supabase Cloud Storage Status:\n\n${errMsg}\n\nTo enable automatic sync across laptops and mobile:\n1. Open Supabase: https://supabase.com/dashboard/project/xtpxoccsfxcethstsxns/storage/buckets\n2. Click "New bucket" -> Enter Name: atc-attendance-storage -> Toggle "Public bucket" to ON -> Save.\n\nTip: In the Attendance Vault, you can also use "Export Workspace Backup" to transfer data immediately!`);
+      alert('Cloud Sync: ' + (saveRes?.error || 'Unable to sync to cloud'));
     }
     setIsSyncing(false);
   };

@@ -63,7 +63,7 @@ export function Header({
               onClick={onRefreshCloudSync}
               disabled={isSyncing}
               className="nav-btn-ghost cursor-pointer"
-              title="Sync latest from Sir's laptop"
+              title="Sync Cloud Data"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{isSyncing ? 'Syncing…' : 'Refresh'}</span>

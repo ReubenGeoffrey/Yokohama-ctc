@@ -259,7 +259,7 @@ export function Sidebar({
           <div className="mt-2 pt-2 border-t border-slate-200/50 flex items-center justify-between text-[10px] text-slate-400 font-medium px-1">
             <span className="flex items-center space-x-1">
               <Cloud className={`w-3 h-3 ${isSyncing ? 'text-blue-500 animate-spin' : 'text-emerald-500'}`} />
-              <span>{isSyncing ? 'Syncing...' : 'Multi-Laptop Cloud Sync'}</span>
+              <span>{isSyncing ? 'Syncing...' : 'Cloud Sync Active'}</span>
             </span>
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
           </div>
