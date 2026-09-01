@@ -126,6 +126,12 @@ export function styleSummarySheet(wsSummary, year, month) {
   }
 }
 
+function getStatFromCat(catMap, code) {
+  if (!catMap) return null;
+  if (typeof catMap.get === 'function') return catMap.get(code);
+  return catMap[code] || null;
+}
+
 // Build Detail Sheet (Columns A to J, NO Gap, NO Merging, Total OT Amount next to Total OT Hrs)
 export function buildDetailSheet(wb, title, employeeMap, statMap) {
   const ws = wb.addWorksheet(title);
@@ -157,7 +163,7 @@ export function buildDetailSheet(wb, title, employeeMap, statMap) {
   let r = 2, sno = 1;
   Object.keys(employeeMap).forEach(code => {
     const info = employeeMap[code];
-    const st = statMap && statMap.get(code) ? statMap.get(code) : { daysPresent: 0, wopCount: 0, workHrs: 0, otHrs: 0, otAmount: 0, wages: 0 };
+    const st = getStatFromCat(statMap, code) || { daysPresent: 0, wopCount: 0, workHrs: 0, otHrs: 0, otAmount: 0, wages: 0 };
     const otAmt = st.otAmount !== undefined ? st.otAmount : Math.round((st.otHrs || 0) * (info.dailyOT || 0) * 100) / 100;
 
     ws.getCell(r, 1).value = sno;
@@ -255,13 +261,14 @@ export function getProjectEmployees(master) {
 export function getProjectStats(projectEmployees, empStats) {
   const projectStats = new Map();
   Object.keys(projectEmployees).forEach(code => {
-    const st = empStats?.CL?.get(code) ||
-               empStats?.OP?.get(code) ||
-               empStats?.NAPS?.get(code) || {
+    const st = getStatFromCat(empStats?.CL, code) ||
+               getStatFromCat(empStats?.OP, code) ||
+               getStatFromCat(empStats?.NAPS, code) || {
                  workHrs: 0,
                  daysPresent: 0,
                  wopCount: 0,
                  otHrs: 0,
+                 otAmount: 0,
                  wages: 0
                };
     projectStats.set(code, st);

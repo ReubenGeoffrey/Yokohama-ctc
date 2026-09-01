@@ -31,6 +31,14 @@ import {
 } from 'lucide-react';
 import { formatDateDisplay } from '../services/parser';
 
+function getEmpStat(statMap, code) {
+  if (!statMap) return { daysPresent: 0, wopCount: 0, wages: 0 };
+  if (typeof statMap.get === 'function') {
+    return statMap.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
+  }
+  return statMap[code] || { daysPresent: 0, wopCount: 0, wages: 0 };
+}
+
 // ── Pure-SVG Smooth Wave / Area Chart (Left Card) ────────────────
 function SmoothWaveChart({ data, width = 360, height = 170 }) {
   if (!data || data.length === 0) {
@@ -456,7 +464,7 @@ export function DashboardOverview({
     if (master.operator) {
       Object.keys(master.operator).forEach(code => {
         const item = master.operator[code];
-        const stats = empStats?.OP?.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
+        const stats = getEmpStat(empStats?.OP, code);
         rows.push({
           code,
           name: item.name || 'Operator',
@@ -475,7 +483,7 @@ export function DashboardOverview({
     if (master.contract) {
       Object.keys(master.contract).forEach(code => {
         const item = master.contract[code];
-        const stats = empStats?.CL?.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
+        const stats = getEmpStat(empStats?.CL, code);
         rows.push({
           code,
           name: item.name || 'Contract Labour',
@@ -494,7 +502,7 @@ export function DashboardOverview({
     if (master.naps) {
       Object.keys(master.naps).forEach(code => {
         const item = master.naps[code];
-        const stats = empStats?.NAPS?.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
+        const stats = getEmpStat(empStats?.NAPS, code);
         rows.push({
           code,
           name: item.name || 'NAPS Apprentice',
@@ -534,7 +542,7 @@ export function DashboardOverview({
       if (master.operator) {
         Object.keys(master.operator).forEach(code => {
           const item = master.operator[code];
-          const st = empStats?.OP?.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
+          const st = getEmpStat(empStats?.OP, code);
           const wops = st.wopCount || 0;
           const dailyRate = item.dailyCTC || item.ctc || 0;
           const wopPay = wops * dailyRate;
@@ -561,7 +569,7 @@ export function DashboardOverview({
       if (master.contract) {
         Object.keys(master.contract).forEach(code => {
           const item = master.contract[code];
-          const st = empStats?.CL?.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
+          const st = getEmpStat(empStats?.CL, code);
           const wops = st.wopCount || 0;
           const dailyRate = item.dailyCTC || item.ctc || 0;
           const wopPay = wops * dailyRate;
@@ -588,7 +596,7 @@ export function DashboardOverview({
       if (master.naps) {
         Object.keys(master.naps).forEach(code => {
           const item = master.naps[code];
-          const st = empStats?.NAPS?.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
+          const st = getEmpStat(empStats?.NAPS, code);
           const wops = st.wopCount || 0;
           const dailyRate = item.dailyCTC || item.ctc || 0;
           const wopPay = wops * dailyRate;

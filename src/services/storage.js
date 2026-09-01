@@ -73,8 +73,25 @@ export const StorageService = {
   // Load Batch Results
   async loadBatchResults() {
     try {
-      return (await get(STORAGE_KEYS.BATCH_RESULTS)) || null;
+      const data = await get(STORAGE_KEYS.BATCH_RESULTS);
+      if (!data) return null;
+      if (data.empStats) {
+        ['OP', 'CL', 'NAPS'].forEach(cat => {
+          if (data.empStats[cat] && !(data.empStats[cat] instanceof Map)) {
+            data.empStats[cat] = new Map(Object.entries(data.empStats[cat]));
+          }
+        });
+      }
+      if (Array.isArray(data.results)) {
+        data.results.forEach(r => {
+          if (r.empDayMap && !(r.empDayMap instanceof Map)) {
+            r.empDayMap = new Map(Object.entries(r.empDayMap));
+          }
+        });
+      }
+      return data;
     } catch (e) {
+      console.warn('IndexedDB loadBatchResults error:', e);
       return null;
     }
   },

@@ -26,6 +26,7 @@ import {
   generateZipBundle,
   downloadBlob
 } from '../services/excelEngine';
+import { reconcileDay } from '../services/reconciliation';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -39,8 +40,34 @@ const MONTH_SHORT = [
 
 function safeParseDate(val) {
   if (!val) return null;
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    return new Date(Date.UTC(val.getUTCFullYear(), val.getUTCMonth(), val.getUTCDate()));
+  }
+  const str = String(val).trim();
+  // YYYY-MM-DD
+  const mIso = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (mIso) {
+    return new Date(Date.UTC(parseInt(mIso[1], 10), parseInt(mIso[2], 10) - 1, parseInt(mIso[3], 10)));
+  }
+  // DD-Mon-YYYY (e.g. 01-Aug-2026)
+  const mMon = str.match(/^(\d{1,2})[-/ ]([A-Za-z]{3,9})[-/ ](\d{4})/);
+  if (mMon) {
+    const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const mIdx = months.indexOf(mMon[2].toLowerCase().substring(0, 3));
+    if (mIdx !== -1) {
+      return new Date(Date.UTC(parseInt(mMon[3], 10), mIdx, parseInt(mMon[1], 10)));
+    }
+  }
+  // DD-MM-YYYY or DD/MM/YYYY
+  const mDmy = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+  if (mDmy) {
+    return new Date(Date.UTC(parseInt(mDmy[3], 10), parseInt(mDmy[2], 10) - 1, parseInt(mDmy[1], 10)));
+  }
   const d = new Date(val);
-  return isNaN(d.getTime()) ? null : d;
+  if (!isNaN(d.getTime())) {
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  }
+  return null;
 }
 
 export function FileManagerModal({
@@ -75,6 +102,14 @@ export function FileManagerModal({
         const m = d.getUTCMonth();
         const day = d.getUTCDate();
         const isoKey = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+        let res = null;
+        if (master && (item.CL || item.OP || item.NAPS)) {
+          try {
+            res = reconcileDay(d, item, master);
+          } catch (e) {}
+        }
+
         map[isoKey] = {
           dateKey: dKey,
           dateObj: d,
@@ -86,7 +121,7 @@ export function FileManagerModal({
           CL: item.CL || null,
           OP: item.OP || null,
           NAPS: item.NAPS || null,
-          result: null
+          result: res
         };
       }
     });
@@ -120,19 +155,20 @@ export function FileManagerModal({
     });
 
     return map;
-  }, [safeBatchDates, safeBatchResults]);
+  }, [safeBatchDates, safeBatchResults, master]);
 
   const allStoredDates = useMemo(() => {
     return Object.values(allStoredDatesMap).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
   }, [allStoredDatesMap]);
 
-  // Set default calYear and calMonth based on available data
+  // Set default calYear and calMonth to the latest month that has stored data
   useEffect(() => {
     if (allStoredDates.length > 0) {
-      setCalYear(allStoredDates[0].year);
-      setCalMonth(allStoredDates[0].month);
+      const latest = allStoredDates[allStoredDates.length - 1];
+      setCalYear(latest.year);
+      setCalMonth(latest.month);
     }
-  }, [allStoredDates]);
+  }, [allStoredDates.length]);
 
   // Year navigation
   const handlePrevYear = () => setCalYear(prev => prev - 1);

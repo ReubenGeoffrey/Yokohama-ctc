@@ -11,6 +11,7 @@ import { StorageService } from './services/storage';
 import { SupabaseService, getSupabaseClient } from './services/supabase';
 import { AuthService } from './services/auth';
 import { generateMonthlyWorkbook, downloadBlob } from './services/excelEngine';
+import { reconcileDay, aggregateMonthlyStats } from './services/reconciliation';
 import { YokohamaLogo } from './components/YokohamaLogo';
 import {
   Menu,
@@ -71,16 +72,44 @@ export function App() {
       // 1. Try fetching shared state from Supabase Cloud
       const cloudState = await SupabaseService.loadCloudSharedState();
       if (cloudState && cloudState.master) {
+        const safeEmpStats = {
+          OP: cloudState.empStats?.OP instanceof Map ? cloudState.empStats.OP : new Map(Object.entries(cloudState.empStats?.OP || {})),
+          CL: cloudState.empStats?.CL instanceof Map ? cloudState.empStats.CL : new Map(Object.entries(cloudState.empStats?.CL || {})),
+          NAPS: cloudState.empStats?.NAPS instanceof Map ? cloudState.empStats.NAPS : new Map(Object.entries(cloudState.empStats?.NAPS || {}))
+        };
+
+        let finalResults = (cloudState.batchResults || []).map(r => {
+          if (r.empDayMap && !(r.empDayMap instanceof Map)) {
+            return { ...r, empDayMap: new Map(Object.entries(r.empDayMap)) };
+          }
+          return r;
+        });
+
+        let finalStats = safeEmpStats;
+        const bKeys = Object.keys(cloudState.batchDates || {});
+        // If batchDates exist but calculations are empty or lost during JSON sync, auto re-reconcile!
+        if (bKeys.length > 0 && (finalResults.length === 0 || (finalStats.CL.size === 0 && finalStats.OP.size === 0))) {
+          finalResults = [];
+          bKeys.sort().forEach(dKey => {
+            const dObj = cloudState.batchDates[dKey];
+            if (dObj) {
+              const res = reconcileDay(dObj.date, dObj, cloudState.master);
+              finalResults.push(res);
+            }
+          });
+          finalStats = aggregateMonthlyStats(finalResults, cloudState.master);
+        }
+
         setMaster(cloudState.master);
         setMasterMeta(cloudState.masterMeta);
         setBatchDates(cloudState.batchDates || {});
-        setBatchResults(cloudState.batchResults || []);
-        setEmpStats(cloudState.empStats || null);
+        setBatchResults(finalResults);
+        setEmpStats(finalStats);
 
         // Also cache locally to IndexedDB
         await StorageService.saveMaster(cloudState.master, cloudState.masterMeta?.fileName || 'Master');
         if (cloudState.batchDates) await StorageService.saveAttendanceFiles(cloudState.batchDates);
-        if (cloudState.batchResults) await StorageService.saveBatchResults({ results: cloudState.batchResults, empStats: cloudState.empStats });
+        await StorageService.saveBatchResults({ results: finalResults, empStats: finalStats });
 
         setIsSyncing(false);
         return;
@@ -106,6 +135,20 @@ export function App() {
       if (savedBatch && savedBatch.results && savedBatch.results.length > 0) {
         setBatchResults(savedBatch.results);
         setEmpStats(savedBatch.empStats);
+      } else if (savedMaster && savedAttendance && Object.keys(savedAttendance).length > 0) {
+        // Auto re-reconcile if batchResults was empty in IndexedDB
+        const autoResults = [];
+        Object.keys(savedAttendance).sort().forEach(dKey => {
+          const dObj = savedAttendance[dKey];
+          if (dObj) {
+            const res = reconcileDay(dObj.date, dObj, savedMaster);
+            autoResults.push(res);
+          }
+        });
+        const autoStats = aggregateMonthlyStats(autoResults, savedMaster);
+        setBatchResults(autoResults);
+        setEmpStats(autoStats);
+        await StorageService.saveBatchResults({ results: autoResults, empStats: autoStats });
       }
     } catch (err) {
       console.warn('Could not restore from IndexedDB:', err);
@@ -246,11 +289,7 @@ export function App() {
   };
 
   const handleOpenStoredFiles = () => {
-    if (!currentUser) {
-      setIsAuthModalOpen(true);
-    } else {
-      setIsFileManagerOpen(true);
-    }
+    setIsFileManagerOpen(true);
   };
 
   const handleLoginSuccess = (user) => {
