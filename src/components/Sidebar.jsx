@@ -12,7 +12,8 @@ import {
   ChevronRight,
   ShieldCheck,
   Menu,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
 import { YokohamaLogo } from './YokohamaLogo';
 
@@ -34,6 +35,13 @@ export function Sidebar({
       id: 'dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard,
+      badge: null
+    },
+    {
+      id: 'wop',
+      label: 'WOP Statistics',
+      subtitle: 'Operator, CL & NAPS',
+      icon: Sparkles,
       badge: null
     }
   ];

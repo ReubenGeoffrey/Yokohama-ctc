@@ -32,6 +32,7 @@ const MONTH_NAMES = [
 
 export function App() {
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' | 'master' | 'attendance' | 'reconciliation' | 'export'
+  const [dashboardTab, setDashboardTab] = useState('overview'); // 'overview' | 'wop'
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Today's Date automatically updating daily (e.g. 31-Aug-2026)
@@ -288,8 +289,16 @@ export function App() {
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans antialiased flex">
       {/* ── Left Sidebar Navigation (Reference UI) ── */}
       <Sidebar
-        activeView={activeView}
-        onSelectView={(v) => setActiveView(v)}
+        activeView={dashboardTab === 'wop' && activeView === 'dashboard' ? 'wop' : activeView}
+        onSelectView={(v) => {
+          if (v === 'wop') {
+            setActiveView('dashboard');
+            setDashboardTab('wop');
+          } else {
+            if (v === 'dashboard') setDashboardTab('overview');
+            setActiveView(v);
+          }
+        }}
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
         currentUser={currentUser}
@@ -392,6 +401,8 @@ export function App() {
                   onOpenVault={handleOpenStoredFiles}
                   onExportMonthly={handleExportMonthlyConsolidated}
                   onNavigateToModule={(v) => setActiveView(v)}
+                  initialTab={dashboardTab}
+                  onTabChange={setDashboardTab}
                 />
               </motion.div>
             )}

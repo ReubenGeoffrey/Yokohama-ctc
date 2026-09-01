@@ -16,7 +16,15 @@ import {
   TrendingUp,
   PieChart as PieIcon,
   BarChart2,
-  ArrowUpRight
+  ArrowUpRight,
+  LayoutDashboard,
+  HardHat,
+  GraduationCap,
+  Clock,
+  Coins,
+  Briefcase,
+  UserCheck,
+  Zap
 } from 'lucide-react';
 import { formatDateDisplay } from '../services/parser';
 
@@ -350,11 +358,25 @@ export function DashboardOverview({
   empStats,
   onOpenVault,
   onExportMonthly,
-  onNavigateToModule
+  onNavigateToModule,
+  initialTab = 'overview',
+  onTabChange
 }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 12;
+
+  // WOP Tab Filtering & Pagination
+  const [wopCategoryFilter, setWopCategoryFilter] = useState('ALL'); // 'ALL' | 'OP' | 'CL' | 'NAPS'
+  const [wopSearchQuery, setWopSearchQuery] = useState('');
+  const [wopCurrentPage, setWopCurrentPage] = useState(1);
+  const wopPageSize = 10;
+
+  const handleTabSwitch = (tab) => {
+    setActiveTab(tab);
+    if (onTabChange) onTabChange(tab);
+  };
 
   // Format currency & numbers
   const fmt = (n) => (Math.round(n) || 0).toLocaleString('en-IN');
@@ -431,7 +453,7 @@ export function DashboardOverview({
     if (master.operator) {
       Object.keys(master.operator).forEach(code => {
         const item = master.operator[code];
-        const stats = empStats?.OP?.get(code) || { daysPresent: 0, wages: 0 };
+        const stats = empStats?.OP?.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
         rows.push({
           code,
           name: item.name || 'Operator',
@@ -439,6 +461,7 @@ export function DashboardOverview({
           categoryColor: 'bg-sky-50 text-sky-700 border-sky-200',
           dept: item.dept || item.department || 'Production',
           days: stats.daysPresent,
+          wopCount: stats.wopCount || 0,
           wages: stats.wages || (item.ctc ? item.ctc * (stats.daysPresent || 1) : 0),
           status: 'Active'
         });
@@ -449,7 +472,7 @@ export function DashboardOverview({
     if (master.contract) {
       Object.keys(master.contract).forEach(code => {
         const item = master.contract[code];
-        const stats = empStats?.CL?.get(code) || { daysPresent: 0, wages: 0 };
+        const stats = empStats?.CL?.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
         rows.push({
           code,
           name: item.name || 'Contract Labour',
@@ -457,6 +480,7 @@ export function DashboardOverview({
           categoryColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
           dept: item.dept || item.contractor || 'Contract',
           days: stats.daysPresent,
+          wopCount: stats.wopCount || 0,
           wages: stats.wages || 0,
           status: 'Active'
         });
@@ -467,7 +491,7 @@ export function DashboardOverview({
     if (master.naps) {
       Object.keys(master.naps).forEach(code => {
         const item = master.naps[code];
-        const stats = empStats?.NAPS?.get(code) || { daysPresent: 0, wages: 0 };
+        const stats = empStats?.NAPS?.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
         rows.push({
           code,
           name: item.name || 'NAPS Apprentice',
@@ -475,6 +499,7 @@ export function DashboardOverview({
           categoryColor: 'bg-amber-50 text-amber-700 border-amber-200',
           dept: item.dept || 'Trainee',
           days: stats.daysPresent,
+          wopCount: stats.wopCount || 0,
           wages: stats.wages || 0,
           status: 'Active'
         });
@@ -484,7 +509,123 @@ export function DashboardOverview({
     return rows;
   }, [master, empStats]);
 
-  // Filtered employees
+  // Detailed WOP Statistics for Operator, CL, and NAPS
+  const wopMetrics = useMemo(() => {
+    let opWopCount = 0;
+    let opWopEmployees = 0;
+    let opWopWages = 0;
+
+    let clWopCount = 0;
+    let clWopEmployees = 0;
+    let clWopWages = 0;
+
+    let napsWopCount = 0;
+    let napsWopEmployees = 0;
+    let napsWopWages = 0;
+
+    const opList = [];
+    const clList = [];
+    const napsList = [];
+
+    if (master) {
+      if (master.operator) {
+        Object.keys(master.operator).forEach(code => {
+          const item = master.operator[code];
+          const st = empStats?.OP?.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
+          const wops = st.wopCount || 0;
+          const dailyRate = item.dailyCTC || item.ctc || 0;
+          const wopPay = wops * dailyRate;
+          if (wops > 0) {
+            opWopCount += wops;
+            opWopEmployees += 1;
+            opWopWages += wopPay;
+            opList.push({
+              code,
+              name: item.name || 'Operator',
+              category: 'OPERATOR',
+              categoryColor: 'bg-sky-50 text-sky-700 border-sky-200',
+              dept: item.dept || item.department || 'Production',
+              days: st.daysPresent,
+              wopCount: wops,
+              wopWages: wopPay,
+              totalWages: st.wages,
+              status: 'Active'
+            });
+          }
+        });
+      }
+
+      if (master.contract) {
+        Object.keys(master.contract).forEach(code => {
+          const item = master.contract[code];
+          const st = empStats?.CL?.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
+          const wops = st.wopCount || 0;
+          const dailyRate = item.dailyCTC || item.ctc || 0;
+          const wopPay = wops * dailyRate;
+          if (wops > 0) {
+            clWopCount += wops;
+            clWopEmployees += 1;
+            clWopWages += wopPay;
+            clList.push({
+              code,
+              name: item.name || 'Contract Labour',
+              category: 'CL',
+              categoryColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+              dept: item.dept || item.contractor || 'Contract',
+              days: st.daysPresent,
+              wopCount: wops,
+              wopWages: wopPay,
+              totalWages: st.wages,
+              status: 'Active'
+            });
+          }
+        });
+      }
+
+      if (master.naps) {
+        Object.keys(master.naps).forEach(code => {
+          const item = master.naps[code];
+          const st = empStats?.NAPS?.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
+          const wops = st.wopCount || 0;
+          const dailyRate = item.dailyCTC || item.ctc || 0;
+          const wopPay = wops * dailyRate;
+          if (wops > 0) {
+            napsWopCount += wops;
+            napsWopEmployees += 1;
+            napsWopWages += wopPay;
+            napsList.push({
+              code,
+              name: item.name || 'NAPS Apprentice',
+              category: 'NAPS',
+              categoryColor: 'bg-amber-50 text-amber-700 border-amber-200',
+              dept: item.dept || 'Trainee',
+              days: st.daysPresent,
+              wopCount: wops,
+              wopWages: wopPay,
+              totalWages: st.wages,
+              status: 'Active'
+            });
+          }
+        });
+      }
+    }
+
+    const totalWopCount = opWopCount + clWopCount + napsWopCount;
+    const totalWopEmployees = opWopEmployees + clWopEmployees + napsWopEmployees;
+    const totalWopWages = opWopWages + clWopWages + napsWopWages;
+
+    return {
+      op: { count: opWopCount, employees: opWopEmployees, wages: opWopWages, list: opList },
+      cl: { count: clWopCount, employees: clWopEmployees, wages: clWopWages, list: clList },
+      naps: { count: napsWopCount, employees: napsWopEmployees, wages: napsWopWages, list: napsList },
+      totalCount: totalWopCount,
+      totalEmployees: totalWopEmployees,
+      totalWages: totalWopWages,
+      allList: [...opList, ...clList, ...napsList].sort((a, b) => b.wopCount - a.wopCount)
+    };
+  }, [master, empStats]);
+
+  // Filtered employees (General Overview Table)
   const filteredEmployees = useMemo(() => {
     if (!searchQuery.trim()) return employeeRows;
     const q = searchQuery.toLowerCase();
@@ -496,12 +637,35 @@ export function DashboardOverview({
     );
   }, [employeeRows, searchQuery]);
 
-  // Paginated employees
+  // Paginated employees (General Overview Table)
   const totalPages = Math.ceil(filteredEmployees.length / pageSize) || 1;
   const pagedEmployees = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return filteredEmployees.slice(start, start + pageSize);
   }, [filteredEmployees, currentPage, pageSize]);
+
+  // Filtered employees (WOP Statistics Table)
+  const filteredWopEmployees = useMemo(() => {
+    let list = wopMetrics.allList;
+    if (wopCategoryFilter === 'OP') list = wopMetrics.op.list;
+    else if (wopCategoryFilter === 'CL') list = wopMetrics.cl.list;
+    else if (wopCategoryFilter === 'NAPS') list = wopMetrics.naps.list;
+
+    if (!wopSearchQuery.trim()) return list;
+    const q = wopSearchQuery.toLowerCase();
+    return list.filter(e =>
+      e.code.toLowerCase().includes(q) ||
+      e.name.toLowerCase().includes(q) ||
+      e.dept.toLowerCase().includes(q) ||
+      e.category.toLowerCase().includes(q)
+    );
+  }, [wopMetrics, wopCategoryFilter, wopSearchQuery]);
+
+  const totalWopPages = Math.ceil(filteredWopEmployees.length / wopPageSize) || 1;
+  const pagedWopEmployees = useMemo(() => {
+    const start = (wopCurrentPage - 1) * wopPageSize;
+    return filteredWopEmployees.slice(start, start + wopPageSize);
+  }, [filteredWopEmployees, wopCurrentPage, wopPageSize]);
 
   return (
     <div className="space-y-6 pb-12">
@@ -559,191 +723,655 @@ export function DashboardOverview({
         </div>
       </div>
 
-      {/* ── 3 ANALYTICS CARDS (Exact match to Reference Image) ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Card 1: Daily Attendance Trend (Area / Wave Chart) */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-slate-900">Attendance Headcount Trend</h3>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Daily</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5 font-medium">
-              Daily worker volume across plants
-            </p>
-          </div>
+      {/* ── Executive View Headings / Tabs ── */}
+      <div className="flex items-center space-x-2 border-b border-slate-200/80 pb-3">
+        <button
+          onClick={() => handleTabSwitch('overview')}
+          className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center space-x-2 cursor-pointer ${
+            activeTab === 'overview'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <LayoutDashboard className="w-3.5 h-3.5" />
+          <span>Plant Overview</span>
+        </button>
 
-          <div className="mt-4">
-            <SmoothWaveChart data={waveData} />
-          </div>
-        </div>
-
-        {/* Card 2: Labour Category Breakdown (Donut Chart) */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-slate-900">Labour Category</h3>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Distribution</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5 font-medium">
-              Operators, Contractors &amp; NAPS
-            </p>
-          </div>
-
-          <div className="mt-2">
-            <EnterpriseDonutChart
-              segments={labourSegments}
-              totalLabel="Total HC"
-              totalValue={fmtN(totHC || 2241)}
-            />
-          </div>
-        </div>
-
-        {/* Card 3: Shift Allocation (Bar Chart) */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-slate-900">Shift Allocation</h3>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Shifts</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5 font-medium">
-              Daily headcount deployed by shift
-            </p>
-          </div>
-
-          <div className="mt-2">
-            <PureSVGBarChart bars={shiftBars} />
-          </div>
-        </div>
+        <button
+          onClick={() => handleTabSwitch('wop')}
+          className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center space-x-2 cursor-pointer ${
+            activeTab === 'wop'
+              ? 'bg-amber-500 text-slate-950 shadow-xs ring-2 ring-amber-300 font-black'
+              : 'bg-white text-slate-700 hover:bg-amber-50 hover:text-amber-900 border border-slate-200'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+          <span>WOP Statistics (Weekly Off)</span>
+          <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-black">
+            {wopMetrics.totalCount} WOP
+          </span>
+        </button>
       </div>
 
-      {/* ── SEARCH & PAGINATED EMPLOYEE TABLE ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        {/* Search Bar Input (Matching Reference UI) */}
-        <div className="p-4 border-b border-slate-100">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Search employee by ID code, full name, department, or labour category..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium placeholder:text-slate-400"
-            />
-          </div>
-        </div>
+      {/* ── VIEW 1: PLANT OVERVIEW ── */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          {/* ── 3 ANALYTICS CARDS (Exact match to Reference Image) ── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Card 1: Daily Attendance Trend (Area / Wave Chart) */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-slate-900">Attendance Headcount Trend</h3>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Daily</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5 font-medium">
+                  Daily worker volume across plants
+                </p>
+              </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-black border-b border-slate-200/80">
-                <th className="py-3.5 px-5">ID / Code</th>
-                <th className="py-3.5 px-4">Employee Name</th>
-                <th className="py-3.5 px-4">Category</th>
-                <th className="py-3.5 px-4">Department</th>
-                <th className="py-3.5 px-4 text-center">Days Present</th>
-                <th className="py-3.5 px-4 text-right">Calculated Wages</th>
-                <th className="py-3.5 px-5 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {pagedEmployees.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="py-12 text-center text-slate-400 font-medium">
-                    {employeeRows.length === 0
-                      ? 'No employee roster loaded yet. Upload Master Roster in Stage 1.'
-                      : 'No employee matches your search.'}
-                  </td>
-                </tr>
-              ) : (
-                pagedEmployees.map((emp, i) => (
-                  <tr key={i} className="hover:bg-slate-50/80 transition font-medium">
-                    <td className="py-3 px-5 font-mono font-bold text-slate-900">
-                      {emp.code}
-                    </td>
-                    <td className="py-3 px-4 font-bold text-slate-900">
-                      {emp.name}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${emp.categoryColor}`}>
-                        {emp.category}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-600">
-                      {emp.dept}
-                    </td>
-                    <td className="py-3 px-4 text-center font-bold text-slate-800">
-                      {emp.days || 1}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
-                      {emp.wages > 0 ? `₹${fmt(emp.wages)}` : '—'}
-                    </td>
-                    <td className="py-3 px-5 text-center">
-                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-bold">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span>Reconciled</span>
-                      </span>
-                    </td>
+              <div className="mt-4">
+                <SmoothWaveChart data={waveData} />
+              </div>
+            </div>
+
+            {/* Card 2: Labour Category Breakdown (Donut Chart) */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-slate-900">Labour Category</h3>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Distribution</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5 font-medium">
+                  Operators, Contractors &amp; NAPS
+                </p>
+              </div>
+
+              <div className="mt-2">
+                <EnterpriseDonutChart
+                  segments={labourSegments}
+                  totalLabel="Total HC"
+                  totalValue={fmtN(totHC || 2241)}
+                />
+              </div>
+            </div>
+
+            {/* Card 3: Shift Allocation (Bar Chart) */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-slate-900">Shift Allocation</h3>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Shifts</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5 font-medium">
+                  Daily headcount deployed by shift
+                </p>
+              </div>
+
+              <div className="mt-2">
+                <PureSVGBarChart bars={shiftBars} />
+              </div>
+            </div>
+          </div>
+
+          {/* ── SEARCH & PAGINATED EMPLOYEE TABLE ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            {/* Search Bar Input */}
+            <div className="p-4 border-b border-slate-100">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Search employee by ID code, full name, department, or labour category..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-black border-b border-slate-200/80">
+                    <th className="py-3.5 px-5">ID / Code</th>
+                    <th className="py-3.5 px-4">Employee Name</th>
+                    <th className="py-3.5 px-4">Category</th>
+                    <th className="py-3.5 px-4">Department</th>
+                    <th className="py-3.5 px-4 text-center">Days Present</th>
+                    <th className="py-3.5 px-4 text-right">Calculated Wages</th>
+                    <th className="py-3.5 px-5 text-center">Status</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {pagedEmployees.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="py-12 text-center text-slate-400 font-medium">
+                        {employeeRows.length === 0
+                          ? 'No employee roster loaded yet. Upload Master Roster in Stage 1.'
+                          : 'No employee matches your search.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    pagedEmployees.map((emp, i) => (
+                      <tr key={i} className="hover:bg-slate-50/80 transition font-medium">
+                        <td className="py-3 px-5 font-mono font-bold text-slate-900">
+                          {emp.code}
+                        </td>
+                        <td className="py-3 px-4 font-bold text-slate-900">
+                          {emp.name}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${emp.categoryColor}`}>
+                            {emp.category}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-600">
+                          {emp.dept}
+                        </td>
+                        <td className="py-3 px-4 text-center font-bold text-slate-800">
+                          <div className="inline-flex items-center space-x-1">
+                            <span>{emp.days || 1}</span>
+                            {emp.wopCount > 0 && (
+                              <span className="px-1.5 py-0.2 bg-amber-100 text-amber-900 text-[10px] font-black rounded">
+                                +{emp.wopCount} WOP
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
+                          {emp.wages > 0 ? `₹${fmt(emp.wages)}` : '—'}
+                        </td>
+                        <td className="py-3 px-5 text-center">
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span>Reconciled</span>
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-        {/* Pagination Bar (Matching Reference UI) */}
-        <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <div>
-            Showing <strong className="text-slate-800">{filteredEmployees.length ? (currentPage - 1) * pageSize + 1 : 0}</strong> to{' '}
-            <strong className="text-slate-800">{Math.min(currentPage * pageSize, filteredEmployees.length)}</strong> of{' '}
-            <strong className="text-slate-800">{filteredEmployees.length}</strong> employees
+            {/* Pagination Bar */}
+            <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+              <div>
+                Showing <strong className="text-slate-800">{filteredEmployees.length ? (currentPage - 1) * pageSize + 1 : 0}</strong> to{' '}
+                <strong className="text-slate-800">{Math.min(currentPage * pageSize, filteredEmployees.length)}</strong> of{' '}
+                <strong className="text-slate-800">{filteredEmployees.length}</strong> employees
+              </div>
+
+              <div className="flex items-center space-x-1.5">
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                  title="First Page"
+                >
+                  <ChevronsLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+
+                <span className="px-3 py-1 bg-blue-50 text-blue-700 font-bold rounded-lg border border-blue-200">
+                  {currentPage} / {totalPages}
+                </span>
+
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                  title="Next Page"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                  title="Last Page"
+                >
+                  <ChevronsRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── VIEW 2: WOP (WEEKLY OFF PRESENT) STATISTICS ── */}
+      {activeTab === 'wop' && (
+        <div className="space-y-6">
+          {/* WOP Plant Overview Highlight Card */}
+          <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-white rounded-2xl p-6 sm:p-7 shadow-sm relative overflow-hidden">
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-black/20 text-white rounded-md text-[11px] font-black uppercase tracking-wider mb-2">
+                  <Sparkles className="w-3 h-3 text-amber-200" />
+                  <span>Plant Weekly Off Present (WOP) Overview</span>
+                </div>
+                <h2 className="text-2xl font-black tracking-tight">
+                  Weekly Off Deployment &amp; Wages
+                </h2>
+                <p className="text-xs text-amber-100 font-medium mt-1 max-w-xl">
+                  Comprehensive tracking of plant personnel working on weekly offs across Operators, Contract Labour (CL), and NAPS Apprentices.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/20">
+                  <div className="text-[10px] uppercase font-bold text-amber-200 tracking-wider">Total WOP Shifts</div>
+                  <div className="text-xl font-black mt-0.5">{fmtN(wopMetrics.totalCount)}</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/20">
+                  <div className="text-[10px] uppercase font-bold text-amber-200 tracking-wider">Workers Deployed</div>
+                  <div className="text-xl font-black mt-0.5">{fmtN(wopMetrics.totalEmployees)}</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/20 col-span-2 sm:col-span-1">
+                  <div className="text-[10px] uppercase font-bold text-amber-200 tracking-wider">Est. WOP Cost</div>
+                  <div className="text-xl font-black mt-0.5 font-mono">₹{fmt(wopMetrics.totalWages)}</div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center space-x-1.5">
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-              className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
-              title="First Page"
-            >
-              <ChevronsLeft className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
-              title="Previous Page"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-            </button>
+          {/* ── 3 CATEGORY WOP CARDS (Operator, CL, NAPS) ── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* 1. Operator WOP Card */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shadow-2xs">
+                    <HardHat className="w-5 h-5" />
+                  </div>
+                  <span className="px-2.5 py-0.5 bg-sky-50 text-sky-700 rounded-md text-[10px] font-black uppercase tracking-wider border border-sky-100">
+                    Operator
+                  </span>
+                </div>
+                <h3 className="text-base font-black text-slate-900 mt-3">
+                  Operator WOP Stats
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Full-time production operators deployed on weekly off.
+                </p>
+              </div>
 
-            <span className="px-3 py-1 bg-blue-50 text-blue-700 font-bold rounded-lg border border-blue-200">
-              {currentPage} / {totalPages}
-            </span>
+              <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Total WOP Shifts:</span>
+                  <span className="font-black text-slate-900 text-sm">{fmtN(wopMetrics.op.count)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Operators with WOP:</span>
+                  <span className="font-bold text-slate-800">{fmtN(wopMetrics.op.employees)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Est. WOP Wages:</span>
+                  <span className="font-mono font-bold text-sky-700">₹{fmt(wopMetrics.op.wages)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Avg WOP / Operator:</span>
+                  <span className="font-bold text-slate-700">
+                    {wopMetrics.op.employees ? (wopMetrics.op.count / wopMetrics.op.employees).toFixed(1) : 0} Days
+                  </span>
+                </div>
+              </div>
 
-            <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
-              title="Next Page"
-            >
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-              className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
-              title="Last Page"
-            >
-              <ChevronsRight className="w-3.5 h-3.5" />
-            </button>
+              <button
+                onClick={() => { setWopCategoryFilter('OP'); setWopCurrentPage(1); }}
+                className={`w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
+                  wopCategoryFilter === 'OP'
+                    ? 'bg-sky-600 text-white shadow-2xs'
+                    : 'bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200'
+                }`}
+              >
+                <span>View Operator List ({wopMetrics.op.list.length})</span>
+              </button>
+            </div>
+
+            {/* 2. Contract Labour (CL) WOP Card */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-2xs">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-md text-[10px] font-black uppercase tracking-wider border border-emerald-100">
+                    Contract Labour
+                  </span>
+                </div>
+                <h3 className="text-base font-black text-slate-900 mt-3">
+                  Contract Labour WOP Stats
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Contractor deployed labour working weekly off schedules.
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Total WOP Shifts:</span>
+                  <span className="font-black text-slate-900 text-sm">{fmtN(wopMetrics.cl.count)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">CL Workers with WOP:</span>
+                  <span className="font-bold text-slate-800">{fmtN(wopMetrics.cl.employees)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Est. WOP Wages:</span>
+                  <span className="font-mono font-bold text-emerald-700">₹{fmt(wopMetrics.cl.wages)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Avg WOP / Worker:</span>
+                  <span className="font-bold text-slate-700">
+                    {wopMetrics.cl.employees ? (wopMetrics.cl.count / wopMetrics.cl.employees).toFixed(1) : 0} Days
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => { setWopCategoryFilter('CL'); setWopCurrentPage(1); }}
+                className={`w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
+                  wopCategoryFilter === 'CL'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200'
+                }`}
+              >
+                <span>View CL List ({wopMetrics.cl.list.length})</span>
+              </button>
+            </div>
+
+            {/* 3. NAPS Apprentice WOP Card */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shadow-2xs">
+                    <GraduationCap className="w-5 h-5" />
+                  </div>
+                  <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded-md text-[10px] font-black uppercase tracking-wider border border-amber-100">
+                    NAPS Apprentice
+                  </span>
+                </div>
+                <h3 className="text-base font-black text-slate-900 mt-3">
+                  NAPS Apprentice WOP Stats
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  National Apprenticeship Promotion Scheme trainees.
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Total WOP Shifts:</span>
+                  <span className="font-black text-slate-900 text-sm">{fmtN(wopMetrics.naps.count)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Trainees with WOP:</span>
+                  <span className="font-bold text-slate-800">{fmtN(wopMetrics.naps.employees)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Est. WOP Wages:</span>
+                  <span className="font-mono font-bold text-amber-700">₹{fmt(wopMetrics.naps.wages)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Avg WOP / Trainee:</span>
+                  <span className="font-bold text-slate-700">
+                    {wopMetrics.naps.employees ? (wopMetrics.naps.count / wopMetrics.naps.employees).toFixed(1) : 0} Days
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => { setWopCategoryFilter('NAPS'); setWopCurrentPage(1); }}
+                className={`w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
+                  wopCategoryFilter === 'NAPS'
+                    ? 'bg-amber-600 text-white shadow-2xs'
+                    : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
+                }`}
+              >
+                <span>View NAPS List ({wopMetrics.naps.list.length})</span>
+              </button>
+            </div>
+          </div>
+
+          {/* ── Category Breakdown Comparison Bar ── */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                  WOP Distribution By Category
+                </h4>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Proportion of Weekly Off Present days across plant labor divisions
+                </p>
+              </div>
+              <div className="flex items-center space-x-4 text-xs font-bold">
+                <span className="flex items-center space-x-1.5 text-sky-700">
+                  <span className="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block" />
+                  <span>Operator ({wopMetrics.totalCount ? Math.round((wopMetrics.op.count / wopMetrics.totalCount) * 100) : 0}%)</span>
+                </span>
+                <span className="flex items-center space-x-1.5 text-emerald-700">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                  <span>CL ({wopMetrics.totalCount ? Math.round((wopMetrics.cl.count / wopMetrics.totalCount) * 100) : 0}%)</span>
+                </span>
+                <span className="flex items-center space-x-1.5 text-amber-700">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+                  <span>NAPS ({wopMetrics.totalCount ? Math.round((wopMetrics.naps.count / wopMetrics.totalCount) * 100) : 0}%)</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
+              <div
+                style={{ width: `${wopMetrics.totalCount ? (wopMetrics.op.count / wopMetrics.totalCount) * 100 : 33.3}%` }}
+                className="bg-sky-500 h-full transition-all duration-500"
+                title={`Operator: ${wopMetrics.op.count} shifts`}
+              />
+              <div
+                style={{ width: `${wopMetrics.totalCount ? (wopMetrics.cl.count / wopMetrics.totalCount) * 100 : 33.3}%` }}
+                className="bg-emerald-500 h-full transition-all duration-500"
+                title={`Contract Labour: ${wopMetrics.cl.count} shifts`}
+              />
+              <div
+                style={{ width: `${wopMetrics.totalCount ? (wopMetrics.naps.count / wopMetrics.totalCount) * 100 : 33.4}%` }}
+                className="bg-amber-500 h-full transition-all duration-500"
+                title={`NAPS: ${wopMetrics.naps.count} shifts`}
+              />
+            </div>
+          </div>
+
+          {/* ── WOP SEARCH & EMPLOYEE TABLE ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            {/* Filter Bar & Search */}
+            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              {/* Category Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                <button
+                  onClick={() => { setWopCategoryFilter('ALL'); setWopCurrentPage(1); }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
+                    wopCategoryFilter === 'ALL'
+                      ? 'bg-slate-900 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  All Categories ({wopMetrics.allList.length})
+                </button>
+                <button
+                  onClick={() => { setWopCategoryFilter('OP'); setWopCurrentPage(1); }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
+                    wopCategoryFilter === 'OP'
+                      ? 'bg-sky-600 text-white shadow-2xs'
+                      : 'bg-sky-50 text-sky-700 hover:bg-sky-100'
+                  }`}
+                >
+                  Operators ({wopMetrics.op.list.length})
+                </button>
+                <button
+                  onClick={() => { setWopCategoryFilter('CL'); setWopCurrentPage(1); }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
+                    wopCategoryFilter === 'CL'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  }`}
+                >
+                  Contract Labour ({wopMetrics.cl.list.length})
+                </button>
+                <button
+                  onClick={() => { setWopCategoryFilter('NAPS'); setWopCurrentPage(1); }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
+                    wopCategoryFilter === 'NAPS'
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                  }`}
+                >
+                  NAPS ({wopMetrics.naps.list.length})
+                </button>
+              </div>
+
+              {/* Search Box */}
+              <div className="relative sm:w-72">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={wopSearchQuery}
+                  onChange={(e) => {
+                    setWopSearchQuery(e.target.value);
+                    setWopCurrentPage(1);
+                  }}
+                  placeholder="Search WOP employee..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-black border-b border-slate-200/80">
+                    <th className="py-3.5 px-5">ID / Code</th>
+                    <th className="py-3.5 px-4">Employee Name</th>
+                    <th className="py-3.5 px-4">Category</th>
+                    <th className="py-3.5 px-4">Department</th>
+                    <th className="py-3.5 px-4 text-center">Days Present</th>
+                    <th className="py-3.5 px-4 text-center">WOP Days</th>
+                    <th className="py-3.5 px-4 text-right">Est. WOP Wages</th>
+                    <th className="py-3.5 px-5 text-center">WOP Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {pagedWopEmployees.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="py-12 text-center text-slate-400 font-medium">
+                        {wopMetrics.allList.length === 0
+                          ? 'No Weekly Off Present (WOP) records found in currently uploaded batch.'
+                          : 'No WOP employees match the current search or category filter.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    pagedWopEmployees.map((emp, i) => (
+                      <tr key={i} className="hover:bg-slate-50/80 transition font-medium">
+                        <td className="py-3 px-5 font-mono font-bold text-slate-900">
+                          {emp.code}
+                        </td>
+                        <td className="py-3 px-4 font-bold text-slate-900">
+                          {emp.name}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${emp.categoryColor}`}>
+                            {emp.category}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-600">
+                          {emp.dept}
+                        </td>
+                        <td className="py-3 px-4 text-center font-bold text-slate-800">
+                          {emp.days || 1}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-200 rounded-md font-black text-xs">
+                            {emp.wopCount} WOP
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-amber-700">
+                          ₹{fmt(emp.wopWages)}
+                        </td>
+                        <td className="py-3 px-5 text-center">
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-amber-50 text-amber-800 rounded-full text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            <span>Weekly Off Worked</span>
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* WOP Pagination Bar */}
+            <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+              <div>
+                Showing <strong className="text-slate-800">{filteredWopEmployees.length ? (wopCurrentPage - 1) * wopPageSize + 1 : 0}</strong> to{' '}
+                <strong className="text-slate-800">{Math.min(wopCurrentPage * wopPageSize, filteredWopEmployees.length)}</strong> of{' '}
+                <strong className="text-slate-800">{filteredWopEmployees.length}</strong> WOP records
+              </div>
+
+              <div className="flex items-center space-x-1.5">
+                <button
+                  onClick={() => setWopCurrentPage(1)}
+                  disabled={wopCurrentPage === 1}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                  title="First Page"
+                >
+                  <ChevronsLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setWopCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={wopCurrentPage === 1}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+
+                <span className="px-3 py-1 bg-amber-50 text-amber-800 font-bold rounded-lg border border-amber-200">
+                  {wopCurrentPage} / {totalWopPages}
+                </span>
+
+                <button
+                  onClick={() => setWopCurrentPage(p => Math.min(totalWopPages, p + 1))}
+                  disabled={wopCurrentPage === totalWopPages}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                  title="Next Page"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setWopCurrentPage(totalWopPages)}
+                  disabled={wopCurrentPage === totalWopPages}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                  title="Last Page"
+                >
+                  <ChevronsRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
