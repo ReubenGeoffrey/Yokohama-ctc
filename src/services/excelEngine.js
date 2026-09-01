@@ -197,15 +197,15 @@ export function buildDetailSheet(wb, title, employeeMap, statMap) {
 
 // Known eligible Project employees specified by executive plant requirements
 export const KNOWN_PROJECT_EMPLOYEES = [
-  { code: 'SK1449', name: 'BALAIAH K', dept: 'PROJECT' },
-  { code: 'SK2918', name: 'VARGHEESE A', dept: 'EEI-PROJECT' },
-  { code: '900246', name: 'ANNAMALAI RAJ M', dept: 'EEI-PROJECT' },
-  { code: '901165', name: 'SHANMUGA SUNDARAM R', dept: 'EEI-PROJECT' },
-  { code: '901164', name: 'PANDI A', dept: 'PROJECT' },
-  { code: '900257', name: 'KALLAND RAMAR N', dept: 'PROJECT' },
-  { code: '900266', name: 'RAJAN N', dept: 'PROJECT' },
-  { code: '901163', name: 'SURESH G', dept: 'PROJECT' },
-  { code: '900237', name: 'THUKKI V', dept: 'EEI-PROJECT' }
+  { code: 'SK1449', name: 'BALAIAH K', dept: 'Project' },
+  { code: 'SK2918', name: 'VARGHEESE A', dept: 'EEI Project' },
+  { code: '900246', name: 'ANNAMALAI RAJ M', dept: 'EEI Project' },
+  { code: '901165', name: 'SHANMUGA SUNDARAM R', dept: 'EEI Project' },
+  { code: '901164', name: 'PANDI A', dept: 'Project' },
+  { code: '900257', name: 'KALLAND RAMAR N', dept: 'Project' },
+  { code: '900266', name: 'RAJAN N', dept: 'Project' },
+  { code: '901163', name: 'SURESH G', dept: 'Project' },
+  { code: '900237', name: 'THUKKI V', dept: 'EEI Project' }
 ];
 
 export function getProjectEmployees(master) {
@@ -215,7 +215,7 @@ export function getProjectEmployees(master) {
   KNOWN_PROJECT_EMPLOYEES.forEach(emp => {
     projectMap[emp.code] = {
       name: emp.name,
-      dept: emp.dept,
+      dept: emp.dept, // strictly 'Project' or 'EEI Project'
       direct: false,
       dailyCTC: 0,
       dailyOT: 0
@@ -232,9 +232,15 @@ export function getProjectEmployees(master) {
       const isProjectDept = deptUpper.includes('PROJECT');
 
       if (isKnown || isProjectDept) {
+        // Enforce exact department naming: 'EEI Project' or 'Project'
+        let cleanDept = projectMap[codeUpper]?.dept;
+        if (!cleanDept) {
+          cleanDept = deptUpper.includes('EEI') ? 'EEI Project' : 'Project';
+        }
+
         projectMap[codeUpper] = {
           name: info.name || (projectMap[codeUpper] ? projectMap[codeUpper].name : 'Project Staff'),
-          dept: info.dept || (projectMap[codeUpper] ? projectMap[codeUpper].dept : 'PROJECT'),
+          dept: cleanDept, // Strictly 'Project' or 'EEI Project'
           direct: info.direct || false,
           dailyCTC: info.dailyCTC || 0,
           dailyOT: info.dailyOT || 0
