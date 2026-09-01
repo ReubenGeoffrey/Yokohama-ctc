@@ -46,29 +46,46 @@ export const SupabaseService = {
     }
   },
 
-  // Save entire shared workspace state across all laptops
+  // Save entire shared workspace state across all laptops & mobile
   async saveCloudSharedState(state) {
     const client = getSupabaseClient();
-    if (!client) return false;
+    if (!client) return { success: false, error: 'Supabase client not initialized' };
 
     try {
-      const payload = JSON.stringify({
-        ...state,
+      const safePayload = {
+        master: state.master || null,
+        masterMeta: state.masterMeta || null,
+        batchDates: state.batchDates || {},
+        batchResults: (state.batchResults || []).map(r => ({
+          date: r.date,
+          buckets: r.buckets,
+          dHC: r.dHC, dCTC: r.dCTC, dOT: r.dOT, dTot: r.dTot,
+          iHC: r.iHC, iCTC: r.iCTC, iOT: r.iOT, iTot: r.iTot,
+          gHC: r.gHC, gCTC: r.gCTC, gOT: r.gOT, gTot: r.gTot,
+          empDayMap: r.empDayMap instanceof Map ? Object.fromEntries(r.empDayMap) : (r.empDayMap || {})
+        })),
+        empStats: state.empStats ? {
+          OP: state.empStats.OP instanceof Map ? Object.fromEntries(state.empStats.OP) : (state.empStats.OP || {}),
+          CL: state.empStats.CL instanceof Map ? Object.fromEntries(state.empStats.CL) : (state.empStats.CL || {}),
+          NAPS: state.empStats.NAPS instanceof Map ? Object.fromEntries(state.empStats.NAPS) : (state.empStats.NAPS || {})
+        } : null,
         lastSyncedAt: new Date().toISOString()
-      });
+      };
+
+      const payload = JSON.stringify(safePayload);
       const blob = new Blob([payload], { type: 'application/json' });
-      const { error } = await client.storage
+      const { data, error } = await client.storage
         .from(BUCKET_NAME)
         .upload('shared_state/live_app_state.json', blob, { upsert: true });
 
       if (error) {
         console.warn('Supabase storage save error:', error);
-        return false;
+        return { success: false, error: error.message || 'Storage error' };
       }
-      return true;
+      return { success: true };
     } catch (err) {
       console.warn('Supabase saveCloudSharedState error:', err);
-      return false;
+      return { success: false, error: err.message };
     }
   },
 
@@ -82,7 +99,10 @@ export const SupabaseService = {
         .from(BUCKET_NAME)
         .download('shared_state/live_app_state.json');
 
-      if (error) return null;
+      if (error) {
+        console.warn('Supabase loadCloudSharedState storage error:', error);
+        return null;
+      }
       const text = await data.text();
       return JSON.parse(text);
     } catch (err) {

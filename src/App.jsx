@@ -303,6 +303,87 @@ export function App() {
     setIsFileManagerOpen(false);
   };
 
+  // 1-Click Export entire workspace file (.json) for sharing across laptops & mobile
+  const handleExportWorkspace = () => {
+    StorageService.exportWorkspaceBackup({
+      master,
+      masterMeta,
+      batchDates,
+      batchResults,
+      empStats
+    });
+  };
+
+  // 1-Click Import workspace file (.json) on Sir's Laptop or Mobile
+  const handleImportWorkspace = async (file) => {
+    try {
+      const data = await StorageService.parseWorkspaceBackup(file);
+      if (!data) return;
+
+      const newMaster = data.master || null;
+      const newMasterMeta = data.masterMeta || null;
+      const newBatchDates = data.batchDates || {};
+
+      let newResults = [];
+      let newStats = null;
+
+      if (newMaster && Object.keys(newBatchDates).length > 0) {
+        Object.keys(newBatchDates).sort().forEach(dKey => {
+          const dObj = newBatchDates[dKey];
+          if (dObj) {
+            const res = reconcileDay(dObj.date, dObj, newMaster);
+            newResults.push(res);
+          }
+        });
+        newStats = aggregateMonthlyStats(newResults, newMaster);
+      }
+
+      setMaster(newMaster);
+      setMasterMeta(newMasterMeta);
+      setBatchDates(newBatchDates);
+      setBatchResults(newResults);
+      setEmpStats(newStats);
+
+      // Save locally to IndexedDB
+      if (newMaster) await StorageService.saveMaster(newMaster, newMasterMeta?.fileName || 'Imported Master');
+      if (newBatchDates) await StorageService.saveAttendanceFiles(newBatchDates);
+      if (newResults.length > 0) await StorageService.saveBatchResults({ results: newResults, empStats: newStats });
+
+      // Also push to Supabase Cloud
+      await SupabaseService.saveCloudSharedState({
+        master: newMaster,
+        masterMeta: newMasterMeta,
+        batchDates: newBatchDates,
+        batchResults: newResults,
+        empStats: newStats
+      });
+
+      alert(`✅ Workspace imported successfully!\nLoaded ${Object.keys(newBatchDates).length} attendance dates and reconciled cost summaries.`);
+    } catch (err) {
+      console.error('Import error:', err);
+      alert('Error importing workspace file: ' + err.message);
+    }
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    const saveRes = await SupabaseService.saveCloudSharedState({
+      master,
+      masterMeta,
+      batchDates,
+      batchResults,
+      empStats
+    });
+
+    if (saveRes && saveRes.success) {
+      alert('✅ Cloud Sync Successful!\nAll rosters, rates, and attendance records are uploaded to Supabase and ready on Sir\'s Laptop & Mobile.');
+    } else {
+      const errMsg = saveRes?.error || 'Bucket not found';
+      alert(`⚠️ Supabase Cloud Storage Status:\n\n${errMsg}\n\nTo enable automatic sync across laptops and mobile:\n1. Open Supabase: https://supabase.com/dashboard/project/xtpxoccsfxcethstsxns/storage/buckets\n2. Click "New bucket" -> Enter Name: atc-attendance-storage -> Toggle "Public bucket" to ON -> Save.\n\nTip: In the Attendance Vault, you can also use "Export Workspace Backup" to transfer data immediately!`);
+    }
+    setIsSyncing(false);
+  };
+
   // Instant Monthly Consolidated Master Export
   const handleExportMonthlyConsolidated = async () => {
     if (!batchResults.length) {
@@ -391,10 +472,10 @@ export function App() {
 
             {/* Cloud Sync Indicator */}
             <button
-              onClick={fetchLatestState}
+              onClick={handleManualSync}
               disabled={isSyncing}
               className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-slate-50 border border-slate-200 transition cursor-pointer"
-              title="Refresh Supabase Multi-Laptop Sync"
+              title="Click to Sync with Cloud / Test Supabase Multi-Device Connection"
             >
               <Cloud className={`w-4 h-4 ${isSyncing ? 'text-blue-600 animate-spin' : 'text-emerald-500'}`} />
             </button>
@@ -580,6 +661,8 @@ export function App() {
         onClearStorage={handleClearStorage}
         onRerunReconciliation={() => setActiveView('reconciliation')}
         onDeleteDate={handleDeleteDate}
+        onExportWorkspace={handleExportWorkspace}
+        onImportWorkspace={handleImportWorkspace}
       />
 
       <AuthModal

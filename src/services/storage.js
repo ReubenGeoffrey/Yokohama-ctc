@@ -107,5 +107,47 @@ export const StorageService = {
     } catch (e) {
       return false;
     }
+  },
+
+  // Export entire workspace to a portable JSON backup file for 1-click sharing across laptops & mobile
+  exportWorkspaceBackup(state) {
+    const safePayload = {
+      master: state.master || null,
+      masterMeta: state.masterMeta || null,
+      batchDates: state.batchDates || {},
+      batchResults: (state.batchResults || []).map(r => ({
+        date: r.date,
+        buckets: r.buckets,
+        dHC: r.dHC, dCTC: r.dCTC, dOT: r.dOT, dTot: r.dTot,
+        iHC: r.iHC, iCTC: r.iCTC, iOT: r.iOT, iTot: r.iTot,
+        gHC: r.gHC, gCTC: r.gCTC, gOT: r.gOT, gTot: r.gTot,
+        empDayMap: r.empDayMap instanceof Map ? Object.fromEntries(r.empDayMap) : (r.empDayMap || {})
+      })),
+      empStats: state.empStats ? {
+        OP: state.empStats.OP instanceof Map ? Object.fromEntries(state.empStats.OP) : (state.empStats.OP || {}),
+        CL: state.empStats.CL instanceof Map ? Object.fromEntries(state.empStats.CL) : (state.empStats.CL || {}),
+        NAPS: state.empStats.NAPS instanceof Map ? Object.fromEntries(state.empStats.NAPS) : (state.empStats.NAPS || {})
+      } : null,
+      exportedAt: new Date().toISOString(),
+      app: 'Yokohama ATC CTC Hub',
+      version: '2.0.0'
+    };
+
+    const blob = new Blob([JSON.stringify(safePayload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Yokohama_ATC_Workspace_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  // Parse imported JSON backup
+  async parseWorkspaceBackup(file) {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    return parsed;
   }
 };

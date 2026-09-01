@@ -80,8 +80,11 @@ export function FileManagerModal({
   empStats,
   onClearStorage,
   onRerunReconciliation,
-  onDeleteDate
+  onDeleteDate,
+  onExportWorkspace,
+  onImportWorkspace
 }) {
+  const fileImportRef = React.useRef(null);
   const [downloading, setDownloading] = useState(null);
   const [calYear, setCalYear] = useState(2026);
   const [calMonth, setCalMonth] = useState(7); // 7 = August (0-indexed)
@@ -579,11 +582,45 @@ export function FileManagerModal({
             </div>
           </div>
 
+          {/* Hidden JSON file input for importing backup */}
+          <input
+            ref={fileImportRef}
+            type="file"
+            accept=".json"
+            onChange={(e) => {
+              if (e.target.files?.[0]) {
+                onImportWorkspace && onImportWorkspace(e.target.files[0]);
+                e.target.value = '';
+              }
+            }}
+            className="hidden"
+          />
+
           {/* ── Modal Footer ───────────────────────────── */}
-          <div className="p-3.5 px-5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+          <div className="p-3.5 px-5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={onExportWorkspace}
+                className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer shadow-2xs"
+                title="Download full workspace backup file (rosters, rates & attendance) to transfer to another device"
+              >
+                <Download className="w-3.5 h-3.5 text-blue-600" />
+                <span>Export Workspace Backup</span>
+              </button>
+
+              <button
+                onClick={() => fileImportRef.current?.click()}
+                className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer shadow-2xs"
+                title="Load a workspace backup JSON file from another device"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Import Workspace</span>
+              </button>
+            </div>
+
             <button
               onClick={onClose}
-              className="px-5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+              className="px-5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
             >
               Close
             </button>
