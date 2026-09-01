@@ -33,10 +33,11 @@ export function reconcileDay(date, dayRecords, master) {
         return;
       }
 
-      const b = info.direct ? buckets[dKey] : buckets[iKey];
+      const otRate = info.dailyOT || 0;
+      const dayOtAmt = (rec.otHours || 0) * otRate;
       b.headcount += 1;
       b.ctc += info.dailyCTC;
-      b.ot += rec.otHours * info.dailyOT;
+      b.ot += dayOtAmt;
 
       if (!empDayMap.has(rec.code)) {
         empDayMap.set(rec.code, {
@@ -44,6 +45,7 @@ export function reconcileDay(date, dayRecords, master) {
           daysPresent: 0,
           wopCount: 0,
           otHrs: 0,
+          otAmount: 0,
           wages: 0
         });
       }
@@ -55,7 +57,8 @@ export function reconcileDay(date, dayRecords, master) {
       }
       st.workHrs += (rec.workHours || 0);
       st.otHrs += (rec.otHours || 0);
-      st.wages += info.dailyCTC + (rec.otHours * info.dailyOT);
+      st.otAmount = (st.otAmount || 0) + dayOtAmt;
+      st.wages += info.dailyCTC + dayOtAmt;
     });
   }
 
@@ -105,17 +108,17 @@ export function aggregateMonthlyStats(batchResults, master) {
   // Initialize for all master employees
   if (master.operator) {
     Object.keys(master.operator).forEach(code => {
-      empStats.OP.set(code, { workHrs: 0, daysPresent: 0, wopCount: 0, otHrs: 0, wages: 0 });
+      empStats.OP.set(code, { workHrs: 0, daysPresent: 0, wopCount: 0, otHrs: 0, otAmount: 0, wages: 0 });
     });
   }
   if (master.contract) {
     Object.keys(master.contract).forEach(code => {
-      empStats.CL.set(code, { workHrs: 0, daysPresent: 0, wopCount: 0, otHrs: 0, wages: 0 });
+      empStats.CL.set(code, { workHrs: 0, daysPresent: 0, wopCount: 0, otHrs: 0, otAmount: 0, wages: 0 });
     });
   }
   if (master.naps) {
     Object.keys(master.naps).forEach(code => {
-      empStats.NAPS.set(code, { workHrs: 0, daysPresent: 0, wopCount: 0, otHrs: 0, wages: 0 });
+      empStats.NAPS.set(code, { workHrs: 0, daysPresent: 0, wopCount: 0, otHrs: 0, otAmount: 0, wages: 0 });
     });
   }
 
@@ -130,13 +133,14 @@ export function aggregateMonthlyStats(batchResults, master) {
         const map = empStats[cat];
         if (map) {
           if (!map.has(code)) {
-            map.set(code, { workHrs: 0, daysPresent: 0, wopCount: 0, otHrs: 0, wages: 0 });
+            map.set(code, { workHrs: 0, daysPresent: 0, wopCount: 0, otHrs: 0, otAmount: 0, wages: 0 });
           }
           const emp = map.get(code);
           emp.workHrs += st.workHrs;
           emp.daysPresent += st.daysPresent;
           emp.wopCount += st.wopCount;
           emp.otHrs += st.otHrs;
+          emp.otAmount = (emp.otAmount || 0) + (st.otAmount || 0);
           emp.wages += st.wages;
         }
       });

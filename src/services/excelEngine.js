@@ -126,7 +126,7 @@ export function styleSummarySheet(wsSummary, year, month) {
   }
 }
 
-// Build Detail Sheet (Columns A to I, NO Gap, NO Merging, Total WOP Count in Col G)
+// Build Detail Sheet (Columns A to J, NO Gap, NO Merging, Total OT Amount next to Total OT Hrs)
 export function buildDetailSheet(wb, title, employeeMap, statMap) {
   const ws = wb.addWorksheet(title);
   const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cYellowMain } };
@@ -141,7 +141,8 @@ export function buildDetailSheet(wb, title, employeeMap, statMap) {
     6: 'No of days present',
     7: 'Total WOP Count',
     8: 'Total OT Hrs',
-    9: 'Wages'
+    9: 'Total OT Amount',
+    10: 'Wages'
   };
 
   Object.entries(headers).forEach(([c, label]) => {
@@ -156,7 +157,8 @@ export function buildDetailSheet(wb, title, employeeMap, statMap) {
   let r = 2, sno = 1;
   Object.keys(employeeMap).forEach(code => {
     const info = employeeMap[code];
-    const st = statMap && statMap.get(code) ? statMap.get(code) : { daysPresent: 0, wopCount: 0, workHrs: 0, otHrs: 0, wages: 0 };
+    const st = statMap && statMap.get(code) ? statMap.get(code) : { daysPresent: 0, wopCount: 0, workHrs: 0, otHrs: 0, otAmount: 0, wages: 0 };
+    const otAmt = st.otAmount !== undefined ? st.otAmount : Math.round((st.otHrs || 0) * (info.dailyOT || 0) * 100) / 100;
 
     ws.getCell(r, 1).value = sno;
     ws.getCell(r, 2).value = code;
@@ -166,27 +168,28 @@ export function buildDetailSheet(wb, title, employeeMap, statMap) {
     ws.getCell(r, 6).value = st.daysPresent;
     ws.getCell(r, 7).value = st.wopCount;
     ws.getCell(r, 8).value = Math.round(st.otHrs * 100) / 100;
-    ws.getCell(r, 9).value = Math.round(st.wages * 100) / 100;
+    ws.getCell(r, 9).value = Math.round(otAmt * 100) / 100;
+    ws.getCell(r, 10).value = Math.round(st.wages * 100) / 100;
 
     const banded = sno % 2 === 0;
     ws.getRow(r).height = 20;
-    for (let c = 1; c <= 9; c++) {
+    for (let c = 1; c <= 10; c++) {
       const cell = ws.getCell(r, c);
       cell.border = thinBorder;
       cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
       cell.alignment = (c === 3)
         ? { horizontal: 'left', vertical: 'middle' }
-        : ((c === 5 || c === 8 || c === 9) ? { horizontal: 'right', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' });
+        : ((c === 5 || c === 8 || c === 9 || c === 10) ? { horizontal: 'right', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' });
       if (banded) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
       if (c === 5 || c === 8) cell.numFmt = '#,##0.00';
-      else if (c === 6 || c === 7 || c === 9) cell.numFmt = '#,##0';
+      else if (c === 6 || c === 7 || c === 9 || c === 10) cell.numFmt = '#,##0';
     }
     r += 1;
     sno += 1;
   });
 
   ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }];
-  const widths = { 1: 7, 2: 14, 3: 28, 4: 20, 5: 16, 6: 18, 7: 18, 8: 14, 9: 14 };
+  const widths = { 1: 7, 2: 14, 3: 28, 4: 20, 5: 16, 6: 18, 7: 18, 8: 14, 9: 16, 10: 14 };
   Object.entries(widths).forEach(([c, w]) => { ws.getColumn(Number(c)).width = w; });
   ws.getRow(1).height = 24;
   return ws;
