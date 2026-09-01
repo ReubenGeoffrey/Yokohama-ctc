@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import { formatDateDisplay, formatDateToInput } from './parser.js';
+import { aggregateMonthlyStats } from './reconciliation.js';
 
 const FONT_NAME = 'Segoe UI';
 const cYellowMain = 'FFFFE699';   // Soft warm professional yellow
@@ -282,8 +283,18 @@ export async function generateMonthlyWorkbook(batchResults, master, empStats, ye
   const wsSummary = wb.addWorksheet('Summary');
   styleSummarySheet(wsSummary, year, month);
 
+  // Strictly filter to the requested month and year so months never mix
+  const monthResults = (batchResults || []).filter(r => {
+    if (!r.date) return false;
+    const d = new Date(r.date);
+    if (year !== undefined && month !== undefined) {
+      return d.getUTCFullYear() === year && d.getUTCMonth() === month;
+    }
+    return true;
+  });
+
   // Fill Summary data
-  batchResults.forEach(r => {
+  monthResults.forEach(r => {
     const dayNum = new Date(r.date).getUTCDate();
     const targetRow = 3 + dayNum;
     const b = r.buckets;
@@ -313,13 +324,16 @@ export async function generateMonthlyWorkbook(batchResults, master, empStats, ye
     });
   });
 
+  // Compute monthly stats strictly for this month's results so employee totals are clean
+  const effectiveEmpStats = monthResults.length > 0 && master ? aggregateMonthlyStats(monthResults, master) : (empStats || { OP: new Map(), CL: new Map(), NAPS: new Map() });
+
   // Build Detail Sheets: ATC, CL, NAPS, and Project (Right of NAPS)
-  buildDetailSheet(wb, 'ATC', master.operator || {}, empStats.OP);
-  buildDetailSheet(wb, 'CL', master.contract || {}, empStats.CL);
-  buildDetailSheet(wb, 'NAPS', master.naps || {}, empStats.NAPS);
+  buildDetailSheet(wb, 'ATC', master.operator || {}, effectiveEmpStats.OP);
+  buildDetailSheet(wb, 'CL', master.contract || {}, effectiveEmpStats.CL);
+  buildDetailSheet(wb, 'NAPS', master.naps || {}, effectiveEmpStats.NAPS);
 
   const projectEmployees = getProjectEmployees(master);
-  const projectStats = getProjectStats(projectEmployees, empStats);
+  const projectStats = getProjectStats(projectEmployees, effectiveEmpStats);
   buildDetailSheet(wb, 'Project', projectEmployees, projectStats);
 
   const buffer = await wb.xlsx.writeBuffer();
@@ -360,22 +374,8 @@ export async function generateSingleDayWorkbook(dayResult, master, year, month) 
     wsSummary.getCell(targetRow, Number(col)).value = val;
   });
 
-  // Convert single day stats
-  const singleDayStats = {
-    OP: new Map(),
-    CL: new Map(),
-    NAPS: new Map()
-  };
-  if (dayResult.empDayMap) {
-    dayResult.empDayMap.forEach((st, code) => {
-      let cat = 'CL';
-      if (master.operator && master.operator[code]) cat = 'OP';
-      else if (master.naps && master.naps[code]) cat = 'NAPS';
-      singleDayStats[cat].set(code, st);
-    });
-  }
+  const singleDayStats = aggregateMonthlyStats([dayResult], master);
 
-  // Build Detail Sheets: ATC, CL, NAPS, and Project (Right of NAPS)
   buildDetailSheet(wb, 'ATC', master.operator || {}, singleDayStats.OP);
   buildDetailSheet(wb, 'CL', master.contract || {}, singleDayStats.CL);
   buildDetailSheet(wb, 'NAPS', master.naps || {}, singleDayStats.NAPS);
@@ -390,13 +390,24 @@ export async function generateSingleDayWorkbook(dayResult, master, year, month) 
 // Generate ZIP Archive of all single days + monthly master
 export async function generateZipBundle(batchResults, master, empStats, year, month) {
   const zip = new JSZip();
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const mName = monthNames[month] || 'Monthly';
+
+  const monthResults = (batchResults || []).filter(r => {
+    if (!r.date) return false;
+    const d = new Date(r.date);
+    if (year !== undefined && month !== undefined) {
+      return d.getUTCFullYear() === year && d.getUTCMonth() === month;
+    }
+    return true;
+  });
 
   // 1. Monthly Master
-  const monthlyBuf = await generateMonthlyWorkbook(batchResults, master, empStats, year, month);
-  zip.file('CTC_Output_August_2026.xlsx', monthlyBuf);
+  const monthlyBuf = await generateMonthlyWorkbook(monthResults, master, empStats, year, month);
+  zip.file(`CTC_Output_${mName}_${year}.xlsx`, monthlyBuf);
 
   // 2. Individual Dates
-  for (const r of batchResults) {
+  for (const r of monthResults) {
     const dayBuf = await generateSingleDayWorkbook(r, master, year, month);
     const dateStr = formatDateToInput(r.date);
     zip.file(`CTC_Output_${dateStr}.xlsx`, dayBuf);
