@@ -33,6 +33,7 @@ export function reconcileDay(date, dayRecords, master) {
         return;
       }
 
+      const b = info.direct ? buckets[dKey] : buckets[iKey];
       const otRate = info.dailyOT || 0;
       const dayOtAmt = (rec.otHours || 0) * otRate;
       b.headcount += 1;
