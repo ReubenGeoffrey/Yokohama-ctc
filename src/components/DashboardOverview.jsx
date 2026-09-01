@@ -954,34 +954,34 @@ export function DashboardOverview({
       {/* ── VIEW 2: WOP (WEEKLY OFF PRESENT) STATISTICS ── */}
       {activeTab === 'wop' && (
         <div className="space-y-6">
-          {/* WOP Plant Overview Highlight Card */}
-          <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-white rounded-2xl p-6 sm:p-7 shadow-sm relative overflow-hidden">
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          {/* WOP Plant Overview Highlight Card (High Contrast & Visible) */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 sm:p-7 relative overflow-hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-black/20 text-white rounded-md text-[11px] font-black uppercase tracking-wider mb-2">
-                  <Sparkles className="w-3 h-3 text-amber-200" />
+                <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-md text-[11px] font-black uppercase tracking-wider mb-2">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                   <span>Plant Weekly Off Present (WOP) Overview</span>
                 </div>
-                <h2 className="text-2xl font-black tracking-tight">
+                <h2 className="text-2xl font-black text-slate-950 tracking-tight">
                   Weekly Off Deployment &amp; Wages
                 </h2>
-                <p className="text-xs text-amber-100 font-medium mt-1 max-w-xl">
+                <p className="text-xs text-slate-600 font-medium mt-1 max-w-xl leading-relaxed">
                   Comprehensive tracking of plant personnel working on weekly offs across Operators, Contract Labour (CL), and NAPS Apprentices.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/20">
-                  <div className="text-[10px] uppercase font-bold text-amber-200 tracking-wider">Total WOP Shifts</div>
-                  <div className="text-xl font-black mt-0.5">{fmtN(wopMetrics.totalCount)}</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 shrink-0">
+                <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+                  <div className="text-[10px] uppercase font-bold text-slate-600 tracking-wider">Total WOP Shifts</div>
+                  <div className="text-2xl font-black text-slate-950 mt-1">{fmtN(wopMetrics.totalCount)}</div>
                 </div>
-                <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/20">
-                  <div className="text-[10px] uppercase font-bold text-amber-200 tracking-wider">Workers Deployed</div>
-                  <div className="text-xl font-black mt-0.5">{fmtN(wopMetrics.totalEmployees)}</div>
+                <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+                  <div className="text-[10px] uppercase font-bold text-slate-600 tracking-wider">Workers Deployed</div>
+                  <div className="text-2xl font-black text-slate-950 mt-1">{fmtN(wopMetrics.totalEmployees)}</div>
                 </div>
-                <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/20 col-span-2 sm:col-span-1">
-                  <div className="text-[10px] uppercase font-bold text-amber-200 tracking-wider">Est. WOP Cost</div>
-                  <div className="text-xl font-black mt-0.5 font-mono">₹{fmt(wopMetrics.totalWages)}</div>
+                <div className="bg-amber-50/80 border border-amber-200 p-3.5 rounded-xl col-span-2 sm:col-span-1">
+                  <div className="text-[10px] uppercase font-bold text-amber-800 tracking-wider">Est. WOP Cost</div>
+                  <div className="text-2xl font-black text-amber-950 mt-1 font-mono">₹{fmt(wopMetrics.totalWages)}</div>
                 </div>
               </div>
             </div>
