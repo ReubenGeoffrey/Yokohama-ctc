@@ -24,7 +24,10 @@ import {
   Coins,
   Briefcase,
   UserCheck,
-  Zap
+  Zap,
+  CheckCircle2,
+  ArrowRight,
+  ShieldCheck
 } from 'lucide-react';
 import { formatDateDisplay } from '../services/parser';
 
@@ -667,6 +670,15 @@ export function DashboardOverview({
     return filteredWopEmployees.slice(start, start + wopPageSize);
   }, [filteredWopEmployees, wopCurrentPage, wopPageSize]);
 
+  // Derived WOP shares and averages for executive cards
+  const opShare = wopMetrics.totalCount > 0 ? ((wopMetrics.op.count / wopMetrics.totalCount) * 100).toFixed(1) : '0.0';
+  const clShare = wopMetrics.totalCount > 0 ? ((wopMetrics.cl.count / wopMetrics.totalCount) * 100).toFixed(1) : '0.0';
+  const napsShare = wopMetrics.totalCount > 0 ? ((wopMetrics.naps.count / wopMetrics.totalCount) * 100).toFixed(1) : '0.0';
+
+  const opAvg = wopMetrics.op.employees ? (wopMetrics.op.count / wopMetrics.op.employees).toFixed(1) : '0';
+  const clAvg = wopMetrics.cl.employees ? (wopMetrics.cl.count / wopMetrics.cl.employees).toFixed(1) : '0';
+  const napsAvg = wopMetrics.naps.employees ? (wopMetrics.naps.count / wopMetrics.naps.employees).toFixed(1) : '0';
+
   return (
     <div className="space-y-6 pb-12">
       {/* ── BREADCRUMB & HEADER SECTION (Reference UI) ── */}
@@ -987,162 +999,274 @@ export function DashboardOverview({
             </div>
           </div>
 
-          {/* ── 3 CATEGORY WOP CARDS (Operator, CL, NAPS) ── */}
+          {/* ── 3 EXECUTIVE CATEGORY WOP CARDS (Operator, CL, NAPS) ── */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* 1. Operator WOP Card */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-4">
-              <div>
+            <div
+              onClick={() => { setWopCategoryFilter('OP'); setWopCurrentPage(1); }}
+              className={`bg-white rounded-2xl border p-5 sm:p-6 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-5 hover:shadow-md ${
+                wopCategoryFilter === 'OP'
+                  ? 'border-sky-500 ring-2 ring-sky-500/20 shadow-sm bg-gradient-to-b from-sky-50/30 to-white'
+                  : 'border-slate-200/90 hover:border-slate-300 shadow-xs'
+              }`}
+            >
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shadow-2xs">
-                    <HardHat className="w-5 h-5" />
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shadow-2xs">
+                      <HardHat className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 leading-none">
+                        Plant Operators
+                      </h3>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 block">
+                        Full-Time Roster
+                      </span>
+                    </div>
                   </div>
-                  <span className="px-2.5 py-0.5 bg-sky-50 text-sky-700 rounded-md text-[10px] font-black uppercase tracking-wider border border-sky-100">
-                    Operator
+
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                    wopMetrics.op.count > 0
+                      ? 'bg-sky-50 text-sky-700 border-sky-200'
+                      : 'bg-slate-100 text-slate-500 border-slate-200'
+                  }`}>
+                    {opShare}% Share
                   </span>
                 </div>
-                <h3 className="text-base font-black text-slate-900 mt-3">
-                  Operator WOP Stats
-                </h3>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Full-time production operators deployed on weekly off.
-                </p>
+
+                {/* Hero Stat Display */}
+                <div className="pt-2">
+                  <div className="flex items-baseline space-x-2">
+                    <span className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950">
+                      {fmtN(wopMetrics.op.count)}
+                    </span>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      WOP Shifts
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-1.5 mt-1 text-xs font-semibold">
+                    <span className="text-slate-500">Wage Outflow:</span>
+                    <span className="font-mono font-bold text-sky-700">₹{fmt(wopMetrics.op.wages)}</span>
+                  </div>
+                </div>
+
+                {/* Progress bar representing share */}
+                <div className="space-y-1 pt-1">
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-sky-500 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${Math.max(Number(opShare), wopMetrics.op.count > 0 ? 4 : 0)}%` }}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Total WOP Shifts:</span>
-                  <span className="font-black text-slate-900 text-sm">{fmtN(wopMetrics.op.count)}</span>
+              {/* 2x2 Executive Mini-Metric Matrix */}
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Workers on WOP
+                  </span>
+                  <span className="text-sm font-black text-slate-900 mt-0.5 block">
+                    {fmtN(wopMetrics.op.employees)} Personnel
+                  </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Operators with WOP:</span>
-                  <span className="font-bold text-slate-800">{fmtN(wopMetrics.op.employees)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Est. WOP Wages:</span>
-                  <span className="font-mono font-bold text-sky-700">₹{fmt(wopMetrics.op.wages)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Avg WOP / Operator:</span>
-                  <span className="font-bold text-slate-700">
-                    {wopMetrics.op.employees ? (wopMetrics.op.count / wopMetrics.op.employees).toFixed(1) : 0} Days
+
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Avg Frequency
+                  </span>
+                  <span className="text-sm font-black text-slate-900 mt-0.5 block">
+                    {opAvg} Days / Wkr
                   </span>
                 </div>
               </div>
 
-              <button
-                onClick={() => { setWopCategoryFilter('OP'); setWopCurrentPage(1); }}
-                className={`w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
-                  wopCategoryFilter === 'OP'
-                    ? 'bg-sky-600 text-white shadow-2xs'
-                    : 'bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200'
-                }`}
-              >
-                <span>View Operator List ({wopMetrics.op.list.length})</span>
-              </button>
+              {/* Card Footer Button */}
+              <div className={`pt-2 flex items-center justify-between text-xs font-bold ${
+                wopCategoryFilter === 'OP' ? 'text-sky-700' : 'text-slate-500'
+              }`}>
+                <span>View {wopMetrics.op.list.length} Operator records</span>
+                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+              </div>
             </div>
 
             {/* 2. Contract Labour (CL) WOP Card */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-4">
-              <div>
+            <div
+              onClick={() => { setWopCategoryFilter('CL'); setWopCurrentPage(1); }}
+              className={`bg-white rounded-2xl border p-5 sm:p-6 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-5 hover:shadow-md ${
+                wopCategoryFilter === 'CL'
+                  ? 'border-emerald-500 ring-2 ring-emerald-500/20 shadow-sm bg-gradient-to-b from-emerald-50/30 to-white'
+                  : 'border-slate-200/90 hover:border-slate-300 shadow-xs'
+              }`}
+            >
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-2xs">
-                    <Users className="w-5 h-5" />
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-2xs">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 leading-none">
+                        Contract Labour (CL)
+                      </h3>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 block">
+                        Contractor Deployed
+                      </span>
+                    </div>
                   </div>
-                  <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-md text-[10px] font-black uppercase tracking-wider border border-emerald-100">
-                    Contract Labour
+
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    {clShare}% Share
                   </span>
                 </div>
-                <h3 className="text-base font-black text-slate-900 mt-3">
-                  Contract Labour WOP Stats
-                </h3>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Contractor deployed labour working weekly off schedules.
-                </p>
+
+                {/* Hero Stat Display */}
+                <div className="pt-2">
+                  <div className="flex items-baseline space-x-2">
+                    <span className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950">
+                      {fmtN(wopMetrics.cl.count)}
+                    </span>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      WOP Shifts
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-1.5 mt-1 text-xs font-semibold">
+                    <span className="text-slate-500">Wage Outflow:</span>
+                    <span className="font-mono font-bold text-emerald-700">₹{fmt(wopMetrics.cl.wages)}</span>
+                  </div>
+                </div>
+
+                {/* Progress bar representing share */}
+                <div className="space-y-1 pt-1">
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${clShare}%` }}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Total WOP Shifts:</span>
-                  <span className="font-black text-slate-900 text-sm">{fmtN(wopMetrics.cl.count)}</span>
+              {/* 2x2 Executive Mini-Metric Matrix */}
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Workers on WOP
+                  </span>
+                  <span className="text-sm font-black text-slate-900 mt-0.5 block">
+                    {fmtN(wopMetrics.cl.employees)} Personnel
+                  </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">CL Workers with WOP:</span>
-                  <span className="font-bold text-slate-800">{fmtN(wopMetrics.cl.employees)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Est. WOP Wages:</span>
-                  <span className="font-mono font-bold text-emerald-700">₹{fmt(wopMetrics.cl.wages)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Avg WOP / Worker:</span>
-                  <span className="font-bold text-slate-700">
-                    {wopMetrics.cl.employees ? (wopMetrics.cl.count / wopMetrics.cl.employees).toFixed(1) : 0} Days
+
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Avg Frequency
+                  </span>
+                  <span className="text-sm font-black text-slate-900 mt-0.5 block">
+                    {clAvg} Days / Wkr
                   </span>
                 </div>
               </div>
 
-              <button
-                onClick={() => { setWopCategoryFilter('CL'); setWopCurrentPage(1); }}
-                className={`w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
-                  wopCategoryFilter === 'CL'
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200'
-                }`}
-              >
-                <span>View CL List ({wopMetrics.cl.list.length})</span>
-              </button>
+              {/* Card Footer Button */}
+              <div className={`pt-2 flex items-center justify-between text-xs font-bold ${
+                wopCategoryFilter === 'CL' ? 'text-emerald-700' : 'text-slate-500'
+              }`}>
+                <span>View {wopMetrics.cl.list.length} CL records</span>
+                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+              </div>
             </div>
 
             {/* 3. NAPS Apprentice WOP Card */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-4">
-              <div>
+            <div
+              onClick={() => { setWopCategoryFilter('NAPS'); setWopCurrentPage(1); }}
+              className={`bg-white rounded-2xl border p-5 sm:p-6 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-5 hover:shadow-md ${
+                wopCategoryFilter === 'NAPS'
+                  ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-sm bg-gradient-to-b from-amber-50/30 to-white'
+                  : 'border-slate-200/90 hover:border-slate-300 shadow-xs'
+              }`}
+            >
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shadow-2xs">
-                    <GraduationCap className="w-5 h-5" />
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shadow-2xs">
+                      <GraduationCap className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 leading-none">
+                        NAPS Apprentices
+                      </h3>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 block">
+                        Trainee Program
+                      </span>
+                    </div>
                   </div>
-                  <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded-md text-[10px] font-black uppercase tracking-wider border border-amber-100">
-                    NAPS Apprentice
+
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+                    {napsShare}% Share
                   </span>
                 </div>
-                <h3 className="text-base font-black text-slate-900 mt-3">
-                  NAPS Apprentice WOP Stats
-                </h3>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  National Apprenticeship Promotion Scheme trainees.
-                </p>
+
+                {/* Hero Stat Display */}
+                <div className="pt-2">
+                  <div className="flex items-baseline space-x-2">
+                    <span className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950">
+                      {fmtN(wopMetrics.naps.count)}
+                    </span>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      WOP Shifts
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-1.5 mt-1 text-xs font-semibold">
+                    <span className="text-slate-500">Wage Outflow:</span>
+                    <span className="font-mono font-bold text-amber-700">₹{fmt(wopMetrics.naps.wages)}</span>
+                  </div>
+                </div>
+
+                {/* Progress bar representing share */}
+                <div className="space-y-1 pt-1">
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${napsShare}%` }}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Total WOP Shifts:</span>
-                  <span className="font-black text-slate-900 text-sm">{fmtN(wopMetrics.naps.count)}</span>
+              {/* 2x2 Executive Mini-Metric Matrix */}
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Workers on WOP
+                  </span>
+                  <span className="text-sm font-black text-slate-900 mt-0.5 block">
+                    {fmtN(wopMetrics.naps.employees)} Trainees
+                  </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Trainees with WOP:</span>
-                  <span className="font-bold text-slate-800">{fmtN(wopMetrics.naps.employees)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Est. WOP Wages:</span>
-                  <span className="font-mono font-bold text-amber-700">₹{fmt(wopMetrics.naps.wages)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Avg WOP / Trainee:</span>
-                  <span className="font-bold text-slate-700">
-                    {wopMetrics.naps.employees ? (wopMetrics.naps.count / wopMetrics.naps.employees).toFixed(1) : 0} Days
+
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Avg Frequency
+                  </span>
+                  <span className="text-sm font-black text-slate-900 mt-0.5 block">
+                    {napsAvg} Days / Wkr
                   </span>
                 </div>
               </div>
 
-              <button
-                onClick={() => { setWopCategoryFilter('NAPS'); setWopCurrentPage(1); }}
-                className={`w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
-                  wopCategoryFilter === 'NAPS'
-                    ? 'bg-amber-600 text-white shadow-2xs'
-                    : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
-                }`}
-              >
-                <span>View NAPS List ({wopMetrics.naps.list.length})</span>
-              </button>
+              {/* Card Footer Button */}
+              <div className={`pt-2 flex items-center justify-between text-xs font-bold ${
+                wopCategoryFilter === 'NAPS' ? 'text-amber-700' : 'text-slate-500'
+              }`}>
+                <span>View {wopMetrics.naps.list.length} NAPS records</span>
+                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+              </div>
             </div>
           </div>
 
