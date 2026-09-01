@@ -168,7 +168,7 @@ export function ExportPanel({ batchResults, master, empStats }) {
               </div>
               <div className="flex items-center space-x-2">
                 <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Department employee rosters</span>
+                <span>Rosters across ATC, CL, NAPS, and Project</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />

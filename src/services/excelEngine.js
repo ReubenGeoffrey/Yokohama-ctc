@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
-import { formatDateDisplay, formatDateToInput } from './parser';
+import { formatDateDisplay, formatDateToInput } from './parser.js';
 
 const FONT_NAME = 'Segoe UI';
 const cYellowMain = 'FFFFE699';   // Soft warm professional yellow
@@ -192,6 +192,74 @@ export function buildDetailSheet(wb, title, employeeMap, statMap) {
   return ws;
 }
 
+// Known eligible Project employees specified by executive plant requirements
+export const KNOWN_PROJECT_EMPLOYEES = [
+  { code: 'SK1449', name: 'BALAIAH K', dept: 'PROJECT' },
+  { code: 'SK2918', name: 'VARGHEESE A', dept: 'EEI-PROJECT' },
+  { code: '900246', name: 'ANNAMALAI RAJ M', dept: 'EEI-PROJECT' },
+  { code: '901165', name: 'SHANMUGA SUNDARAM R', dept: 'EEI-PROJECT' },
+  { code: '901164', name: 'PANDI A', dept: 'PROJECT' },
+  { code: '900257', name: 'KALLAND RAMAR N', dept: 'PROJECT' },
+  { code: '900266', name: 'RAJAN N', dept: 'PROJECT' },
+  { code: '901163', name: 'SURESH G', dept: 'PROJECT' },
+  { code: '900237', name: 'THUKKI V', dept: 'EEI-PROJECT' }
+];
+
+export function getProjectEmployees(master) {
+  const projectMap = {};
+
+  // 1. Seed with known project roster
+  KNOWN_PROJECT_EMPLOYEES.forEach(emp => {
+    projectMap[emp.code] = {
+      name: emp.name,
+      dept: emp.dept,
+      direct: false,
+      dailyCTC: 0,
+      dailyOT: 0
+    };
+  });
+
+  // 2. Scan master (contract, operator, naps) to pull rates, updated names or any additional PROJECT staff
+  ['contract', 'operator', 'naps'].forEach(cat => {
+    if (!master || !master[cat]) return;
+    Object.entries(master[cat]).forEach(([code, info]) => {
+      const codeUpper = String(code).trim().toUpperCase();
+      const isKnown = !!projectMap[codeUpper];
+      const deptUpper = String(info.dept || '').toUpperCase();
+      const isProjectDept = deptUpper.includes('PROJECT');
+
+      if (isKnown || isProjectDept) {
+        projectMap[codeUpper] = {
+          name: info.name || (projectMap[codeUpper] ? projectMap[codeUpper].name : 'Project Staff'),
+          dept: info.dept || (projectMap[codeUpper] ? projectMap[codeUpper].dept : 'PROJECT'),
+          direct: info.direct || false,
+          dailyCTC: info.dailyCTC || 0,
+          dailyOT: info.dailyOT || 0
+        };
+      }
+    });
+  });
+
+  return projectMap;
+}
+
+export function getProjectStats(projectEmployees, empStats) {
+  const projectStats = new Map();
+  Object.keys(projectEmployees).forEach(code => {
+    const st = empStats?.CL?.get(code) ||
+               empStats?.OP?.get(code) ||
+               empStats?.NAPS?.get(code) || {
+                 workHrs: 0,
+                 daysPresent: 0,
+                 wopCount: 0,
+                 otHrs: 0,
+                 wages: 0
+               };
+    projectStats.set(code, st);
+  });
+  return projectStats;
+}
+
 // Generate Combined Monthly Master Workbook
 export async function generateMonthlyWorkbook(batchResults, master, empStats, year, month) {
   const wb = new ExcelJS.Workbook();
@@ -229,10 +297,14 @@ export async function generateMonthlyWorkbook(batchResults, master, empStats, ye
     });
   });
 
-  // Build Detail Sheets
+  // Build Detail Sheets: ATC, CL, NAPS, and Project (Right of NAPS)
   buildDetailSheet(wb, 'ATC', master.operator || {}, empStats.OP);
   buildDetailSheet(wb, 'CL', master.contract || {}, empStats.CL);
   buildDetailSheet(wb, 'NAPS', master.naps || {}, empStats.NAPS);
+
+  const projectEmployees = getProjectEmployees(master);
+  const projectStats = getProjectStats(projectEmployees, empStats);
+  buildDetailSheet(wb, 'Project', projectEmployees, projectStats);
 
   const buffer = await wb.xlsx.writeBuffer();
   return buffer;
@@ -287,9 +359,14 @@ export async function generateSingleDayWorkbook(dayResult, master, year, month) 
     });
   }
 
+  // Build Detail Sheets: ATC, CL, NAPS, and Project (Right of NAPS)
   buildDetailSheet(wb, 'ATC', master.operator || {}, singleDayStats.OP);
   buildDetailSheet(wb, 'CL', master.contract || {}, singleDayStats.CL);
   buildDetailSheet(wb, 'NAPS', master.naps || {}, singleDayStats.NAPS);
+
+  const projectEmployees = getProjectEmployees(master);
+  const projectDayStats = getProjectStats(projectEmployees, singleDayStats);
+  buildDetailSheet(wb, 'Project', projectEmployees, projectDayStats);
 
   return await wb.xlsx.writeBuffer();
 }
