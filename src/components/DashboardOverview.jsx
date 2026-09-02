@@ -40,7 +40,7 @@ function getEmpStat(statMap, code) {
 }
 
 // ── Pure-SVG Smooth Wave / Area Chart (Left Card) ────────────────
-function SmoothWaveChart({ data, width = 460, height = 180 }) {
+function SmoothWaveChart({ data = [], width = 460, height = 180 }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   const containerRef = useRef(null);
 
@@ -96,18 +96,20 @@ function SmoothWaveChart({ data, width = 460, height = 180 }) {
   const areaD = `${pathD} L ${points[points.length - 1].x} ${paddingTop + chartH} L ${points[0].x} ${paddingTop + chartH} Z`;
 
   // Smart X-axis tick selection (5-6 intervals, never crowded)
-  const tickIndices = useMemo(() => {
-    const n = data.length;
-    if (n <= 6) return data.map((_, i) => i);
+  const n = data.length;
+  let tickIndices = [];
+  if (n <= 6) {
+    tickIndices = data.map((_, i) => i);
+  } else {
     const step = (n - 1) / 4;
-    return [
+    tickIndices = [
       0,
       Math.round(step),
       Math.round(step * 2),
       Math.round(step * 3),
       n - 1
     ];
-  }, [data]);
+  }
 
   // Handle Mouse / Touch movement across chart
   const handleMouseMove = (e) => {
