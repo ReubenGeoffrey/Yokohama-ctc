@@ -498,7 +498,7 @@ export function App() {
               <div className="flex items-center space-x-2.5">
                 <Lock className="w-4 h-4 text-amber-600 shrink-0" />
                 <span className="text-amber-950 font-medium">
-                  Executive Protection: Stored master rates &amp; rosters are view-locked. Use PIN (<strong className="font-bold">atc2026</strong>) to edit.
+                  Executive Protection: Stored master rates &amp; rosters are view-locked. Use PIN to edit.
                 </span>
               </div>
               <button
