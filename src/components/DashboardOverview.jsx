@@ -31,7 +31,8 @@ import {
   FileDown,
   AlertTriangle,
   Timer,
-  RefreshCw
+  RefreshCw,
+  Cloud
 } from 'lucide-react';
 import { formatDateDisplay } from '../services/parser';
 import {
@@ -580,7 +581,9 @@ export function DashboardOverview({
   onExportMonthly,
   onNavigateToModule,
   initialTab = 'overview',
-  onTabChange
+  onTabChange,
+  isSyncing = false,
+  onRefreshCloudSync
 }) {
   const [activeTab, setActiveTab] = useState(initialTab || 'overview');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1360,6 +1363,65 @@ export function DashboardOverview({
       {/* ── VIEW 1: PLANT OVERVIEW ── */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          {/* ── CLOUD STORAGE STATUS CARD ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                    Enterprise Cloud Storage
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Connected
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium">
+                  Bucket: <strong className="text-slate-800 font-mono">atc-attendance-storage</strong> &bull; Multi-device real-time sync active
+                </p>
+              </div>
+
+              {/* Metrics / Actions */}
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <div className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-left">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Stored Dates</span>
+                  <span className="text-xs font-black text-slate-900 mt-0.5 block font-mono">
+                    {Object.keys(batchDates || {}).length} Dates / {Object.keys(batchDates || {}).length * 3} Files
+                  </span>
+                </div>
+
+                <div className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-left">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Sync Status</span>
+                  <span className="text-xs font-black text-emerald-700 mt-0.5 block font-mono">
+                    {isSyncing ? 'Syncing...' : 'Real-time Live'}
+                  </span>
+                </div>
+
+                {onRefreshCloudSync && (
+                  <button
+                    type="button"
+                    onClick={onRefreshCloudSync}
+                    disabled={isSyncing}
+                    className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                    <span>{isSyncing ? 'Syncing...' : 'Sync Cloud'}</span>
+                  </button>
+                )}
+
+                {onOpenVault && (
+                  <button
+                    type="button"
+                    onClick={onOpenVault}
+                    className="px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                  >
+                    View Stored Files
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* ── 3 ANALYTICS CARDS (Exact match to Reference Image) ── */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Card 1: Daily Attendance Trend (Area / Wave Chart) */}

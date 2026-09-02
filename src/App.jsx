@@ -513,6 +513,8 @@ export function App() {
                   onNavigateToModule={(v) => setActiveView(v)}
                   initialTab={dashboardTab}
                   onTabChange={setDashboardTab}
+                  isSyncing={isSyncing}
+                  onRefreshCloudSync={handleManualSync}
                 />
               </motion.div>
             )}
