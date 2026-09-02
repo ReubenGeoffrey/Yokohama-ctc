@@ -125,10 +125,6 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
       {/* ── Page Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[11px] font-black uppercase tracking-wider mb-2">
-            <Building2 className="w-3 h-3 text-blue-600" />
-            <span>Stage 03 • Cost Summary</span>
-          </div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
             Daily Attendance &amp; Cost Summary
           </h2>

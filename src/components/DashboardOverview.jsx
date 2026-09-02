@@ -1545,10 +1545,6 @@ export function DashboardOverview({
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 sm:p-7 relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-md text-[11px] font-black uppercase tracking-wider mb-2">
-                  <CalendarCheck className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Plant Weekly Off Present (WOP) Overview</span>
-                </div>
                 <h2 className="text-2xl font-black text-slate-950 tracking-tight">
                   Weekly Off Deployment &amp; Wages
                 </h2>
@@ -2082,10 +2078,6 @@ export function DashboardOverview({
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 sm:p-7 relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-rose-50 text-rose-800 border border-rose-200 rounded-md text-[11px] font-black uppercase tracking-wider mb-2">
-                  <Clock className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Shift Punctuality &amp; Late Login Intelligence</span>
-                </div>
                 <h2 className="text-2xl font-black text-slate-950 tracking-tight">
                   Worker Late Arrival Tracking &amp; Compliance
                 </h2>
