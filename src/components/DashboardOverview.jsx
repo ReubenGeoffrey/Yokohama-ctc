@@ -142,31 +142,71 @@ function SmoothWaveChart({ data = [], width = 460, height = 180 }) {
       onTouchEnd={() => setHoverIndex(null)}
       className="relative w-full select-none cursor-crosshair group"
     >
-      {/* ── Active Floating Glass Tooltip ── */}
+      {/* ── Active Floating Dark Executive Tooltip ── */}
       {activePoint && (
         <div 
-          className="absolute z-20 pointer-events-none transition-all duration-75 ease-out shadow-xl"
+          className="absolute z-30 pointer-events-none transition-all duration-75 ease-out"
           style={{
             left: `${(activePoint.x / width) * 100}%`,
-            top: '0px',
-            transform: `translate(${activePoint.x > width * 0.75 ? '-100%' : activePoint.x < width * 0.25 ? '0%' : '-50%'}, -6px)`
+            top: activePoint.y < 90 ? 'auto' : '0px',
+            bottom: activePoint.y < 90 ? '4px' : 'auto',
+            transform: `translateX(${activePoint.x > width * 0.72 ? '-100%' : activePoint.x < width * 0.28 ? '0%' : '-50%'})`
           }}
         >
-          <div className="bg-slate-900/95 backdrop-blur-md text-white rounded-xl px-3 py-2 text-xs border border-slate-700/60 shadow-2xl flex flex-col gap-0.5 whitespace-nowrap">
-            <div className="flex items-center justify-between gap-3 text-[11px] text-slate-400 font-bold border-b border-slate-700/50 pb-1">
-              <span>{activePoint.fullDate || activePoint.label}</span>
-              <span className="text-indigo-400 font-mono">Day {activePoint.dayNum || activePoint.index + 1}</span>
-            </div>
-            <div className="flex items-center justify-between gap-4 pt-1">
-              <span className="text-slate-300 font-medium">Headcount:</span>
-              <span className="font-black text-white text-sm font-mono tracking-tight">
-                {activePoint.value.toLocaleString('en-IN')} <span className="text-[10px] text-slate-400 font-normal">workers</span>
+          <div 
+            style={{
+              backgroundColor: '#090d16',
+              color: '#ffffff',
+              border: '1.5px solid #334155',
+              boxShadow: '0 20px 30px -5px rgba(0, 0, 0, 0.7), 0 10px 15px -5px rgba(0, 0, 0, 0.5)',
+              borderRadius: '12px',
+              padding: '10px 14px',
+              minWidth: '190px'
+            }}
+            className="flex flex-col gap-1 select-none"
+          >
+            {/* Header: Date & Day */}
+            <div 
+              style={{ borderBottom: '1px solid #1e293b', paddingBottom: '6px' }}
+              className="flex items-center justify-between gap-3 text-xs font-bold"
+            >
+              <span style={{ color: '#94a3b8' }}>{activePoint.fullDate || activePoint.label}</span>
+              <span 
+                style={{ 
+                  backgroundColor: '#312e81', 
+                  color: '#c7d2fe', 
+                  border: '1px solid #4338ca',
+                  borderRadius: '6px',
+                  padding: '2px 8px',
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                  fontWeight: '800'
+                }}
+              >
+                Day {activePoint.dayNum || activePoint.index + 1}
               </span>
             </div>
+
+            {/* Row 1: Headcount */}
+            <div className="flex items-center justify-between gap-4 pt-1 text-xs">
+              <span style={{ color: '#cbd5e1' }} className="font-semibold">Headcount:</span>
+              <span 
+                style={{ color: '#ffffff', fontFamily: 'monospace', fontSize: '15px' }} 
+                className="font-black tracking-tight"
+              >
+                {activePoint.value.toLocaleString('en-IN')}{' '}
+                <span style={{ color: '#94a3b8', fontSize: '10px', fontWeight: 'normal' }}>workers</span>
+              </span>
+            </div>
+
+            {/* Row 2: Estimated Daily Cost */}
             {activePoint.totalCost ? (
-              <div className="flex items-center justify-between gap-4 text-[11px]">
-                <span className="text-slate-400 font-medium">Est. Cost:</span>
-                <span className="font-bold text-emerald-400 font-mono">
+              <div className="flex items-center justify-between gap-4 text-xs">
+                <span style={{ color: '#94a3b8' }} className="font-medium">Est. Cost:</span>
+                <span 
+                  style={{ color: '#34d399', fontFamily: 'monospace', fontSize: '13px' }} 
+                  className="font-black"
+                >
                   ₹{Math.round(activePoint.totalCost).toLocaleString('en-IN')}
                 </span>
               </div>
