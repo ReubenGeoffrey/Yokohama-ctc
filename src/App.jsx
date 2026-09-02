@@ -492,24 +492,6 @@ export function App() {
 
         {/* View Content Body */}
         <main className="flex-1 p-4 sm:p-7 max-w-7xl w-full mx-auto">
-          {/* Unauthenticated Security Warning Banner */}
-          {!currentUser && (
-            <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <div className="flex items-center space-x-2.5">
-                <Lock className="w-4 h-4 text-amber-600 shrink-0" />
-                <span className="text-amber-950 font-medium">
-                  Executive Protection: Stored master rates &amp; rosters are view-locked. Use PIN to edit.
-                </span>
-              </div>
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-lg transition shrink-0 cursor-pointer shadow-xs"
-              >
-                Enter PIN
-              </button>
-            </div>
-          )}
-
           {/* Active View Routing */}
           <AnimatePresence mode="wait">
             {activeView === 'dashboard' && (
