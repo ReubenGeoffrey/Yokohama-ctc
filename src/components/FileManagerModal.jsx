@@ -482,7 +482,7 @@ export function FileManagerModal({
                         Total CTC Wages
                       </div>
                       <div className="text-lg font-black text-emerald-950 mt-0.5 font-mono">
-                        ₹{fmt(selectedMonthData.totalCost)}
+                        {fmt(selectedMonthData.totalCost)}
                       </div>
                     </div>
                   </div>
@@ -534,7 +534,7 @@ export function FileManagerModal({
                             </span>
                             {item.result && (
                               <span className="text-slate-500 text-[11px] ml-2">
-                                Man-days: <strong className="text-slate-800">{fmtN(item.result.gHC)}</strong> &bull; Total: <strong className="text-emerald-700 font-mono">₹{fmt(item.result.gTot)}</strong>
+                                Man-days: <strong className="text-slate-800">{fmtN(item.result.gHC)}</strong> &bull; Total: <strong className="text-emerald-700 font-mono">{fmt(item.result.gTot)}</strong>
                               </span>
                             )}
                           </div>

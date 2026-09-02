@@ -207,7 +207,7 @@ function SmoothWaveChart({ data = [], width = 460, height = 180 }) {
                   style={{ color: '#34d399', fontFamily: 'monospace', fontSize: '13px' }} 
                   className="font-black"
                 >
-                  ₹{Math.round(activePoint.totalCost).toLocaleString('en-IN')}
+                  {Math.round(activePoint.totalCost).toLocaleString('en-IN')}
                 </span>
               </div>
             ) : null}
@@ -1133,7 +1133,7 @@ export function DashboardOverview({
                           </div>
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
-                          {emp.wages > 0 ? `₹${fmt(emp.wages)}` : '—'}
+                          {emp.wages > 0 ? fmt(emp.wages) : '—'}
                         </td>
                         <td className="py-3 px-5 text-center">
                           <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-bold">
@@ -1230,7 +1230,7 @@ export function DashboardOverview({
                 </div>
                 <div className="bg-amber-50/80 border border-amber-200 p-3.5 rounded-xl col-span-2 sm:col-span-1">
                   <div className="text-[10px] uppercase font-bold text-amber-800 tracking-wider">Est. WOP Cost</div>
-                  <div className="text-2xl font-black text-amber-950 mt-1 font-mono">₹{fmt(wopMetrics.totalWages)}</div>
+                  <div className="text-2xl font-black text-amber-950 mt-1 font-mono">{fmt(wopMetrics.totalWages)}</div>
                 </div>
               </div>
             </div>
@@ -1282,7 +1282,7 @@ export function DashboardOverview({
 
                   <div className="flex items-center space-x-1.5 mt-1 text-xs font-semibold">
                     <span className="text-slate-500">Wage Outflow:</span>
-                    <span className="font-mono font-bold text-sky-700">₹{fmt(wopMetrics.op.wages)}</span>
+                    <span className="font-mono font-bold text-sky-700">{fmt(wopMetrics.op.wages)}</span>
                   </div>
                 </div>
 
@@ -1367,7 +1367,7 @@ export function DashboardOverview({
 
                   <div className="flex items-center space-x-1.5 mt-1 text-xs font-semibold">
                     <span className="text-slate-500">Wage Outflow:</span>
-                    <span className="font-mono font-bold text-emerald-700">₹{fmt(wopMetrics.cl.wages)}</span>
+                    <span className="font-mono font-bold text-emerald-700">{fmt(wopMetrics.cl.wages)}</span>
                   </div>
                 </div>
 
@@ -1452,7 +1452,7 @@ export function DashboardOverview({
 
                   <div className="flex items-center space-x-1.5 mt-1 text-xs font-semibold">
                     <span className="text-slate-500">Wage Outflow:</span>
-                    <span className="font-mono font-bold text-amber-700">₹{fmt(wopMetrics.naps.wages)}</span>
+                    <span className="font-mono font-bold text-amber-700">{fmt(wopMetrics.naps.wages)}</span>
                   </div>
                 </div>
 
@@ -1658,7 +1658,7 @@ export function DashboardOverview({
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-bold text-amber-700">
-                          ₹{fmt(emp.wopWages)}
+                          {fmt(emp.wopWages)}
                         </td>
                         <td className="py-3 px-5 text-center">
                           <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-amber-50 text-amber-800 rounded-full text-[10px] font-bold">

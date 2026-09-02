@@ -131,15 +131,15 @@ export function YearArchiveModal({ isOpen, onClose }) {
               </div>
               <div>
                 <span className="text-slate-500 font-semibold">Daily CTC</span>
-                <div className="text-base font-black text-slate-900 mt-1">₹{(currentSummary.daily_ctc || 0).toLocaleString()}</div>
+                <div className="text-base font-black text-slate-900 mt-1">{(currentSummary.daily_ctc || 0).toLocaleString()}</div>
               </div>
               <div>
                 <span className="text-slate-500 font-semibold">OT Wages</span>
-                <div className="text-base font-black text-slate-900 mt-1">₹{(currentSummary.ot_wages || 0).toLocaleString()}</div>
+                <div className="text-base font-black text-slate-900 mt-1">{(currentSummary.ot_wages || 0).toLocaleString()}</div>
               </div>
               <div>
                 <span className="text-rose-700 font-black">Grand Total</span>
-                <div className="text-base font-black text-rose-700 mt-1">₹{(currentSummary.grand_total || 0).toLocaleString()}</div>
+                <div className="text-base font-black text-rose-700 mt-1">{(currentSummary.grand_total || 0).toLocaleString()}</div>
               </div>
             </div>
           )}

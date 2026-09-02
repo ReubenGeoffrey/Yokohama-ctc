@@ -113,7 +113,7 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
     { label: 'CTC',      value: totCTC,  color: '#6366f1' },
     { label: 'OT Wages', value: totOT,   color: '#f59e0b' },
   ];
-  costSegments[0].total = `₹${fmt(totCost)}`;
+  costSegments[0].total = fmt(totCost);
 
   return (
     <motion.div
@@ -150,9 +150,9 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Total Man-days',  value: fmtN(totHC),      sub: `${batchResults.length} dates`,       icon: <Users className="w-4 h-4 text-blue-600"/>,      iconBg: 'bg-blue-50' },
-          { label: 'Daily CTC Wages',  value: `₹${fmt(totCTC)}`, sub: 'Standard working wages',           icon: <DollarSign className="w-4 h-4 text-emerald-600"/>,iconBg: 'bg-emerald-50' },
-          { label: 'OT Compensation',  value: `₹${fmt(totOT)}`,  sub: 'Overtime wages',                    icon: <Clock className="w-4 h-4 text-amber-600"/>,      iconBg: 'bg-amber-50' },
-          { label: 'Plant Total Cost', value: `₹${fmt(totCost)}`,sub: 'CTC + OT combined',                icon: <span className="font-black text-xs text-slate-900">₹</span>, iconBg: 'bg-slate-100', highlight: true },
+          { label: 'Daily CTC Wages',  value: fmt(totCTC),      sub: 'Standard working wages',           icon: <DollarSign className="w-4 h-4 text-emerald-600"/>,iconBg: 'bg-emerald-50' },
+          { label: 'OT Compensation',  value: fmt(totOT),       sub: 'Overtime wages',                    icon: <Clock className="w-4 h-4 text-amber-600"/>,      iconBg: 'bg-amber-50' },
+          { label: 'Plant Total Cost', value: fmt(totCost),     sub: 'CTC + OT combined',                icon: <DollarSign className="w-4 h-4 text-slate-900"/>,  iconBg: 'bg-slate-100', highlight: true },
         ].map((kpi, i) => (
           <div
             key={i}
@@ -190,8 +190,8 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
             <DonutChart segments={hcSegments} size={140} thickness={26} />
             <div className="flex-1 w-full space-y-3">
               {[
-                { label: 'Direct Labour',   value: fmtN(totDirHC), color: '#0ea5e9', cost: `₹${fmt(totDirCost)}` },
-                { label: 'Indirect Labour', value: fmtN(totIndHC), color: '#059669', cost: `₹${fmt(totIndCost)}` },
+                { label: 'Direct Labour',   value: fmtN(totDirHC), color: '#0ea5e9', cost: `${fmt(totDirCost)}` },
+                { label: 'Indirect Labour', value: fmtN(totIndHC), color: '#059669', cost: `${fmt(totIndCost)}` },
               ].map((seg) => (
                 <div key={seg.label} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
@@ -233,7 +233,7 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: seg.color }} />
                       <span>{seg.label}</span>
                     </span>
-                    <strong className="text-slate-900">₹{fmt(seg.value)}</strong>
+                    <strong className="text-slate-900">{fmt(seg.value)}</strong>
                   </div>
                   <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                     <div className="h-full rounded-full" style={{ width: seg.pctVal, backgroundColor: seg.color }} />
@@ -281,19 +281,19 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
                     {fmtN(r.dHC)}
                   </td>
                   <td className="py-3.5 px-4 text-right font-mono text-slate-700">
-                    ₹{fmt(r.dTot)}
+                    {fmt(r.dTot)}
                   </td>
                   <td className="py-3.5 px-4 text-right text-slate-700">
                     {fmtN(r.iHC)}
                   </td>
                   <td className="py-3.5 px-4 text-right font-mono text-slate-700">
-                    ₹{fmt(r.iTot)}
+                    {fmt(r.iTot)}
                   </td>
                   <td className="py-3.5 px-4 text-right font-black text-slate-950 bg-slate-50/50">
                     {fmtN(r.gHC)}
                   </td>
                   <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-700 bg-slate-50/50">
-                    ₹{fmt(r.gTot)}
+                    {fmt(r.gTot)}
                   </td>
                   <td className="py-3.5 px-5 text-center">
                     <button
@@ -319,11 +319,11 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
                   Grand Total
                 </td>
                 <td className="py-4 px-4 text-right">{fmtN(totDirHC)}</td>
-                <td className="py-4 px-4 text-right font-mono">₹{fmt(totDirCost)}</td>
+                <td className="py-4 px-4 text-right font-mono">{fmt(totDirCost)}</td>
                 <td className="py-4 px-4 text-right">{fmtN(totIndHC)}</td>
-                <td className="py-4 px-4 text-right font-mono">₹{fmt(totIndCost)}</td>
+                <td className="py-4 px-4 text-right font-mono">{fmt(totIndCost)}</td>
                 <td className="py-4 px-4 text-right bg-slate-100 font-black text-slate-950">{fmtN(totHC)}</td>
-                <td className="py-4 px-4 text-right bg-slate-100 font-mono font-black text-emerald-700">₹{fmt(totCost)}</td>
+                <td className="py-4 px-4 text-right bg-slate-100 font-mono font-black text-emerald-700">{fmt(totCost)}</td>
                 <td className="py-4 px-5 text-center text-slate-400 font-normal text-[11px]">—</td>
               </tr>
             </tfoot>
