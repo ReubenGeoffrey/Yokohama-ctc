@@ -416,56 +416,82 @@ export async function generateZipBundle(batchResults, master, empStats, year, mo
   return await zip.generateAsync({ type: 'blob' });
 }
 
-// ── Generate Dedicated WOP Statistics Workbook ──
+// ── Generate Dedicated WOP Statistics Workbook (Executive Blue Business Template) ──
 export async function generateWopReportWorkbook(wopMetrics, master, batchResults) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Yokohama CTC Operations';
   wb.created = new Date();
 
+  const cBlueDark = 'FF0F172A';   // Deep Navy Slate
+  const cBlueHeader = 'FF1E40AF'; // Executive Royal Blue (Dark & Crisp)
+  const cBlueAccent = 'FFDBEAFE'; // Light Ice Blue
+  const cBlueTotal = 'FF1D4ED8';  // Vibrant Blue
+  const cBlueRowEven = 'FFF8FAFC';
+  const cBlueBorder = 'FFBFDBFE';
+
+  const blueThinBorder = {
+    top: { style: 'thin', color: { argb: cBlueBorder } },
+    left: { style: 'thin', color: { argb: cBlueBorder } },
+    bottom: { style: 'thin', color: { argb: cBlueBorder } },
+    right: { style: 'thin', color: { argb: cBlueBorder } }
+  };
+
+  const blueDoubleBottomBorder = {
+    top: { style: 'thin', color: { argb: cBlueBorder } },
+    left: { style: 'thin', color: { argb: cBlueBorder } },
+    bottom: { style: 'double', color: { argb: 'FF1E3A8A' } },
+    right: { style: 'thin', color: { argb: cBlueBorder } }
+  };
+
   // 1. Executive Summary Sheet
-  const wsSummary = wb.addWorksheet('WOP Summary');
+  const wsSummary = wb.addWorksheet('WOP Executive Summary');
   wsSummary.views = [{ showGridLines: true }];
 
+  // Banner Title
   wsSummary.mergeCells('A1:F1');
   const titleCell = wsSummary.getCell('A1');
-  titleCell.value = 'YOKOHAMA CTC — WEEKLY OFF PRESENT (WOP) AUDIT REPORT';
-  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+  titleCell.value = 'YOKOHAMA CTC — WEEKLY OFF PRESENT (WOP) EXECUTIVE AUDIT REPORT';
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cBlueDark } };
   titleCell.font = { name: FONT_NAME, size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-  wsSummary.getRow(1).height = 30;
+  wsSummary.getRow(1).height = 32;
 
-  // KPI Row
+  // KPI Tiles
   wsSummary.getCell('A3').value = 'Total WOP Shifts';
   wsSummary.getCell('B3').value = wopMetrics.totalCount;
-  wsSummary.getCell('C3').value = 'Total Personnel';
+  wsSummary.getCell('C3').value = 'Total Personnel Deployed';
   wsSummary.getCell('D3').value = wopMetrics.totalEmployees;
-  wsSummary.getCell('E3').value = 'Total WOP Wages';
+  wsSummary.getCell('E3').value = 'Estimated WOP Wages';
   wsSummary.getCell('F3').value = wopMetrics.totalWages;
+
   ['A3', 'C3', 'E3'].forEach(pos => {
     const c = wsSummary.getCell(pos);
-    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
-    c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FF475569' } };
-    c.border = thinBorder;
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cBlueAccent } };
+    c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FF1E3A8A' } };
+    c.border = blueThinBorder;
+    c.alignment = { horizontal: 'center', vertical: 'middle' };
   });
+
   ['B3', 'D3', 'F3'].forEach(pos => {
     const c = wsSummary.getCell(pos);
-    c.font = { name: FONT_NAME, size: 11, bold: true, color: { argb: 'FF0F172A' } };
-    c.border = thinBorder;
+    c.font = { name: FONT_NAME, size: 12, bold: true, color: { argb: 'FF0F172A' } };
+    c.border = blueThinBorder;
+    c.alignment = { horizontal: 'center', vertical: 'middle' };
     c.numFmt = '#,##0';
   });
-  wsSummary.getRow(3).height = 22;
+  wsSummary.getRow(3).height = 24;
 
-  // Breakdown Table
-  const headers = ['Category', 'WOP Shifts', 'Personnel Deployed', 'Share %', 'Wage Outflow', 'Avg Frequency'];
+  // Breakdown Table Header
+  const headers = ['Category', 'WOP Shifts', 'Personnel Deployed', 'Category Share', 'Estimated Wage Outflow', 'Average Frequency'];
   headers.forEach((h, i) => {
     const c = wsSummary.getCell(5, i + 1);
     c.value = h;
-    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cYellowMain } };
-    c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: cTextDark } };
-    c.border = thinBorder;
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cBlueHeader } };
+    c.font = { name: FONT_NAME, size: 10.5, bold: true, color: { argb: 'FFFFFFFF' } };
+    c.border = blueThinBorder;
     c.alignment = { horizontal: 'center', vertical: 'middle' };
   });
-  wsSummary.getRow(5).height = 22;
+  wsSummary.getRow(5).height = 24;
 
   const rows = [
     {
@@ -501,78 +527,111 @@ export async function generateWopReportWorkbook(wopMetrics, master, batchResults
     wsSummary.getCell(rowIdx, 3).value = rData.emp;
     wsSummary.getCell(rowIdx, 4).value = `${rData.share.toFixed(1)}%`;
     wsSummary.getCell(rowIdx, 5).value = rData.wages;
-    wsSummary.getCell(rowIdx, 6).value = `${rData.avg.toFixed(1)} days/wkr`;
+    wsSummary.getCell(rowIdx, 6).value = `${rData.avg.toFixed(1)} days / worker`;
 
+    const isEven = idx % 2 === 1;
     for (let c = 1; c <= 6; c++) {
       const cell = wsSummary.getCell(rowIdx, c);
-      cell.border = thinBorder;
+      cell.border = blueThinBorder;
       cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
+      if (isEven) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cBlueRowEven } };
       if (c === 2 || c === 3 || c === 5) cell.numFmt = '#,##0';
       cell.alignment = c === 1 ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
     }
-    wsSummary.getRow(rowIdx).height = 20;
+    wsSummary.getRow(rowIdx).height = 22;
   });
 
   // Total Summary row
   const totRow = 9;
-  wsSummary.getCell(totRow, 1).value = 'Total';
+  wsSummary.getCell(totRow, 1).value = 'Plant Grand Total';
   wsSummary.getCell(totRow, 2).value = wopMetrics.totalCount;
   wsSummary.getCell(totRow, 3).value = wopMetrics.totalEmployees;
   wsSummary.getCell(totRow, 4).value = '100.0%';
   wsSummary.getCell(totRow, 5).value = wopMetrics.totalWages;
-  wsSummary.getCell(totRow, 6).value = wopMetrics.totalEmployees ? `${(wopMetrics.totalCount / wopMetrics.totalEmployees).toFixed(1)} days/wkr` : '0';
+  wsSummary.getCell(totRow, 6).value = wopMetrics.totalEmployees ? `${(wopMetrics.totalCount / wopMetrics.totalEmployees).toFixed(1)} days / worker` : '0';
   for (let c = 1; c <= 6; c++) {
     const cell = wsSummary.getCell(totRow, c);
-    cell.border = thinBorder;
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE047' } };
-    cell.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: cTextDark } };
+    cell.border = blueDoubleBottomBorder;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cBlueTotal } };
+    cell.font = { name: FONT_NAME, size: 10.5, bold: true, color: { argb: 'FFFFFFFF' } };
     if (c === 2 || c === 3 || c === 5) cell.numFmt = '#,##0';
     cell.alignment = c === 1 ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
   }
-  wsSummary.getRow(totRow).height = 22;
+  wsSummary.getRow(totRow).height = 24;
 
-  const wSummaryCol = { 1: 24, 2: 15, 3: 20, 4: 14, 5: 18, 6: 18 };
+  const wSummaryCol = { 1: 26, 2: 16, 3: 24, 4: 16, 5: 22, 6: 22 };
   Object.entries(wSummaryCol).forEach(([c, w]) => { wsSummary.getColumn(Number(c)).width = w; });
 
-  // Detail sheets builder
+  // Detail sheets builder (Royal Blue Template)
   function buildWopDetail(sheetName, list) {
     const ws = wb.addWorksheet(sheetName);
     ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }];
-    const cols = ['S.No', 'Emp Code', 'Employee Name', 'Department / Contractor', 'Days Present', 'WOP Shifts', 'WOP Wages', 'Total Wages'];
+    const cols = ['S.No', 'Emp Code', 'Employee Name', 'Department / Contractor', 'Days Present', 'WOP Shifts', 'Daily Rate', 'WOP Wages', 'Total CTC Wages'];
     cols.forEach((h, i) => {
       const c = ws.getCell(1, i + 1);
       c.value = h;
-      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cYellowMain } };
-      c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: cTextDark } };
-      c.border = thinBorder;
-      c.alignment = { horizontal: 'center', vertical: 'middle' };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cBlueHeader } };
+      c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+      c.border = blueThinBorder;
+      c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     });
-    ws.getRow(1).height = 24;
+    ws.getRow(1).height = 26;
+
+    let totalWopDays = 0;
+    let totalWopCost = 0;
+    let totalAllCost = 0;
 
     list.forEach((emp, i) => {
       const r = i + 2;
+      totalWopDays += (emp.wopCount || 0);
+      totalWopCost += (emp.wopWages || 0);
+      totalAllCost += (emp.totalWages || 0);
+
       ws.getCell(r, 1).value = i + 1;
       ws.getCell(r, 2).value = emp.code;
       ws.getCell(r, 3).value = emp.name;
       ws.getCell(r, 4).value = emp.dept;
       ws.getCell(r, 5).value = emp.days || 1;
       ws.getCell(r, 6).value = emp.wopCount;
-      ws.getCell(r, 7).value = emp.wopWages || 0;
-      ws.getCell(r, 8).value = emp.totalWages || 0;
+      ws.getCell(r, 7).value = emp.dailyRate || (emp.wopCount > 0 ? Math.round(emp.wopWages / emp.wopCount) : 0);
+      ws.getCell(r, 8).value = emp.wopWages || 0;
+      ws.getCell(r, 9).value = emp.totalWages || 0;
 
       const banded = i % 2 === 1;
-      for (let c = 1; c <= 8; c++) {
+      for (let c = 1; c <= 9; c++) {
         const cell = ws.getCell(r, c);
-        cell.border = thinBorder;
+        cell.border = blueThinBorder;
         cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
-        if (banded) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
-        if (c === 7 || c === 8) cell.numFmt = '#,##0';
+        if (banded) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cBlueRowEven } };
+        if (c === 5 || c === 6 || c === 7 || c === 8 || c === 9) cell.numFmt = '#,##0';
         cell.alignment = (c === 3 || c === 4) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
       }
       ws.getRow(r).height = 20;
     });
 
-    const wCols = { 1: 7, 2: 15, 3: 28, 4: 24, 5: 14, 6: 14, 7: 16, 8: 16 };
+    // Total Row
+    const lastR = list.length + 2;
+    ws.getCell(lastR, 1).value = '';
+    ws.getCell(lastR, 2).value = 'TOTAL';
+    ws.getCell(lastR, 3).value = `${list.length} Personnel`;
+    ws.getCell(lastR, 4).value = '';
+    ws.getCell(lastR, 5).value = '';
+    ws.getCell(lastR, 6).value = totalWopDays;
+    ws.getCell(lastR, 7).value = '';
+    ws.getCell(lastR, 8).value = totalWopCost;
+    ws.getCell(lastR, 9).value = totalAllCost;
+
+    for (let c = 1; c <= 9; c++) {
+      const cell = ws.getCell(lastR, c);
+      cell.border = blueDoubleBottomBorder;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cBlueTotal } };
+      cell.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+      if (c === 6 || c === 8 || c === 9) cell.numFmt = '#,##0';
+      cell.alignment = (c === 3) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+    }
+    ws.getRow(lastR).height = 24;
+
+    const wCols = { 1: 7, 2: 15, 3: 28, 4: 24, 5: 14, 6: 14, 7: 14, 8: 16, 9: 16 };
     Object.entries(wCols).forEach(([c, w]) => { ws.getColumn(Number(c)).width = w; });
   }
 
@@ -583,56 +642,82 @@ export async function generateWopReportWorkbook(wopMetrics, master, batchResults
   return await wb.xlsx.writeBuffer();
 }
 
-// ── Generate Dedicated Late Coming / Punctuality Report ──
+// ── Generate Dedicated Late Coming Report (Perfect Green Executive Theme) ──
 export async function generateLateReportWorkbook(lateMetrics, master, batchResults) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Yokohama CTC Operations';
   wb.created = new Date();
 
+  const cGreenDark = 'FF064E3B';   // Deep Forest / Emerald
+  const cGreenHeader = 'FF047857'; // Rich Emerald Green Header (Solid & Crisp)
+  const cGreenAccent = 'FFD1FAE5'; // Soft Mint Accent
+  const cGreenTotal = 'FF059669';  // Vibrant Emerald Total
+  const cGreenRowEven = 'FFF0FDF4'; // Soft Green Zebra
+  const cGreenBorder = 'FFA7F3D0'; // Crisp Green Border
+
+  const greenThinBorder = {
+    top: { style: 'thin', color: { argb: cGreenBorder } },
+    left: { style: 'thin', color: { argb: cGreenBorder } },
+    bottom: { style: 'thin', color: { argb: cGreenBorder } },
+    right: { style: 'thin', color: { argb: cGreenBorder } }
+  };
+
+  const greenDoubleBottomBorder = {
+    top: { style: 'thin', color: { argb: cGreenBorder } },
+    left: { style: 'thin', color: { argb: cGreenBorder } },
+    bottom: { style: 'double', color: { argb: 'FF064E3B' } },
+    right: { style: 'thin', color: { argb: cGreenBorder } }
+  };
+
   // 1. Summary Sheet
   const wsSummary = wb.addWorksheet('Punctuality Summary');
   wsSummary.views = [{ showGridLines: true }];
 
+  // Banner Title
   wsSummary.mergeCells('A1:F1');
   const titleCell = wsSummary.getCell('A1');
-  titleCell.value = 'YOKOHAMA CTC — SHIFT PUNCTUALITY & LATE ARRIVAL REPORT';
-  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+  titleCell.value = 'YOKOHAMA CTC — SHIFT PUNCTUALITY & LATE ARRIVAL EXECUTIVE REPORT';
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cGreenDark } };
   titleCell.font = { name: FONT_NAME, size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-  wsSummary.getRow(1).height = 30;
+  wsSummary.getRow(1).height = 32;
 
-  // KPI Row
+  // KPI Tiles
   wsSummary.getCell('A3').value = 'Total Late Incidents';
   wsSummary.getCell('B3').value = lateMetrics.totalCount;
   wsSummary.getCell('C3').value = 'Impacted Personnel';
   wsSummary.getCell('D3').value = lateMetrics.totalEmployees;
-  wsSummary.getCell('E3').value = 'Total Lost Minutes';
-  wsSummary.getCell('F3').value = lateMetrics.totalLostMins;
+  wsSummary.getCell('E3').value = 'Total Lost Work Time';
+  wsSummary.getCell('F3').value = `${lateMetrics.totalLostHours}h (${lateMetrics.totalLostMins}m)`;
+
   ['A3', 'C3', 'E3'].forEach(pos => {
     const c = wsSummary.getCell(pos);
-    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
-    c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FF475569' } };
-    c.border = thinBorder;
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cGreenAccent } };
+    c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FF064E3B' } };
+    c.border = greenThinBorder;
+    c.alignment = { horizontal: 'center', vertical: 'middle' };
   });
+
   ['B3', 'D3', 'F3'].forEach(pos => {
     const c = wsSummary.getCell(pos);
-    c.font = { name: FONT_NAME, size: 11, bold: true, color: { argb: 'FF0F172A' } };
-    c.border = thinBorder;
-    c.numFmt = '#,##0';
+    c.font = { name: FONT_NAME, size: 12, bold: true, color: { argb: 'FF064E3B' } };
+    c.border = greenThinBorder;
+    c.alignment = { horizontal: 'center', vertical: 'middle' };
+    if (pos !== 'F3') c.numFmt = '#,##0';
   });
-  wsSummary.getRow(3).height = 22;
+  wsSummary.getRow(3).height = 24;
 
-  // Table
-  const headers = ['Category', 'Late Incidents', 'Impacted Personnel', 'Share %', 'Total Lost Mins', 'Avg Delay'];
+  // Breakdown Table Header
+  const headers = ['Category', 'Late Incidents', 'Impacted Personnel', 'Category Share', 'Total Lost Mins', 'Average Delay'];
   headers.forEach((h, i) => {
     const c = wsSummary.getCell(5, i + 1);
     c.value = h;
-    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cYellowMain } };
-    c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: cTextDark } };
-    c.border = thinBorder;
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cGreenHeader } };
+    c.font = { name: FONT_NAME, size: 10.5, bold: true, color: { argb: 'FFFFFFFF' } };
+    c.border = greenThinBorder;
     c.alignment = { horizontal: 'center', vertical: 'middle' };
   });
-  wsSummary.getRow(5).height = 22;
+  wsSummary.getRow(5).height = 24;
 
   const rows = [
     {
@@ -670,18 +755,21 @@ export async function generateLateReportWorkbook(lateMetrics, master, batchResul
     wsSummary.getCell(rowIdx, 5).value = rData.mins;
     wsSummary.getCell(rowIdx, 6).value = `${rData.avg} mins / incident`;
 
+    const isEven = idx % 2 === 1;
     for (let c = 1; c <= 6; c++) {
       const cell = wsSummary.getCell(rowIdx, c);
-      cell.border = thinBorder;
+      cell.border = greenThinBorder;
       cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
+      if (isEven) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cGreenRowEven } };
       if (c === 2 || c === 3 || c === 5) cell.numFmt = '#,##0';
       cell.alignment = c === 1 ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
     }
-    wsSummary.getRow(rowIdx).height = 20;
+    wsSummary.getRow(rowIdx).height = 22;
   });
 
+  // Total Summary row
   const totRow = 9;
-  wsSummary.getCell(totRow, 1).value = 'Total';
+  wsSummary.getCell(totRow, 1).value = 'Plant Grand Total';
   wsSummary.getCell(totRow, 2).value = lateMetrics.totalCount;
   wsSummary.getCell(totRow, 3).value = lateMetrics.totalEmployees;
   wsSummary.getCell(totRow, 4).value = '100.0%';
@@ -689,18 +777,18 @@ export async function generateLateReportWorkbook(lateMetrics, master, batchResul
   wsSummary.getCell(totRow, 6).value = lateMetrics.totalCount ? `${Math.round(lateMetrics.totalLostMins / lateMetrics.totalCount)} mins / incident` : '0';
   for (let c = 1; c <= 6; c++) {
     const cell = wsSummary.getCell(totRow, c);
-    cell.border = thinBorder;
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE047' } };
-    cell.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: cTextDark } };
+    cell.border = greenDoubleBottomBorder;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cGreenTotal } };
+    cell.font = { name: FONT_NAME, size: 10.5, bold: true, color: { argb: 'FFFFFFFF' } };
     if (c === 2 || c === 3 || c === 5) cell.numFmt = '#,##0';
     cell.alignment = c === 1 ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
   }
-  wsSummary.getRow(totRow).height = 22;
+  wsSummary.getRow(totRow).height = 24;
 
-  const wSummaryCol = { 1: 24, 2: 15, 3: 20, 4: 14, 5: 18, 6: 20 };
+  const wSummaryCol = { 1: 26, 2: 16, 3: 24, 4: 16, 5: 22, 6: 24 };
   Object.entries(wSummaryCol).forEach(([c, w]) => { wsSummary.getColumn(Number(c)).width = w; });
 
-  // Detail sheets builder
+  // Detail sheets builder (Emerald Green Theme)
   function buildLateDetail(sheetName, list) {
     const ws = wb.addWorksheet(sheetName);
     ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }];
@@ -708,15 +796,19 @@ export async function generateLateReportWorkbook(lateMetrics, master, batchResul
     cols.forEach((h, i) => {
       const c = ws.getCell(1, i + 1);
       c.value = h;
-      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cYellowMain } };
-      c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: cTextDark } };
-      c.border = thinBorder;
-      c.alignment = { horizontal: 'center', vertical: 'middle' };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cGreenHeader } };
+      c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+      c.border = greenThinBorder;
+      c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     });
-    ws.getRow(1).height = 24;
+    ws.getRow(1).height = 26;
+
+    let totalLostMinutes = 0;
 
     list.forEach((emp, i) => {
       const r = i + 2;
+      totalLostMinutes += (emp.lateMins || 0);
+
       ws.getCell(r, 1).value = i + 1;
       ws.getCell(r, 2).value = emp.date || '';
       ws.getCell(r, 3).value = emp.code;
@@ -725,21 +817,43 @@ export async function generateLateReportWorkbook(lateMetrics, master, batchResul
       ws.getCell(r, 6).value = emp.shift || 'Shift A (7am-3pm)';
       ws.getCell(r, 7).value = `${emp.inTime || '07:20 AM'} (${emp.shiftStart || '07:00 AM'})`;
       ws.getCell(r, 8).value = emp.lateMins || 0;
-      ws.getCell(r, 9).value = emp.severity || 'Minor';
+      ws.getCell(r, 9).value = emp.severity || 'Minor (<15m)';
 
       const banded = i % 2 === 1;
       for (let c = 1; c <= 9; c++) {
         const cell = ws.getCell(r, c);
-        cell.border = thinBorder;
+        cell.border = greenThinBorder;
         cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
-        if (banded) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
+        if (banded) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cGreenRowEven } };
         if (c === 8) cell.numFmt = '#,##0';
         cell.alignment = (c === 4 || c === 5) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
       }
       ws.getRow(r).height = 20;
     });
 
-    const wCols = { 1: 7, 2: 15, 3: 15, 4: 28, 5: 24, 6: 18, 7: 22, 8: 18, 9: 16 };
+    // Total Row
+    const lastR = list.length + 2;
+    ws.getCell(lastR, 1).value = '';
+    ws.getCell(lastR, 2).value = '';
+    ws.getCell(lastR, 3).value = 'TOTAL';
+    ws.getCell(lastR, 4).value = `${list.length} Late Incidents`;
+    ws.getCell(lastR, 5).value = '';
+    ws.getCell(lastR, 6).value = '';
+    ws.getCell(lastR, 7).value = '';
+    ws.getCell(lastR, 8).value = totalLostMinutes;
+    ws.getCell(lastR, 9).value = `${(totalLostMinutes / 60).toFixed(1)} hrs lost`;
+
+    for (let c = 1; c <= 9; c++) {
+      const cell = ws.getCell(lastR, c);
+      cell.border = greenDoubleBottomBorder;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cGreenTotal } };
+      cell.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+      if (c === 8) cell.numFmt = '#,##0';
+      cell.alignment = (c === 4) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+    }
+    ws.getRow(lastR).height = 24;
+
+    const wCols = { 1: 7, 2: 15, 3: 15, 4: 28, 5: 24, 6: 22, 7: 24, 8: 18, 9: 18 };
     Object.entries(wCols).forEach(([c, w]) => { ws.getColumn(Number(c)).width = w; });
   }
 
