@@ -22,10 +22,10 @@ export function Header({
       <div className="ticker-bar">
         <div className="ticker-inner">
           <span className="ticker-dot" />
-          <span>Yokohama Tire Operations &bull; Automated CTC Mapping &amp; Overtime Analytics</span>
-          <span className="ticker-divider">·</span>
+          <span>Yokohama Tire Operations - Automated CTC Mapping &amp; Overtime Analytics</span>
+          <span className="ticker-divider">-</span>
           <span>Enterprise Cloud Sync</span>
-          <span className="ticker-divider">·</span>
+          <span className="ticker-divider">-</span>
 
           <button
             onClick={onRefreshCloudSync}
@@ -34,7 +34,7 @@ export function Header({
             title="Fetch latest from other laptops"
           >
             <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{isSyncing ? 'Syncing…' : '⚡ Live Cloud Sync'}</span>
+            <span>{isSyncing ? 'Syncing...' : 'Live Cloud Sync'}</span>
           </button>
         </div>
       </div>
@@ -49,7 +49,7 @@ export function Header({
               <h1 className="brand-name">
                 YOKOHAMA <span className="brand-accent">CTC</span>
               </h1>
-              <p className="brand-sub">Plant Operations &bull; Attendance &amp; Cost Reconciliation</p>
+              <p className="brand-sub">Plant Operations - Attendance &amp; Cost Reconciliation</p>
             </div>
           </div>
 
@@ -66,7 +66,7 @@ export function Header({
               title="Sync Cloud Data"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{isSyncing ? 'Syncing…' : 'Refresh'}</span>
+              <span className="hidden sm:inline">{isSyncing ? 'Syncing...' : 'Refresh'}</span>
             </motion.button>
 
             {/* ── VAULT / STORED FILES ───────── */}
@@ -91,9 +91,6 @@ export function Header({
               </div>
               {storedFilesCount > 0 && currentUser && (
                 <span className="vault-badge">{storedFilesCount}</span>
-              )}
-              {!currentUser && (
-                <span className="vault-lock-badge">🔒</span>
               )}
             </motion.button>
 

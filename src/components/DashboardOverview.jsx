@@ -2529,7 +2529,7 @@ export function DashboardOverview({
                     }}
                     className="w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 cursor-pointer"
                   >
-                    <option value="ALL">📅 All Dates ({batchResults.length || 1} Days)</option>
+                    <option value="ALL">All Dates ({batchResults.length || 1} Days)</option>
                     {batchResults.map((r, idx) => (
                       <option key={idx} value={formatDateDisplay(r.date)}>
                         {formatDateDisplay(r.date)}
