@@ -288,11 +288,16 @@ export function App() {
   };
 
   const handleOpenStoredFiles = () => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setIsFileManagerOpen(true);
   };
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
+    setIsAuthModalOpen(false);
     setIsFileManagerOpen(true);
   };
 
