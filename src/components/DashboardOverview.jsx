@@ -1244,9 +1244,6 @@ export function DashboardOverview({
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             Plant Reconciliation
           </h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Real-time daily attendance volume, CTC payroll allocation, and shift roster matrix.
-          </p>
         </div>
 
         {/* Top-Right Action Controls */}
