@@ -128,6 +128,38 @@ h1, h2, h3, h4, h5, h6, .font-display, .font-heading {
   box-shadow: 0 4px 12px 0 rgba(245, 158, 11, 0.3) !important;
 }
 
+/* Tab Buttons with Guaranteed Solid Contrast */
+.tab-btn-overview-active {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  border-color: #0f172a !important;
+  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.2), 0 2px 4px -2px rgba(15, 23, 42, 0.2) !important;
+}
+
+.tab-btn-wop-active {
+  background-color: #f59e0b !important;
+  color: #0f172a !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.25), 0 2px 4px -2px rgba(245, 158, 11, 0.25) !important;
+}
+
+.tab-btn-late-active {
+  background-color: #e11d48 !important;
+  color: #ffffff !important;
+  border-color: #e11d48 !important;
+  box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.25), 0 2px 4px -2px rgba(225, 29, 72, 0.25) !important;
+}
+
+.tab-btn-inactive {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
+}
+.tab-btn-inactive:hover {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
@@ -155,3 +187,4 @@ h1, h2, h3, h4, h5, h6, .font-display, .font-heading {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+

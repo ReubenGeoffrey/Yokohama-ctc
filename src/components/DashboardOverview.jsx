@@ -1256,28 +1256,29 @@ export function DashboardOverview({
         <button
           type="button"
           onClick={() => handleTabSwitch('overview')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all duration-150 flex items-center space-x-2 cursor-pointer select-none ${
-            activeTab === 'overview'
-              ? 'bg-slate-900 text-white shadow-md ring-2 ring-slate-900'
-              : 'bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 border border-slate-300'
+          style={activeTab === 'overview' ? { backgroundColor: '#0f172a', color: '#ffffff', borderColor: '#0f172a' } : { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }}
+          className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all duration-150 flex items-center space-x-2 cursor-pointer select-none border ${
+            activeTab === 'overview' ? 'tab-btn-overview-active shadow-md ring-2 ring-slate-800' : 'tab-btn-inactive hover:bg-slate-50'
           }`}
         >
-          <LayoutDashboard className="w-4 h-4" />
-          <span>Plant Overview</span>
+          <LayoutDashboard className="w-4 h-4" style={{ color: activeTab === 'overview' ? '#ffffff' : '#0f172a' }} />
+          <span style={{ color: activeTab === 'overview' ? '#ffffff' : '#0f172a' }}>Plant Overview</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleTabSwitch('wop')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all duration-150 flex items-center space-x-2 cursor-pointer select-none ${
-            activeTab === 'wop'
-              ? 'bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-300 font-black'
-              : 'bg-white text-slate-700 hover:bg-amber-50 hover:text-amber-900 border border-slate-300'
+          style={activeTab === 'wop' ? { backgroundColor: '#f59e0b', color: '#0f172a', borderColor: '#d97706' } : { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }}
+          className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all duration-150 flex items-center space-x-2 cursor-pointer select-none border ${
+            activeTab === 'wop' ? 'tab-btn-wop-active shadow-md ring-2 ring-amber-300' : 'tab-btn-inactive hover:bg-amber-50'
           }`}
         >
-          <CalendarCheck className="w-4 h-4 text-amber-600" />
-          <span>WOP Statistics (Weekly Off)</span>
-          <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-black">
+          <CalendarCheck className="w-4 h-4" style={{ color: activeTab === 'wop' ? '#0f172a' : '#d97706' }} />
+          <span style={{ color: '#0f172a' }}>WOP Statistics (Weekly Off)</span>
+          <span
+            style={{ backgroundColor: activeTab === 'wop' ? '#fef3c7' : '#fef3c7', color: '#78350f' }}
+            className="px-2 py-0.5 rounded-full text-[10px] font-black border border-amber-200"
+          >
             {wopMetrics.totalCount} WOP
           </span>
         </button>
@@ -1285,15 +1286,17 @@ export function DashboardOverview({
         <button
           type="button"
           onClick={() => handleTabSwitch('late')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all duration-150 flex items-center space-x-2 cursor-pointer select-none ${
-            activeTab === 'late'
-              ? 'bg-rose-600 text-white shadow-md ring-2 ring-rose-300 font-black'
-              : 'bg-white text-slate-700 hover:bg-rose-50 hover:text-rose-900 border border-slate-300'
+          style={activeTab === 'late' ? { backgroundColor: '#e11d48', color: '#ffffff', borderColor: '#be123c' } : { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }}
+          className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all duration-150 flex items-center space-x-2 cursor-pointer select-none border ${
+            activeTab === 'late' ? 'tab-btn-late-active shadow-md ring-2 ring-rose-300' : 'tab-btn-inactive hover:bg-rose-50'
           }`}
         >
-          <Clock className="w-4 h-4 text-rose-500" />
-          <span>Late Arrivals (Punctuality)</span>
-          <span className="px-2 py-0.5 bg-rose-100 text-rose-800 rounded-full text-[10px] font-black">
+          <Clock className="w-4 h-4" style={{ color: activeTab === 'late' ? '#ffffff' : '#e11d48' }} />
+          <span style={{ color: activeTab === 'late' ? '#ffffff' : '#0f172a' }}>Late Arrivals (Punctuality)</span>
+          <span
+            style={{ backgroundColor: activeTab === 'late' ? '#ffe4e6' : '#ffe4e6', color: '#9f1239' }}
+            className="px-2 py-0.5 rounded-full text-[10px] font-black border border-rose-200"
+          >
             {lateMetrics.totalCount} Late
           </span>
         </button>
