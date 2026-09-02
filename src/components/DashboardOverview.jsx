@@ -1588,10 +1588,11 @@ export function DashboardOverview({
                     type="button"
                     onClick={handleExportWopExcel}
                     disabled={isExportingWop || wopMetrics.totalCount === 0}
-                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs flex items-center space-x-2 shadow-xs transition cursor-pointer disabled:opacity-50"
+                    style={{ backgroundColor: '#1e40af', color: '#ffffff' }}
+                    className="px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-black rounded-xl text-xs flex items-center space-x-2 shadow-md transition cursor-pointer disabled:opacity-50"
                   >
-                    <Download className="w-4 h-4 text-slate-950" />
-                    <span>{isExportingWop ? 'Generating Excel...' : 'Download WOP Excel (.xlsx)'}</span>
+                    <Download className="w-4 h-4 text-white" />
+                    <span className="text-white font-bold">{isExportingWop ? 'Generating Excel...' : 'Download WOP Excel (.xlsx)'}</span>
                   </button>
                 </div>
               </div>
@@ -2121,10 +2122,11 @@ export function DashboardOverview({
                     type="button"
                     onClick={handleExportLateExcel}
                     disabled={isExportingLate || lateMetrics.totalCount === 0}
-                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl text-xs flex items-center space-x-2 shadow-xs transition cursor-pointer disabled:opacity-50"
+                    style={{ backgroundColor: '#047857', color: '#ffffff' }}
+                    className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black rounded-xl text-xs flex items-center space-x-2 shadow-md transition cursor-pointer disabled:opacity-50"
                   >
                     <Download className="w-4 h-4 text-white" />
-                    <span>{isExportingLate ? 'Generating Excel...' : 'Download Late Report (.xlsx)'}</span>
+                    <span className="text-white font-bold">{isExportingLate ? 'Generating Excel...' : 'Download Late Report (.xlsx)'}</span>
                   </button>
                 </div>
               </div>
@@ -2498,9 +2500,10 @@ export function DashboardOverview({
                     key={tab.key}
                     type="button"
                     onClick={() => { setLateCategoryFilter(tab.key); setLateCurrentPage(1); }}
+                    style={lateCategoryFilter === tab.key ? { backgroundColor: '#047857', color: '#ffffff' } : {}}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
                       lateCategoryFilter === tab.key
-                        ? 'bg-rose-600 text-white shadow-xs'
+                        ? 'bg-emerald-700 text-white shadow-xs'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
