@@ -453,11 +453,12 @@ function EnterpriseDonutChart({ segments, totalLabel = 'Total HC', totalValue = 
 }
 
 // ── Pure-SVG Rounded Bar Chart (Right Card - Exact Match to Reference Image) ──
-function PureSVGBarChart({ bars, width = 320, height = 170 }) {
+function PureSVGBarChart({ bars, width = 340, height = 170 }) {
   const safeBars = bars && bars.length > 0 ? bars : [
-    { label: 'Shift A', value: 727, color: '#6366f1' },
-    { label: 'Shift B', value: 537, color: '#818cf8' },
-    { label: 'Shift C', value: 316, color: '#a5b4fc' }
+    { label: 'A (7-3)', value: 727, color: '#6366f1' },
+    { label: 'B (3-11)', value: 537, color: '#818cf8' },
+    { label: 'C (11-7)', value: 316, color: '#a5b4fc' },
+    { label: 'G (9-5.30)', value: 120, color: '#c7d2fe' }
   ];
 
   const paddingLeft = 28;
@@ -470,7 +471,7 @@ function PureSVGBarChart({ bars, width = 320, height = 170 }) {
 
   const maxVal = Math.max(...safeBars.map(b => b.value), 10);
   const step = chartW / safeBars.length;
-  const barWidth = 42;
+  const barWidth = safeBars.length >= 4 ? 30 : 42;
 
   return (
     <div className="relative w-full h-[180px] flex flex-col justify-end">
@@ -678,14 +679,15 @@ export function DashboardOverview({
     ];
   }, [masterMeta, totDirHC, totIndHC]);
 
-  // Shift & Cost Bars (Card 3)
+  // Shift & Cost Bars (Card 3) - Exactly Yokohama Shift Matrix: A (7-3), B (3-11), C (11-7), G (9-5.30)
   const shiftBars = useMemo(() => {
     const count = batchResults.length || 1;
     const avgDailyHC = totHC > 0 ? Math.round(totHC / count) : 1580;
     return [
-      { label: 'Shift A', value: Math.round(avgDailyHC * 0.46) || 727, color: '#6366f1' },
-      { label: 'Shift B', value: Math.round(avgDailyHC * 0.34) || 537, color: '#818cf8' },
-      { label: 'Shift C', value: Math.round(avgDailyHC * 0.20) || 316, color: '#a5b4fc' }
+      { label: 'A (7-3)', value: Math.round(avgDailyHC * 0.44) || 695, color: '#6366f1' },
+      { label: 'B (3-11)', value: Math.round(avgDailyHC * 0.32) || 505, color: '#818cf8' },
+      { label: 'C (11-7)', value: Math.round(avgDailyHC * 0.16) || 253, color: '#a5b4fc' },
+      { label: 'G (9-5.30)', value: Math.round(avgDailyHC * 0.08) || 127, color: '#c7d2fe' }
     ];
   }, [batchResults, totHC]);
 
@@ -880,10 +882,10 @@ export function DashboardOverview({
     let napsLostMins = 0;
 
     const shiftDefinitions = [
-      { name: 'Shift A', start: '08:00 AM' },
-      { name: 'Shift B', start: '04:30 PM' },
-      { name: 'Shift C', start: '12:30 AM' },
-      { name: 'General', start: '09:00 AM' }
+      { code: 'A', name: 'Shift A (7am-3pm)', start: '07:00 AM', end: '03:00 PM', startH: 7, startM: 0 },
+      { code: 'B', name: 'Shift B (3pm-11pm)', start: '03:00 PM', end: '11:00 PM', startH: 15, startM: 0 },
+      { code: 'C', name: 'Shift C (11pm-7am)', start: '11:00 PM', end: '07:00 AM', startH: 23, startM: 0 },
+      { code: 'G', name: 'General G (9am-5.30pm)', start: '09:00 AM', end: '05:30 PM', startH: 9, startM: 0 }
     ];
 
     const getLateInfo = (code, daysPresent) => {
@@ -901,15 +903,14 @@ export function DashboardOverview({
       const totalMins = incidentCount * avgMins;
       const shiftObj = shiftDefinitions[absHash % shiftDefinitions.length];
 
-      const [hStr, mRest] = shiftObj.start.split(':');
-      const [mStr, ampm] = mRest.split(' ');
-      let inH = parseInt(hStr, 10);
-      let inM = parseInt(mStr, 10) + avgMins;
-      if (inM >= 60) {
-        inH += Math.floor(inM / 60);
-        inM = inM % 60;
-      }
-      const inTime = `${String(inH).padStart(2, '0')}:${String(inM).padStart(2, '0')} ${ampm}`;
+      const startH = shiftObj.startH;
+      const startM = shiftObj.startM;
+      const totalMin = startH * 60 + startM + avgMins;
+      const inH24 = Math.floor(totalMin / 60) % 24;
+      const inM = totalMin % 60;
+      const ampm = inH24 >= 12 ? 'PM' : 'AM';
+      const inH12 = inH24 % 12 === 0 ? 12 : inH24 % 12;
+      const inTime = `${String(inH12).padStart(2, '0')}:${String(inM).padStart(2, '0')} ${ampm}`;
 
       let severity = 'Minor (<15m)';
       let severityColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
@@ -1074,13 +1075,14 @@ export function DashboardOverview({
     ];
   }, [lateMetrics]);
 
-  // Late Shift Bars (Late Card 3 Bars)
+  // Late Shift Bars (Late Card 3 Bars) - Exactly Yokohama Shift Matrix: A (7-3), B (3-11), C (11-7), G (9-5.30)
   const lateShiftBars = useMemo(() => {
     const tot = lateMetrics.totalCount || 84;
     return [
-      { label: 'Shift A (08:00)', value: Math.max(1, Math.round(tot * 0.54)), color: '#e11d48' },
-      { label: 'Shift B (16:30)', value: Math.max(1, Math.round(tot * 0.30)), color: '#f43f5e' },
-      { label: 'Shift C (00:30)', value: Math.max(1, Math.round(tot * 0.16)), color: '#fda4af' }
+      { label: 'A (07:00)', value: Math.max(1, Math.round(tot * 0.48)), color: '#e11d48' },
+      { label: 'B (15:00)', value: Math.max(1, Math.round(tot * 0.28)), color: '#f43f5e' },
+      { label: 'C (23:00)', value: Math.max(1, Math.round(tot * 0.16)), color: '#fb7185' },
+      { label: 'G (09:00)', value: Math.max(1, Math.round(tot * 0.08)), color: '#fda4af' }
     ];
   }, [lateMetrics]);
 

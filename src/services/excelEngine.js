@@ -721,8 +721,8 @@ export async function generateLateReportWorkbook(lateMetrics, master, batchResul
       ws.getCell(r, 2).value = emp.code;
       ws.getCell(r, 3).value = emp.name;
       ws.getCell(r, 4).value = emp.dept;
-      ws.getCell(r, 5).value = emp.shift || 'Shift A';
-      ws.getCell(r, 6).value = `${emp.inTime || '08:20 AM'} (${emp.shiftStart || '08:00 AM'})`;
+      ws.getCell(r, 5).value = emp.shift || 'Shift A (7am-3pm)';
+      ws.getCell(r, 6).value = `${emp.inTime || '07:20 AM'} (${emp.shiftStart || '07:00 AM'})`;
       ws.getCell(r, 7).value = emp.lateMins || 0;
       ws.getCell(r, 8).value = emp.severity || 'Minor';
 
