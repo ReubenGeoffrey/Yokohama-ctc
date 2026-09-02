@@ -443,10 +443,10 @@ export function App() {
 
             {/* Logo in Tab Section */}
             <div className="flex items-center space-x-2.5">
-              <YokohamaLogo className="w-6 h-6" />
+              <YokohamaLogo className="h-5 w-auto hidden sm:inline-block" />
               <div className="flex items-center space-x-1.5">
-                <span className="text-xs font-black text-slate-950 uppercase tracking-wider">
-                  YOKOHAMA CTC
+                <span className="text-xs font-black text-slate-950 uppercase tracking-wider font-display">
+                  CTC Hub
                 </span>
                 <span className="text-slate-300">/</span>
                 <span className="text-xs font-bold text-slate-500 capitalize">

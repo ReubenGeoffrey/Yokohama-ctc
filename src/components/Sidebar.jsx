@@ -104,18 +104,13 @@ export function Sidebar({
         }`}
       >
         {/* Brand Header */}
-        <div className="h-16 px-6 flex items-center justify-between border-b border-slate-100">
-          <div className="flex items-center space-x-2.5">
-            <YokohamaLogo className="w-8 h-8 rounded-xl" />
-            <div>
-              <div className="text-sm font-black tracking-tight text-slate-950 flex items-center space-x-1">
-                <span>YOKOHAMA</span>
-                <span className="text-amber-600">CTC</span>
-              </div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                Plant Operations
-              </p>
-            </div>
+        <div className="h-16 px-5 flex items-center justify-between border-b border-slate-100 bg-white">
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <YokohamaLogo className="h-5 w-auto" />
+            <div className="h-3.5 w-px bg-slate-200 shrink-0" />
+            <span className="text-[10px] font-black tracking-wider text-amber-600 font-display shrink-0 uppercase">
+              CTC Hub
+            </span>
           </div>
 
           <button
