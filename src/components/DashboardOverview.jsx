@@ -30,7 +30,8 @@ import {
   ShieldCheck,
   FileDown,
   AlertTriangle,
-  Timer
+  Timer,
+  RefreshCw
 } from 'lucide-react';
 import { formatDateDisplay } from '../services/parser';
 import {
