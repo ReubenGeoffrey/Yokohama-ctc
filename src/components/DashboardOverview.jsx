@@ -1246,21 +1246,51 @@ export function DashboardOverview({
         </div>
 
         {/* Top-Right Action Controls */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Download WOP Excel Button */}
+          <button
+            onClick={handleExportWopExcel}
+            disabled={isExportingWop}
+            className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold border border-blue-200 rounded-xl text-xs flex items-center space-x-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
+            title="Download Weekly Off Present (WOP) Report in Excel"
+          >
+            {isExportingWop ? (
+              <RefreshCw className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="w-3.5 h-3.5 text-blue-700" />
+            )}
+            <span>WOP Excel</span>
+          </button>
+
+          {/* Download Late Report Button */}
+          <button
+            onClick={handleExportLateExcel}
+            disabled={isExportingLate}
+            className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 rounded-xl text-xs flex items-center space-x-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
+            title="Download Late Arrivals & Shift Punctuality Report in Excel"
+          >
+            {isExportingLate ? (
+              <RefreshCw className="w-3.5 h-3.5 text-emerald-600 animate-spin" />
+            ) : (
+              <Clock className="w-3.5 h-3.5 text-emerald-700" />
+            )}
+            <span>Late Excel</span>
+          </button>
+
           {/* Generate Consolidated Button */}
           <button
             onClick={onExportMonthly}
             disabled={!batchResults.length}
-            className="px-4 py-2 bg-white hover:bg-slate-50 text-blue-600 font-bold border border-blue-200 rounded-xl text-xs flex items-center space-x-2 shadow-2xs transition cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 rounded-xl text-xs flex items-center space-x-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
           >
-            <Download className="w-3.5 h-3.5 text-blue-600" />
-            <span>Generate Consolidated</span>
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Consolidated</span>
           </button>
 
           {/* Date Range Selector Pill */}
           <button
             onClick={onOpenVault}
-            className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-700 hover:border-slate-300 shadow-2xs flex items-center space-x-2 cursor-pointer"
+            className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-700 hover:border-slate-300 shadow-2xs flex items-center space-x-1.5 cursor-pointer"
             title="Click to choose month or view Attendance Vault"
           >
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -1270,7 +1300,7 @@ export function DashboardOverview({
           {/* Filter Button */}
           <button
             onClick={onOpenVault}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 shadow-xs transition cursor-pointer"
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 shadow-xs transition cursor-pointer"
           >
             <Filter className="w-3.5 h-3.5" />
             <span>Filter</span>
