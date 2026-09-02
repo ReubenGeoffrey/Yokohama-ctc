@@ -40,31 +40,44 @@ function getEmpStat(statMap, code) {
 }
 
 // ── Pure-SVG Smooth Wave / Area Chart (Left Card) ────────────────
-function SmoothWaveChart({ data, width = 360, height = 170 }) {
+function SmoothWaveChart({ data, width = 460, height = 180 }) {
+  const [hoverIndex, setHoverIndex] = useState(null);
+  const containerRef = useRef(null);
+
   if (!data || data.length === 0) {
     return (
-      <div className="h-[170px] flex items-center justify-center text-xs text-slate-400">
+      <div className="h-[180px] flex items-center justify-center text-xs text-slate-400 font-medium">
         No attendance dates loaded
       </div>
     );
   }
 
-  const paddingLeft = 32;
+  const paddingLeft = 38;
   const paddingRight = 16;
-  const paddingTop = 20;
-  const paddingBottom = 30;
+  const paddingTop = 28;
+  const paddingBottom = 32;
 
   const chartW = width - paddingLeft - paddingRight;
   const chartH = height - paddingTop - paddingBottom;
 
-  const maxVal = Math.max(...data.map(d => d.value), 100);
+  const rawMax = Math.max(...data.map(d => d.value), 100);
+  const rawMin = Math.min(...data.map(d => d.value), 0);
+  const maxVal = Math.ceil((rawMax * 1.08) / 100) * 100;
   const minVal = 0;
+
+  // Find Peak and Lowest indexes
+  let peakIdx = 0;
+  let minIdx = 0;
+  data.forEach((d, i) => {
+    if (d.value > data[peakIdx].value) peakIdx = i;
+    if (d.value < data[minIdx].value) minIdx = i;
+  });
 
   // Calculate coordinates
   const points = data.map((d, i) => {
     const x = paddingLeft + (data.length === 1 ? chartW / 2 : (i / (data.length - 1)) * chartW);
     const y = paddingTop + chartH - ((d.value - minVal) / (maxVal - minVal)) * chartH;
-    return { x, y, ...d };
+    return { x, y, index: i, ...d };
   });
 
   // Build smooth cubic bezier path
@@ -82,23 +95,105 @@ function SmoothWaveChart({ data, width = 360, height = 170 }) {
   // Area path closing down to bottom
   const areaD = `${pathD} L ${points[points.length - 1].x} ${paddingTop + chartH} L ${points[0].x} ${paddingTop + chartH} Z`;
 
+  // Smart X-axis tick selection (5-6 intervals, never crowded)
+  const tickIndices = useMemo(() => {
+    const n = data.length;
+    if (n <= 6) return data.map((_, i) => i);
+    const step = (n - 1) / 4;
+    return [
+      0,
+      Math.round(step),
+      Math.round(step * 2),
+      Math.round(step * 3),
+      n - 1
+    ];
+  }, [data]);
+
+  // Handle Mouse / Touch movement across chart
+  const handleMouseMove = (e) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
+    if (clientX === undefined) return;
+    const relX = ((clientX - rect.left) / rect.width) * width;
+    
+    let closest = 0;
+    let minDist = Infinity;
+    points.forEach((p, idx) => {
+      const dist = Math.abs(p.x - relX);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = idx;
+      }
+    });
+    setHoverIndex(closest);
+  };
+
+  const activePoint = hoverIndex !== null ? points[hoverIndex] : null;
+
   return (
-    <div className="relative w-full h-[180px] flex flex-col justify-end">
+    <div 
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      onTouchMove={handleMouseMove}
+      onMouseLeave={() => setHoverIndex(null)}
+      onTouchEnd={() => setHoverIndex(null)}
+      className="relative w-full select-none cursor-crosshair group"
+    >
+      {/* ── Active Floating Glass Tooltip ── */}
+      {activePoint && (
+        <div 
+          className="absolute z-20 pointer-events-none transition-all duration-75 ease-out shadow-xl"
+          style={{
+            left: `${(activePoint.x / width) * 100}%`,
+            top: '0px',
+            transform: `translate(${activePoint.x > width * 0.75 ? '-100%' : activePoint.x < width * 0.25 ? '0%' : '-50%'}, -6px)`
+          }}
+        >
+          <div className="bg-slate-900/95 backdrop-blur-md text-white rounded-xl px-3 py-2 text-xs border border-slate-700/60 shadow-2xl flex flex-col gap-0.5 whitespace-nowrap">
+            <div className="flex items-center justify-between gap-3 text-[11px] text-slate-400 font-bold border-b border-slate-700/50 pb-1">
+              <span>{activePoint.fullDate || activePoint.label}</span>
+              <span className="text-indigo-400 font-mono">Day {activePoint.dayNum || activePoint.index + 1}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4 pt-1">
+              <span className="text-slate-300 font-medium">Headcount:</span>
+              <span className="font-black text-white text-sm font-mono tracking-tight">
+                {activePoint.value.toLocaleString('en-IN')} <span className="text-[10px] text-slate-400 font-normal">workers</span>
+              </span>
+            </div>
+            {activePoint.totalCost ? (
+              <div className="flex items-center justify-between gap-4 text-[11px]">
+                <span className="text-slate-400 font-medium">Est. Cost:</span>
+                <span className="font-bold text-emerald-400 font-mono">
+                  ₹{Math.round(activePoint.totalCost).toLocaleString('en-IN')}
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* ── SVG Chart Canvas ── */}
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className="w-full h-full overflow-visible"
-        preserveAspectRatio="none"
       >
         <defs>
           <linearGradient id="waveGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.45" />
-            <stop offset="100%" stopColor="#818cf8" stopOpacity="0.02" />
+            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.38" />
+            <stop offset="50%" stopColor="#818cf8" stopOpacity="0.12" />
+            <stop offset="100%" stopColor="#c7d2fe" stopOpacity="0.00" />
           </linearGradient>
+
+          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#4f46e5" floodOpacity="0.25" />
+          </filter>
         </defs>
 
-        {/* Horizontal grid lines */}
+        {/* Horizontal grid lines & Y-axis labels */}
         {[0, 0.5, 1].map((pct, i) => {
           const y = paddingTop + chartH * (1 - pct);
+          const yVal = Math.round((minVal + (maxVal - minVal) * pct) / 100) * 100;
           return (
             <g key={i}>
               <line
@@ -106,19 +201,20 @@ function SmoothWaveChart({ data, width = 360, height = 170 }) {
                 y1={y}
                 x2={width - paddingRight}
                 y2={y}
-                stroke="#e2e8f0"
-                strokeDasharray="3 3"
-                strokeWidth="1"
+                stroke="#f1f5f9"
+                strokeDasharray="4 4"
+                strokeWidth="1.2"
               />
               <text
-                x={paddingLeft - 6}
-                y={y + 3}
-                fontSize="9"
+                x={paddingLeft - 8}
+                y={y + 3.5}
+                fontSize="9.5"
                 textAnchor="end"
                 fill="#94a3b8"
-                fontWeight="600"
+                fontWeight="700"
+                fontFamily="system-ui, -apple-system, sans-serif"
               >
-                {Math.round((maxVal * pct) / 100) * 100}
+                {yVal >= 1000 ? `${(yVal / 1000).toFixed(1)}k` : yVal}
               </text>
             </g>
           );
@@ -127,51 +223,112 @@ function SmoothWaveChart({ data, width = 360, height = 170 }) {
         {/* Filled Wave Area */}
         <path d={areaD} fill="url(#waveGradient)" />
 
-        {/* Smooth Wave Line */}
+        {/* Smooth Wave Line with Glow */}
         <path
           d={pathD}
           fill="none"
-          stroke="#6366f1"
+          stroke="#4f46e5"
           strokeWidth="3"
           strokeLinecap="round"
+          strokeLinejoin="round"
+          filter="url(#glow)"
         />
 
-        {/* Data points */}
-        {points.map((p, i) => (
-          <g key={i} className="group cursor-pointer">
+        {/* X-Axis Base Line */}
+        <line
+          x1={paddingLeft}
+          y1={paddingTop + chartH}
+          x2={width - paddingRight}
+          y2={paddingTop + chartH}
+          stroke="#e2e8f0"
+          strokeWidth="1"
+        />
+
+        {/* Smart Clean X-Axis Tick Labels (Zero Overlap) */}
+        {tickIndices.map((idx) => {
+          const p = points[idx];
+          if (!p) return null;
+          return (
+            <g key={idx}>
+              <line
+                x1={p.x}
+                y1={paddingTop + chartH}
+                x2={p.x}
+                y2={paddingTop + chartH + 4}
+                stroke="#cbd5e1"
+                strokeWidth="1.2"
+              />
+              <text
+                x={p.x}
+                y={paddingTop + chartH + 16}
+                fontSize="9.5"
+                textAnchor="middle"
+                fill="#64748b"
+                fontWeight="700"
+                fontFamily="system-ui, -apple-system, sans-serif"
+              >
+                {p.label}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Subtle Milestone Dot Rings (Peak & Lowest) */}
+        {points.length > 3 && (
+          <>
+            {/* Peak Dot */}
             <circle
-              cx={p.x}
-              cy={p.y}
-              r="4"
+              cx={points[peakIdx].x}
+              cy={points[peakIdx].y}
+              r="3.5"
               fill="#ffffff"
               stroke="#4f46e5"
-              strokeWidth="2.5"
-              className="transition-transform group-hover:scale-125"
+              strokeWidth="2"
             />
-            {/* Value tooltip on point */}
-            <text
-              x={p.x}
-              y={p.y - 8}
-              fontSize="9"
-              textAnchor="middle"
-              fill="#312e81"
-              fontWeight="bold"
-            >
-              {p.value.toLocaleString('en-IN')}
-            </text>
-            {/* Bottom X-axis label */}
-            <text
-              x={p.x}
-              y={paddingTop + chartH + 15}
-              fontSize="9"
-              textAnchor="middle"
-              fill="#64748b"
-              fontWeight="600"
-            >
-              {p.label}
-            </text>
+            {/* Lowest Dot (if distinct) */}
+            {minIdx !== peakIdx && (
+              <circle
+                cx={points[minIdx].x}
+                cy={points[minIdx].y}
+                r="3.5"
+                fill="#ffffff"
+                stroke="#9333ea"
+                strokeWidth="2"
+              />
+            )}
+          </>
+        )}
+
+        {/* Active Hover Crosshair Line & Glowing Point */}
+        {activePoint && (
+          <g>
+            <line
+              x1={activePoint.x}
+              y1={paddingTop}
+              x2={activePoint.x}
+              y2={paddingTop + chartH}
+              stroke="#6366f1"
+              strokeWidth="1.5"
+              strokeDasharray="3 3"
+              opacity="0.8"
+            />
+            <circle
+              cx={activePoint.x}
+              cy={activePoint.y}
+              r="7"
+              fill="#6366f1"
+              fillOpacity="0.25"
+            />
+            <circle
+              cx={activePoint.x}
+              cy={activePoint.y}
+              r="4.5"
+              fill="#4f46e5"
+              stroke="#ffffff"
+              strokeWidth="2.5"
+            />
           </g>
-        ))}
+        )}
       </svg>
     </div>
   );
@@ -414,13 +571,23 @@ export function DashboardOverview({
   // Daily Trend Data (Card 1)
   const waveData = useMemo(() => {
     if (!batchResults || batchResults.length === 0) return [];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return batchResults.map(r => {
       const d = new Date(r.date);
       const day = d.getUTCDate();
-      const monthShort = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][d.getUTCMonth()];
+      const monthShort = monthNames[d.getUTCMonth()] || 'Aug';
+      const dayStr = String(day).padStart(2, '0');
       return {
-        label: `${monthShort} ${day}`,
-        value: r.gHC || 0
+        dateStr: `${dayStr} ${monthShort}`,
+        fullDate: formatDateDisplay(d),
+        label: `${dayStr} ${monthShort}`,
+        dayNum: day,
+        value: r.gHC || 0,
+        directHC: r.dHC || 0,
+        indirectHC: r.iHC || 0,
+        totalCost: r.gTot || 0,
+        otHours: r.gOT || 0,
+        isoDate: r.date
       };
     });
   }, [batchResults]);
@@ -782,15 +949,26 @@ export function DashboardOverview({
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-black text-slate-900">Attendance Headcount Trend</h3>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Daily</span>
+                  <h3 className="text-sm font-black text-slate-900 tracking-tight">Attendance Headcount Trend</h3>
+                  <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md text-[10px] font-black uppercase tracking-wider">
+                    Daily
+                  </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5 font-medium">
-                  Daily worker volume across plants
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
+                  <p className="text-xs text-slate-400 font-medium">
+                    Daily worker volume across plants
+                  </p>
+                  {waveData.length > 0 && (
+                    <div className="flex items-center space-x-2 text-[11px] font-bold">
+                      <span className="text-slate-400">Peak: <strong className="text-indigo-600 font-mono">{fmtN(Math.max(...waveData.map(d => d.value)))}</strong></span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-slate-400">Avg: <strong className="text-slate-700 font-mono">{fmtN(Math.round(waveData.reduce((s, d) => s + d.value, 0) / waveData.length))}</strong></span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="mt-4">
+              <div className="mt-3">
                 <SmoothWaveChart data={waveData} />
               </div>
             </div>
