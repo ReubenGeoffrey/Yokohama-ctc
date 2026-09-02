@@ -704,7 +704,7 @@ export async function generateLateReportWorkbook(lateMetrics, master, batchResul
   function buildLateDetail(sheetName, list) {
     const ws = wb.addWorksheet(sheetName);
     ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }];
-    const cols = ['S.No', 'Emp Code', 'Employee Name', 'Department / Contractor', 'Shift', 'In-Time (Shift Start)', 'Late Delay (Mins)', 'Severity'];
+    const cols = ['S.No', 'Date', 'Emp Code', 'Employee Name', 'Department / Contractor', 'Shift', 'In-Time (Shift Start)', 'Late Delay (Mins)', 'Severity'];
     cols.forEach((h, i) => {
       const c = ws.getCell(1, i + 1);
       c.value = h;
@@ -718,27 +718,28 @@ export async function generateLateReportWorkbook(lateMetrics, master, batchResul
     list.forEach((emp, i) => {
       const r = i + 2;
       ws.getCell(r, 1).value = i + 1;
-      ws.getCell(r, 2).value = emp.code;
-      ws.getCell(r, 3).value = emp.name;
-      ws.getCell(r, 4).value = emp.dept;
-      ws.getCell(r, 5).value = emp.shift || 'Shift A (7am-3pm)';
-      ws.getCell(r, 6).value = `${emp.inTime || '07:20 AM'} (${emp.shiftStart || '07:00 AM'})`;
-      ws.getCell(r, 7).value = emp.lateMins || 0;
-      ws.getCell(r, 8).value = emp.severity || 'Minor';
+      ws.getCell(r, 2).value = emp.date || '';
+      ws.getCell(r, 3).value = emp.code;
+      ws.getCell(r, 4).value = emp.name;
+      ws.getCell(r, 5).value = emp.dept;
+      ws.getCell(r, 6).value = emp.shift || 'Shift A (7am-3pm)';
+      ws.getCell(r, 7).value = `${emp.inTime || '07:20 AM'} (${emp.shiftStart || '07:00 AM'})`;
+      ws.getCell(r, 8).value = emp.lateMins || 0;
+      ws.getCell(r, 9).value = emp.severity || 'Minor';
 
       const banded = i % 2 === 1;
-      for (let c = 1; c <= 8; c++) {
+      for (let c = 1; c <= 9; c++) {
         const cell = ws.getCell(r, c);
         cell.border = thinBorder;
         cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
         if (banded) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
-        if (c === 7) cell.numFmt = '#,##0';
-        cell.alignment = (c === 3 || c === 4) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+        if (c === 8) cell.numFmt = '#,##0';
+        cell.alignment = (c === 4 || c === 5) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
       }
       ws.getRow(r).height = 20;
     });
 
-    const wCols = { 1: 7, 2: 15, 3: 28, 4: 24, 5: 14, 6: 22, 7: 18, 8: 16 };
+    const wCols = { 1: 7, 2: 15, 3: 15, 4: 28, 5: 24, 6: 18, 7: 22, 8: 18, 9: 16 };
     Object.entries(wCols).forEach(([c, w]) => { ws.getColumn(Number(c)).width = w; });
   }
 
