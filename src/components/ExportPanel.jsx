@@ -452,9 +452,6 @@ export function ExportPanel({ batchResults, master, empStats }) {
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shadow-2xs">
                 <FileSpreadsheet className="w-5 h-5" />
               </div>
-              <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-md text-[10px] font-black uppercase tracking-wider border border-blue-100">
-                Primary Output
-              </span>
             </div>
 
             <div>
@@ -501,16 +498,13 @@ export function ExportPanel({ batchResults, master, empStats }) {
           </button>
         </div>
 
-        {/* Package 2: Weekly Off Present (WOP) Report (Royal Blue Theme) */}
+        {/* Package 2: Weekly Off Present (WOP) Report */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 flex flex-col justify-between space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 flex items-center justify-center shadow-2xs">
                 <CalendarCheck className="w-5 h-5 text-blue-700" />
               </div>
-              <span className="px-2.5 py-0.5 bg-blue-50 text-blue-800 rounded-md text-[10px] font-black uppercase tracking-wider border border-blue-200">
-                Royal Blue Template
-              </span>
             </div>
 
             <div>
@@ -557,16 +551,13 @@ export function ExportPanel({ batchResults, master, empStats }) {
           </button>
         </div>
 
-        {/* Package 3: Shift Punctuality & Late Arrival Report (Emerald Green Theme) */}
+        {/* Package 3: Shift Punctuality & Late Arrival Report */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 flex flex-col justify-between space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-center shadow-2xs">
                 <Clock className="w-5 h-5 text-emerald-700" />
               </div>
-              <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-800 rounded-md text-[10px] font-black uppercase tracking-wider border border-emerald-200">
-                Emerald Green Theme
-              </span>
             </div>
 
             <div>
@@ -620,9 +611,6 @@ export function ExportPanel({ batchResults, master, empStats }) {
               <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center shadow-2xs">
                 <Layers className="w-5 h-5" />
               </div>
-              <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-md text-[10px] font-black uppercase tracking-wider border border-slate-200">
-                Daily Archive
-              </span>
             </div>
 
             <div>
