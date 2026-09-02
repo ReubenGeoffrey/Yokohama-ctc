@@ -717,7 +717,7 @@ export function DashboardOverview({
           name: item.name || 'NAPS Apprentice',
           category: 'NAPS',
           categoryColor: 'bg-amber-50 text-amber-700 border-amber-200',
-          dept: item.dept || 'Trainee',
+          dept: item.dept || 'NAPS',
           days: stats.daysPresent,
           wopCount: stats.wopCount || 0,
           wages: stats.wages || 0,
@@ -818,7 +818,7 @@ export function DashboardOverview({
               name: item.name || 'NAPS Apprentice',
               category: 'NAPS',
               categoryColor: 'bg-amber-50 text-amber-700 border-amber-200',
-              dept: item.dept || 'Trainee',
+              dept: item.dept || 'NAPS',
               days: st.daysPresent,
               wopCount: wops,
               wopWages: wopPay,
@@ -1245,12 +1245,9 @@ export function DashboardOverview({
                       <HardHat className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-slate-900 leading-none">
+                      <h3 className="text-sm font-black text-slate-900 leading-tight">
                         Plant Operators
                       </h3>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 block">
-                        Full-Time Roster
-                      </span>
                     </div>
                   </div>
 
@@ -1337,12 +1334,9 @@ export function DashboardOverview({
                       <Users className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-slate-900 leading-none">
+                      <h3 className="text-sm font-black text-slate-900 leading-tight">
                         Contract Labour (CL)
                       </h3>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 block">
-                        Contractor Deployed
-                      </span>
                     </div>
                   </div>
 
@@ -1425,12 +1419,9 @@ export function DashboardOverview({
                       <GraduationCap className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-slate-900 leading-none">
+                      <h3 className="text-sm font-black text-slate-900 leading-tight">
                         NAPS Apprentices
                       </h3>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 block">
-                        Trainee Program
-                      </span>
                     </div>
                   </div>
 
@@ -1474,7 +1465,7 @@ export function DashboardOverview({
                     Workers on WOP
                   </span>
                   <span className="text-sm font-black text-slate-900 mt-0.5 block">
-                    {fmtN(wopMetrics.naps.employees)} Trainees
+                    {fmtN(wopMetrics.naps.employees)} Personnel
                   </span>
                 </div>
 
