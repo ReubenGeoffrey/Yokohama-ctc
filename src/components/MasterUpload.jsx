@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Users,
   ArrowRight,
-  Sparkles,
   FileCheck,
   AlertCircle
 } from 'lucide-react';
@@ -66,7 +65,7 @@ export function MasterUpload({ master, masterMeta, onMasterLoaded, onNext }) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
           <div>
             <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[11px] font-black uppercase tracking-wider mb-2">
-              <Sparkles className="w-3 h-3 text-blue-600" />
+              <FileSpreadsheet className="w-3 h-3 text-blue-600" />
               <span>Employee Rate Master</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">

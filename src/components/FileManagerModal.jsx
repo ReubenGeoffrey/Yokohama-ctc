@@ -14,7 +14,6 @@ import {
   Play,
   ChevronRight,
   ChevronLeft,
-  Sparkles,
   List,
   Clock,
   Users

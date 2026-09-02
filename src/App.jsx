@@ -21,7 +21,6 @@ import {
   Lock,
   ShieldCheck,
   Building2,
-  Sparkles,
   ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';

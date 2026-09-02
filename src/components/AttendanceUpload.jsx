@@ -7,7 +7,6 @@ import {
   Zap,
   CheckCircle2,
   ArrowRight,
-  Sparkles,
   FileSpreadsheet,
   Trash2,
   Check,
@@ -131,7 +130,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
           <div>
             <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[11px] font-black uppercase tracking-wider mb-2">
-              <Sparkles className="w-3 h-3 text-amber-600" />
+              <Calendar className="w-3 h-3 text-amber-600" />
               <span>Daily Attendance</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">

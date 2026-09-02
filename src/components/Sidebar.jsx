@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   Menu,
   X,
-  Sparkles
+  CalendarCheck
 } from 'lucide-react';
 import { YokohamaLogo } from './YokohamaLogo';
 
@@ -41,7 +41,7 @@ export function Sidebar({
       id: 'wop',
       label: 'WOP Statistics',
       subtitle: 'Operator, CL & NAPS',
-      icon: Sparkles,
+      icon: CalendarCheck,
       badge: null
     }
   ];

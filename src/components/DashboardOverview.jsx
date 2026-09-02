@@ -12,7 +12,7 @@ import {
   Users,
   Building2,
   Calendar,
-  Sparkles,
+  CalendarCheck,
   TrendingUp,
   PieChart as PieIcon,
   BarChart2,
@@ -934,7 +934,7 @@ export function DashboardOverview({
               : 'bg-white text-slate-700 hover:bg-amber-50 hover:text-amber-900 border border-slate-200'
           }`}
         >
-          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+          <CalendarCheck className="w-3.5 h-3.5 text-amber-600" />
           <span>WOP Statistics (Weekly Off)</span>
           <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-black">
             {wopMetrics.totalCount} WOP
@@ -1159,7 +1159,7 @@ export function DashboardOverview({
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
                 <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-md text-[11px] font-black uppercase tracking-wider mb-2">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <CalendarCheck className="w-3.5 h-3.5 text-amber-600" />
                   <span>Plant Weekly Off Present (WOP) Overview</span>
                 </div>
                 <h2 className="text-2xl font-black text-slate-950 tracking-tight">
