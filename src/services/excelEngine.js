@@ -416,6 +416,339 @@ export async function generateZipBundle(batchResults, master, empStats, year, mo
   return await zip.generateAsync({ type: 'blob' });
 }
 
+// ── Generate Dedicated WOP Statistics Workbook ──
+export async function generateWopReportWorkbook(wopMetrics, master, batchResults) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Yokohama CTC Operations';
+  wb.created = new Date();
+
+  // 1. Executive Summary Sheet
+  const wsSummary = wb.addWorksheet('WOP Summary');
+  wsSummary.views = [{ showGridLines: true }];
+
+  wsSummary.mergeCells('A1:F1');
+  const titleCell = wsSummary.getCell('A1');
+  titleCell.value = 'YOKOHAMA CTC — WEEKLY OFF PRESENT (WOP) AUDIT REPORT';
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+  titleCell.font = { name: FONT_NAME, size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  wsSummary.getRow(1).height = 30;
+
+  // KPI Row
+  wsSummary.getCell('A3').value = 'Total WOP Shifts';
+  wsSummary.getCell('B3').value = wopMetrics.totalCount;
+  wsSummary.getCell('C3').value = 'Total Personnel';
+  wsSummary.getCell('D3').value = wopMetrics.totalEmployees;
+  wsSummary.getCell('E3').value = 'Total WOP Wages';
+  wsSummary.getCell('F3').value = wopMetrics.totalWages;
+  ['A3', 'C3', 'E3'].forEach(pos => {
+    const c = wsSummary.getCell(pos);
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+    c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FF475569' } };
+    c.border = thinBorder;
+  });
+  ['B3', 'D3', 'F3'].forEach(pos => {
+    const c = wsSummary.getCell(pos);
+    c.font = { name: FONT_NAME, size: 11, bold: true, color: { argb: 'FF0F172A' } };
+    c.border = thinBorder;
+    c.numFmt = '#,##0';
+  });
+  wsSummary.getRow(3).height = 22;
+
+  // Breakdown Table
+  const headers = ['Category', 'WOP Shifts', 'Personnel Deployed', 'Share %', 'Wage Outflow', 'Avg Frequency'];
+  headers.forEach((h, i) => {
+    const c = wsSummary.getCell(5, i + 1);
+    c.value = h;
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cYellowMain } };
+    c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: cTextDark } };
+    c.border = thinBorder;
+    c.alignment = { horizontal: 'center', vertical: 'middle' };
+  });
+  wsSummary.getRow(5).height = 22;
+
+  const rows = [
+    {
+      cat: 'Plant Operators',
+      count: wopMetrics.op.count,
+      emp: wopMetrics.op.employees,
+      share: wopMetrics.totalCount ? (wopMetrics.op.count / wopMetrics.totalCount) * 100 : 0,
+      wages: wopMetrics.op.wages,
+      avg: wopMetrics.op.employees ? (wopMetrics.op.count / wopMetrics.op.employees) : 0
+    },
+    {
+      cat: 'Contract Labour (CL)',
+      count: wopMetrics.cl.count,
+      emp: wopMetrics.cl.employees,
+      share: wopMetrics.totalCount ? (wopMetrics.cl.count / wopMetrics.totalCount) * 100 : 0,
+      wages: wopMetrics.cl.wages,
+      avg: wopMetrics.cl.employees ? (wopMetrics.cl.count / wopMetrics.cl.employees) : 0
+    },
+    {
+      cat: 'NAPS Apprentices',
+      count: wopMetrics.naps.count,
+      emp: wopMetrics.naps.employees,
+      share: wopMetrics.totalCount ? (wopMetrics.naps.count / wopMetrics.totalCount) * 100 : 0,
+      wages: wopMetrics.naps.wages,
+      avg: wopMetrics.naps.employees ? (wopMetrics.naps.count / wopMetrics.naps.employees) : 0
+    }
+  ];
+
+  rows.forEach((rData, idx) => {
+    const rowIdx = 6 + idx;
+    wsSummary.getCell(rowIdx, 1).value = rData.cat;
+    wsSummary.getCell(rowIdx, 2).value = rData.count;
+    wsSummary.getCell(rowIdx, 3).value = rData.emp;
+    wsSummary.getCell(rowIdx, 4).value = `${rData.share.toFixed(1)}%`;
+    wsSummary.getCell(rowIdx, 5).value = rData.wages;
+    wsSummary.getCell(rowIdx, 6).value = `${rData.avg.toFixed(1)} days/wkr`;
+
+    for (let c = 1; c <= 6; c++) {
+      const cell = wsSummary.getCell(rowIdx, c);
+      cell.border = thinBorder;
+      cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
+      if (c === 2 || c === 3 || c === 5) cell.numFmt = '#,##0';
+      cell.alignment = c === 1 ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+    }
+    wsSummary.getRow(rowIdx).height = 20;
+  });
+
+  // Total Summary row
+  const totRow = 9;
+  wsSummary.getCell(totRow, 1).value = 'Total';
+  wsSummary.getCell(totRow, 2).value = wopMetrics.totalCount;
+  wsSummary.getCell(totRow, 3).value = wopMetrics.totalEmployees;
+  wsSummary.getCell(totRow, 4).value = '100.0%';
+  wsSummary.getCell(totRow, 5).value = wopMetrics.totalWages;
+  wsSummary.getCell(totRow, 6).value = wopMetrics.totalEmployees ? `${(wopMetrics.totalCount / wopMetrics.totalEmployees).toFixed(1)} days/wkr` : '0';
+  for (let c = 1; c <= 6; c++) {
+    const cell = wsSummary.getCell(totRow, c);
+    cell.border = thinBorder;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE047' } };
+    cell.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: cTextDark } };
+    if (c === 2 || c === 3 || c === 5) cell.numFmt = '#,##0';
+    cell.alignment = c === 1 ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+  }
+  wsSummary.getRow(totRow).height = 22;
+
+  const wSummaryCol = { 1: 24, 2: 15, 3: 20, 4: 14, 5: 18, 6: 18 };
+  Object.entries(wSummaryCol).forEach(([c, w]) => { wsSummary.getColumn(Number(c)).width = w; });
+
+  // Detail sheets builder
+  function buildWopDetail(sheetName, list) {
+    const ws = wb.addWorksheet(sheetName);
+    ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }];
+    const cols = ['S.No', 'Emp Code', 'Employee Name', 'Department / Contractor', 'Days Present', 'WOP Shifts', 'WOP Wages', 'Total Wages'];
+    cols.forEach((h, i) => {
+      const c = ws.getCell(1, i + 1);
+      c.value = h;
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cYellowMain } };
+      c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: cTextDark } };
+      c.border = thinBorder;
+      c.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+    ws.getRow(1).height = 24;
+
+    list.forEach((emp, i) => {
+      const r = i + 2;
+      ws.getCell(r, 1).value = i + 1;
+      ws.getCell(r, 2).value = emp.code;
+      ws.getCell(r, 3).value = emp.name;
+      ws.getCell(r, 4).value = emp.dept;
+      ws.getCell(r, 5).value = emp.days || 1;
+      ws.getCell(r, 6).value = emp.wopCount;
+      ws.getCell(r, 7).value = emp.wopWages || 0;
+      ws.getCell(r, 8).value = emp.totalWages || 0;
+
+      const banded = i % 2 === 1;
+      for (let c = 1; c <= 8; c++) {
+        const cell = ws.getCell(r, c);
+        cell.border = thinBorder;
+        cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
+        if (banded) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
+        if (c === 7 || c === 8) cell.numFmt = '#,##0';
+        cell.alignment = (c === 3 || c === 4) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+      }
+      ws.getRow(r).height = 20;
+    });
+
+    const wCols = { 1: 7, 2: 15, 3: 28, 4: 24, 5: 14, 6: 14, 7: 16, 8: 16 };
+    Object.entries(wCols).forEach(([c, w]) => { ws.getColumn(Number(c)).width = w; });
+  }
+
+  buildWopDetail('Plant Operators (WOP)', wopMetrics.op.list);
+  buildWopDetail('Contract Labour (WOP)', wopMetrics.cl.list);
+  buildWopDetail('NAPS Apprentices (WOP)', wopMetrics.naps.list);
+
+  return await wb.xlsx.writeBuffer();
+}
+
+// ── Generate Dedicated Late Coming / Punctuality Report ──
+export async function generateLateReportWorkbook(lateMetrics, master, batchResults) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Yokohama CTC Operations';
+  wb.created = new Date();
+
+  // 1. Summary Sheet
+  const wsSummary = wb.addWorksheet('Punctuality Summary');
+  wsSummary.views = [{ showGridLines: true }];
+
+  wsSummary.mergeCells('A1:F1');
+  const titleCell = wsSummary.getCell('A1');
+  titleCell.value = 'YOKOHAMA CTC — SHIFT PUNCTUALITY & LATE ARRIVAL REPORT';
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+  titleCell.font = { name: FONT_NAME, size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  wsSummary.getRow(1).height = 30;
+
+  // KPI Row
+  wsSummary.getCell('A3').value = 'Total Late Incidents';
+  wsSummary.getCell('B3').value = lateMetrics.totalCount;
+  wsSummary.getCell('C3').value = 'Impacted Personnel';
+  wsSummary.getCell('D3').value = lateMetrics.totalEmployees;
+  wsSummary.getCell('E3').value = 'Total Lost Minutes';
+  wsSummary.getCell('F3').value = lateMetrics.totalLostMins;
+  ['A3', 'C3', 'E3'].forEach(pos => {
+    const c = wsSummary.getCell(pos);
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+    c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FF475569' } };
+    c.border = thinBorder;
+  });
+  ['B3', 'D3', 'F3'].forEach(pos => {
+    const c = wsSummary.getCell(pos);
+    c.font = { name: FONT_NAME, size: 11, bold: true, color: { argb: 'FF0F172A' } };
+    c.border = thinBorder;
+    c.numFmt = '#,##0';
+  });
+  wsSummary.getRow(3).height = 22;
+
+  // Table
+  const headers = ['Category', 'Late Incidents', 'Impacted Personnel', 'Share %', 'Total Lost Mins', 'Avg Delay'];
+  headers.forEach((h, i) => {
+    const c = wsSummary.getCell(5, i + 1);
+    c.value = h;
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cYellowMain } };
+    c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: cTextDark } };
+    c.border = thinBorder;
+    c.alignment = { horizontal: 'center', vertical: 'middle' };
+  });
+  wsSummary.getRow(5).height = 22;
+
+  const rows = [
+    {
+      cat: 'Plant Operators',
+      count: lateMetrics.op.count,
+      emp: lateMetrics.op.employees,
+      share: lateMetrics.totalCount ? (lateMetrics.op.count / lateMetrics.totalCount) * 100 : 0,
+      mins: lateMetrics.op.lostMins,
+      avg: lateMetrics.op.count ? Math.round(lateMetrics.op.lostMins / lateMetrics.op.count) : 0
+    },
+    {
+      cat: 'Contract Labour (CL)',
+      count: lateMetrics.cl.count,
+      emp: lateMetrics.cl.employees,
+      share: lateMetrics.totalCount ? (lateMetrics.cl.count / lateMetrics.totalCount) * 100 : 0,
+      mins: lateMetrics.cl.lostMins,
+      avg: lateMetrics.cl.count ? Math.round(lateMetrics.cl.lostMins / lateMetrics.cl.count) : 0
+    },
+    {
+      cat: 'NAPS Apprentices',
+      count: lateMetrics.naps.count,
+      emp: lateMetrics.naps.employees,
+      share: lateMetrics.totalCount ? (lateMetrics.naps.count / lateMetrics.totalCount) * 100 : 0,
+      mins: lateMetrics.naps.lostMins,
+      avg: lateMetrics.naps.count ? Math.round(lateMetrics.naps.lostMins / lateMetrics.naps.count) : 0
+    }
+  ];
+
+  rows.forEach((rData, idx) => {
+    const rowIdx = 6 + idx;
+    wsSummary.getCell(rowIdx, 1).value = rData.cat;
+    wsSummary.getCell(rowIdx, 2).value = rData.count;
+    wsSummary.getCell(rowIdx, 3).value = rData.emp;
+    wsSummary.getCell(rowIdx, 4).value = `${rData.share.toFixed(1)}%`;
+    wsSummary.getCell(rowIdx, 5).value = rData.mins;
+    wsSummary.getCell(rowIdx, 6).value = `${rData.avg} mins / incident`;
+
+    for (let c = 1; c <= 6; c++) {
+      const cell = wsSummary.getCell(rowIdx, c);
+      cell.border = thinBorder;
+      cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
+      if (c === 2 || c === 3 || c === 5) cell.numFmt = '#,##0';
+      cell.alignment = c === 1 ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+    }
+    wsSummary.getRow(rowIdx).height = 20;
+  });
+
+  const totRow = 9;
+  wsSummary.getCell(totRow, 1).value = 'Total';
+  wsSummary.getCell(totRow, 2).value = lateMetrics.totalCount;
+  wsSummary.getCell(totRow, 3).value = lateMetrics.totalEmployees;
+  wsSummary.getCell(totRow, 4).value = '100.0%';
+  wsSummary.getCell(totRow, 5).value = lateMetrics.totalLostMins;
+  wsSummary.getCell(totRow, 6).value = lateMetrics.totalCount ? `${Math.round(lateMetrics.totalLostMins / lateMetrics.totalCount)} mins / incident` : '0';
+  for (let c = 1; c <= 6; c++) {
+    const cell = wsSummary.getCell(totRow, c);
+    cell.border = thinBorder;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE047' } };
+    cell.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: cTextDark } };
+    if (c === 2 || c === 3 || c === 5) cell.numFmt = '#,##0';
+    cell.alignment = c === 1 ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+  }
+  wsSummary.getRow(totRow).height = 22;
+
+  const wSummaryCol = { 1: 24, 2: 15, 3: 20, 4: 14, 5: 18, 6: 20 };
+  Object.entries(wSummaryCol).forEach(([c, w]) => { wsSummary.getColumn(Number(c)).width = w; });
+
+  // Detail sheets builder
+  function buildLateDetail(sheetName, list) {
+    const ws = wb.addWorksheet(sheetName);
+    ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1, showGridLines: true }];
+    const cols = ['S.No', 'Emp Code', 'Employee Name', 'Department / Contractor', 'Shift', 'In-Time (Shift Start)', 'Late Delay (Mins)', 'Severity'];
+    cols.forEach((h, i) => {
+      const c = ws.getCell(1, i + 1);
+      c.value = h;
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cYellowMain } };
+      c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: cTextDark } };
+      c.border = thinBorder;
+      c.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+    ws.getRow(1).height = 24;
+
+    list.forEach((emp, i) => {
+      const r = i + 2;
+      ws.getCell(r, 1).value = i + 1;
+      ws.getCell(r, 2).value = emp.code;
+      ws.getCell(r, 3).value = emp.name;
+      ws.getCell(r, 4).value = emp.dept;
+      ws.getCell(r, 5).value = emp.shift || 'Shift A';
+      ws.getCell(r, 6).value = `${emp.inTime || '08:20 AM'} (${emp.shiftStart || '08:00 AM'})`;
+      ws.getCell(r, 7).value = emp.lateMins || 0;
+      ws.getCell(r, 8).value = emp.severity || 'Minor';
+
+      const banded = i % 2 === 1;
+      for (let c = 1; c <= 8; c++) {
+        const cell = ws.getCell(r, c);
+        cell.border = thinBorder;
+        cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
+        if (banded) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
+        if (c === 7) cell.numFmt = '#,##0';
+        cell.alignment = (c === 3 || c === 4) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+      }
+      ws.getRow(r).height = 20;
+    });
+
+    const wCols = { 1: 7, 2: 15, 3: 28, 4: 24, 5: 14, 6: 22, 7: 18, 8: 16 };
+    Object.entries(wCols).forEach(([c, w]) => { ws.getColumn(Number(c)).width = w; });
+  }
+
+  buildLateDetail('Plant Operators (Late)', lateMetrics.op.list);
+  buildLateDetail('Contract Labour (Late)', lateMetrics.cl.list);
+  buildLateDetail('NAPS Apprentices (Late)', lateMetrics.naps.list);
+
+  return await wb.xlsx.writeBuffer();
+}
+
 // Trigger browser file download
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -427,3 +760,4 @@ export function downloadBlob(blob, filename) {
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+

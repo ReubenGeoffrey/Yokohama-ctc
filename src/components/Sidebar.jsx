@@ -13,7 +13,8 @@ import {
   ShieldCheck,
   Menu,
   X,
-  CalendarCheck
+  CalendarCheck,
+  Clock
 } from 'lucide-react';
 import { YokohamaLogo } from './YokohamaLogo';
 
@@ -42,6 +43,13 @@ export function Sidebar({
       label: 'WOP Statistics',
       subtitle: 'Operator, CL & NAPS',
       icon: CalendarCheck,
+      badge: null
+    },
+    {
+      id: 'late',
+      label: 'Late Arrivals',
+      subtitle: 'Operator, CL & NAPS',
+      icon: Clock,
       badge: null
     }
   ];

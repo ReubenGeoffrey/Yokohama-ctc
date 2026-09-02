@@ -407,11 +407,18 @@ export function App() {
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans antialiased flex">
       {/* ── Left Sidebar Navigation (Reference UI) ── */}
       <Sidebar
-        activeView={dashboardTab === 'wop' && activeView === 'dashboard' ? 'wop' : activeView}
+        activeView={
+          activeView === 'dashboard'
+            ? (dashboardTab === 'wop' ? 'wop' : (dashboardTab === 'late' ? 'late' : 'dashboard'))
+            : activeView
+        }
         onSelectView={(v) => {
           if (v === 'wop') {
             setActiveView('dashboard');
             setDashboardTab('wop');
+          } else if (v === 'late') {
+            setActiveView('dashboard');
+            setDashboardTab('late');
           } else if (v === 'dashboard' || v === 'overview') {
             setActiveView('dashboard');
             setDashboardTab('overview');
