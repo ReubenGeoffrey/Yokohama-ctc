@@ -445,10 +445,6 @@ export function App() {
             <div className="flex items-center space-x-2.5">
               <YokohamaLogo className="h-5 w-auto hidden sm:inline-block" />
               <div className="flex items-center space-x-1.5">
-                <span className="text-xs font-black text-slate-950 uppercase tracking-wider font-display">
-                  CTC Hub
-                </span>
-                <span className="text-slate-300">/</span>
                 <span className="text-xs font-bold text-slate-500 capitalize">
                   {activeView}
                 </span>
@@ -598,7 +594,7 @@ export function App() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-xl font-black text-slate-900">Daily Cost Summary</h2>
-                    <p className="text-xs text-slate-500">Worker headcount, standard working wages, and overtime compensation.</p>
+                    <p className="text-xs text-slate-500">Worker man-days, standard working wages, and overtime compensation.</p>
                   </div>
                   <button
                     onClick={() => setActiveView('dashboard')}

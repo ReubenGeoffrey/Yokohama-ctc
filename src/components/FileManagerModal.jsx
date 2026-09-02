@@ -470,10 +470,10 @@ export function FileManagerModal({
                   <div className="grid grid-cols-2 gap-2">
                     <div className="p-2.5 rounded-lg bg-blue-50/50 border border-blue-100">
                       <div className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">
-                        Total Headcount
+                        Total Man-days
                       </div>
                       <div className="text-lg font-black text-blue-950 mt-0.5">
-                        {fmtN(selectedMonthData.totalHC)} HC
+                        {fmtN(selectedMonthData.totalHC)} Man-days
                       </div>
                     </div>
 
@@ -534,7 +534,7 @@ export function FileManagerModal({
                             </span>
                             {item.result && (
                               <span className="text-slate-500 text-[11px] ml-2">
-                                HC: <strong className="text-slate-800">{fmtN(item.result.gHC)}</strong> &bull; Total: <strong className="text-emerald-700 font-mono">₹{fmt(item.result.gTot)}</strong>
+                                Man-days: <strong className="text-slate-800">{fmtN(item.result.gHC)}</strong> &bull; Total: <strong className="text-emerald-700 font-mono">₹{fmt(item.result.gTot)}</strong>
                               </span>
                             )}
                           </div>

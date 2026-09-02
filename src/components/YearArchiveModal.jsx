@@ -126,7 +126,7 @@ export function YearArchiveModal({ isOpen, onClose }) {
           {currentSummary && (
             <div className="p-4 rounded-2xl bg-rose-50/70 border border-rose-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs shadow-xs">
               <div>
-                <span className="text-slate-500 font-semibold">Total Headcount</span>
+                <span className="text-slate-500 font-semibold">Total Man-days</span>
                 <div className="text-base font-black text-slate-900 mt-1">{(currentSummary.total_headcount || 0).toLocaleString()}</div>
               </div>
               <div>

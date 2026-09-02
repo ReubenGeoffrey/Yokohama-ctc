@@ -187,15 +187,15 @@ function SmoothWaveChart({ data = [], width = 460, height = 180 }) {
               </span>
             </div>
 
-            {/* Row 1: Headcount */}
+            {/* Row 1: Man-days */}
             <div className="flex items-center justify-between gap-4 pt-1 text-xs">
-              <span style={{ color: '#cbd5e1' }} className="font-semibold">Headcount:</span>
+              <span style={{ color: '#cbd5e1' }} className="font-semibold">Man-days:</span>
               <span 
                 style={{ color: '#ffffff', fontFamily: 'monospace', fontSize: '15px' }} 
                 className="font-black tracking-tight"
               >
                 {activePoint.value.toLocaleString('en-IN')}{' '}
-                <span style={{ color: '#94a3b8', fontSize: '10px', fontWeight: 'normal' }}>workers</span>
+                <span style={{ color: '#94a3b8', fontSize: '10px', fontWeight: 'normal' }}>man-days</span>
               </span>
             </div>
 
@@ -991,14 +991,14 @@ export function DashboardOverview({
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-black text-slate-900 tracking-tight">Attendance Headcount Trend</h3>
+                  <h3 className="text-sm font-black text-slate-900 tracking-tight">Attendance Trend (Man-days)</h3>
                   <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md text-[10px] font-black uppercase tracking-wider">
                     Daily
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
                   <p className="text-xs text-slate-400 font-medium">
-                    Daily worker volume across plants
+                    Daily man-days volume across plants
                   </p>
                   {waveData.length > 0 && (
                     <div className="flex items-center space-x-2 text-[11px] font-bold">
@@ -1030,7 +1030,7 @@ export function DashboardOverview({
               <div className="mt-2">
                 <EnterpriseDonutChart
                   segments={labourSegments}
-                  totalLabel="Total HC"
+                  totalLabel="Total Man-days"
                   totalValue={fmtN(totHC || 2241)}
                 />
               </div>
@@ -1044,7 +1044,7 @@ export function DashboardOverview({
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Shifts</span>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5 font-medium">
-                  Daily headcount deployed by shift
+                  Daily man-days deployed by shift
                 </p>
               </div>
 

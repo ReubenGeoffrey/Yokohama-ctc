@@ -133,7 +133,7 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
             Daily Attendance &amp; Cost Summary
           </h2>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Daily worker headcount, standard working wages, and overtime compensation.
+            Daily worker man-days, standard working wages, and overtime compensation.
           </p>
         </div>
 
@@ -149,7 +149,7 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
       {/* ── KPI Cards (Matching Dashboard Style) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total Headcount',  value: fmtN(totHC),      sub: `${batchResults.length} dates`,       icon: <Users className="w-4 h-4 text-blue-600"/>,      iconBg: 'bg-blue-50' },
+          { label: 'Total Man-days',  value: fmtN(totHC),      sub: `${batchResults.length} dates`,       icon: <Users className="w-4 h-4 text-blue-600"/>,      iconBg: 'bg-blue-50' },
           { label: 'Daily CTC Wages',  value: `₹${fmt(totCTC)}`, sub: 'Standard working wages',           icon: <DollarSign className="w-4 h-4 text-emerald-600"/>,iconBg: 'bg-emerald-50' },
           { label: 'OT Compensation',  value: `₹${fmt(totOT)}`,  sub: 'Overtime wages',                    icon: <Clock className="w-4 h-4 text-amber-600"/>,      iconBg: 'bg-amber-50' },
           { label: 'Plant Total Cost', value: `₹${fmt(totCost)}`,sub: 'CTC + OT combined',                icon: <span className="font-black text-xs text-slate-900">₹</span>, iconBg: 'bg-slate-100', highlight: true },
@@ -183,7 +183,7 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
         {/* Headcount Distribution */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
           <div>
-            <h3 className="text-sm font-black text-slate-900">Headcount Distribution</h3>
+            <h3 className="text-sm font-black text-slate-900">Man-days Distribution</h3>
             <p className="text-xs text-slate-400 font-medium mt-0.5">Direct vs Indirect workers across all dates</p>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-6">
@@ -199,7 +199,7 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: seg.color }} />
                       <span>{seg.label}</span>
                     </span>
-                    <strong className="text-slate-900">{seg.value} HC</strong>
+                    <strong className="text-slate-900">{seg.value} Man-days</strong>
                   </div>
                   <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                     <div
@@ -262,11 +262,11 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
             <thead>
               <tr className="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-black border-b border-slate-200/80">
                 <th className="py-3.5 px-5">Date</th>
-                <th className="py-3.5 px-4 text-right">Direct HC</th>
+                <th className="py-3.5 px-4 text-right">Direct Man-days</th>
                 <th className="py-3.5 px-4 text-right">Direct Cost</th>
-                <th className="py-3.5 px-4 text-right">Indirect HC</th>
+                <th className="py-3.5 px-4 text-right">Indirect Man-days</th>
                 <th className="py-3.5 px-4 text-right">Indirect Cost</th>
-                <th className="py-3.5 px-4 text-right font-black text-slate-900 bg-slate-100/70">Total HC</th>
+                <th className="py-3.5 px-4 text-right font-black text-slate-900 bg-slate-100/70">Total Man-days</th>
                 <th className="py-3.5 px-4 text-right font-black text-slate-900 bg-slate-100/70">Total Cost</th>
                 <th className="py-3.5 px-5 text-center">Action</th>
               </tr>
