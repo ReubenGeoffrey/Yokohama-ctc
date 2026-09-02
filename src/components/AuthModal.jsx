@@ -113,14 +113,11 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                 <input
                   type="password"
                   autoFocus
-                  placeholder="Enter PIN (e.g. atc2026)"
+                  placeholder="Enter PIN"
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}
                   className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400 focus:bg-white transition"
                 />
-                <p className="text-[11px] text-slate-400 mt-1 font-medium">
-                  Default company executive PIN is <strong className="text-slate-700">atc2026</strong>
-                </p>
               </div>
 
               {error && (

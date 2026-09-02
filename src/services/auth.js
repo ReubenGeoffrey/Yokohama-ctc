@@ -27,7 +27,7 @@ export const AuthService = {
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
       return { success: true, user };
     }
-    return { success: false, error: 'Invalid Passcode. Please use default PIN: atc2026' };
+    return { success: false, error: 'Invalid Executive PIN. Please try again.' };
   },
 
   // Login via Supabase Email / Password
