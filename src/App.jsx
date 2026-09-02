@@ -412,8 +412,10 @@ export function App() {
           if (v === 'wop') {
             setActiveView('dashboard');
             setDashboardTab('wop');
+          } else if (v === 'dashboard' || v === 'overview') {
+            setActiveView('dashboard');
+            setDashboardTab('overview');
           } else {
-            if (v === 'dashboard') setDashboardTab('overview');
             setActiveView(v);
           }
         }}

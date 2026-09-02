@@ -33,7 +33,7 @@ export function Sidebar({
   const homeNav = [
     {
       id: 'dashboard',
-      label: 'Dashboard',
+      label: 'Plant Overview',
       icon: LayoutDashboard,
       badge: null
     },
