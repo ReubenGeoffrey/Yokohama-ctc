@@ -145,10 +145,10 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
       {/* ── KPI Cards (Matching Dashboard Style) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total Man-days',  value: fmtN(totHC),      sub: `${batchResults.length} dates`,       icon: <Users className="w-4 h-4 text-blue-600"/>,      iconBg: 'bg-blue-50' },
-          { label: 'Daily CTC Wages',  value: fmt(totCTC),      sub: 'Standard working wages',           icon: <DollarSign className="w-4 h-4 text-emerald-600"/>,iconBg: 'bg-emerald-50' },
-          { label: 'OT Compensation',  value: fmt(totOT),       sub: 'Overtime wages',                    icon: <Clock className="w-4 h-4 text-amber-600"/>,      iconBg: 'bg-amber-50' },
-          { label: 'Plant Total Cost', value: fmt(totCost),     sub: 'CTC + OT combined',                icon: <DollarSign className="w-4 h-4 text-slate-900"/>,  iconBg: 'bg-slate-100', highlight: true },
+          { label: 'Total Man-days',  value: fmtN(totHC),      sub: `${batchResults.length} dates` },
+          { label: 'Daily CTC Wages',  value: fmt(totCTC),      sub: 'Standard working wages' },
+          { label: 'OT Compensation',  value: fmt(totOT),       sub: 'Overtime wages' },
+          { label: 'Plant Total Cost', value: fmt(totCost),     sub: 'CTC + OT combined', highlight: true },
         ].map((kpi, i) => (
           <div
             key={i}
@@ -156,13 +156,10 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
               kpi.highlight ? 'border-blue-300 ring-1 ring-blue-100' : 'border-slate-200'
             }`}
           >
-            <div className="flex items-center justify-between">
+            <div>
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 {kpi.label}
               </span>
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${kpi.iconBg}`}>
-                {kpi.icon}
-              </div>
             </div>
             <div className="text-xl font-black text-slate-900 mt-2">
               {kpi.value}

@@ -1319,7 +1319,6 @@ export function DashboardOverview({
             activeTab === 'overview' ? 'tab-btn-overview-active shadow-md ring-2 ring-slate-800' : 'tab-btn-inactive hover:bg-slate-50'
           }`}
         >
-          <LayoutDashboard className="w-4 h-4" style={{ color: activeTab === 'overview' ? '#ffffff' : '#0f172a' }} />
           <span style={{ color: activeTab === 'overview' ? '#ffffff' : '#0f172a' }}>Plant Overview</span>
         </button>
 
@@ -1331,7 +1330,6 @@ export function DashboardOverview({
             activeTab === 'wop' ? 'tab-btn-wop-active shadow-md ring-2 ring-amber-300' : 'tab-btn-inactive hover:bg-amber-50'
           }`}
         >
-          <CalendarCheck className="w-4 h-4" style={{ color: activeTab === 'wop' ? '#0f172a' : '#d97706' }} />
           <span style={{ color: '#0f172a' }}>WOP Statistics (Weekly Off)</span>
           <span
             style={{ backgroundColor: activeTab === 'wop' ? '#fef3c7' : '#fef3c7', color: '#78350f' }}
@@ -1349,7 +1347,6 @@ export function DashboardOverview({
             activeTab === 'late' ? 'tab-btn-late-active shadow-md ring-2 ring-rose-300' : 'tab-btn-inactive hover:bg-rose-50'
           }`}
         >
-          <Clock className="w-4 h-4" style={{ color: activeTab === 'late' ? '#ffffff' : '#e11d48' }} />
           <span style={{ color: activeTab === 'late' ? '#ffffff' : '#0f172a' }}>Late Arrivals (Punctuality)</span>
           <span
             style={{ backgroundColor: activeTab === 'late' ? '#ffe4e6' : '#ffe4e6', color: '#9f1239' }}
@@ -1627,15 +1624,10 @@ export function DashboardOverview({
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shadow-2xs">
-                      <HardHat className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-slate-900 leading-tight">
-                        Plant Operators
-                      </h3>
-                    </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 leading-tight">
+                      Plant Operators
+                    </h3>
                   </div>
 
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
@@ -1716,15 +1708,10 @@ export function DashboardOverview({
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-2xs">
-                      <Users className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-slate-900 leading-tight">
-                        Contract Labour (CL)
-                      </h3>
-                    </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 leading-tight">
+                      Contract Labour (CL)
+                    </h3>
                   </div>
 
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -1801,15 +1788,10 @@ export function DashboardOverview({
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shadow-2xs">
-                      <GraduationCap className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-slate-900 leading-tight">
-                        NAPS Apprentices
-                      </h3>
-                    </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 leading-tight">
+                      NAPS Apprentices
+                    </h3>
                   </div>
 
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
@@ -2166,15 +2148,10 @@ export function DashboardOverview({
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shadow-2xs">
-                      <HardHat className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-slate-900 leading-tight">
-                        Plant Operators
-                      </h3>
-                    </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 leading-tight">
+                      Plant Operators
+                    </h3>
                   </div>
 
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
@@ -2255,15 +2232,10 @@ export function DashboardOverview({
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-2xs">
-                      <Users className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-slate-900 leading-tight">
-                        Contract Labour (CL)
-                      </h3>
-                    </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 leading-tight">
+                      Contract Labour (CL)
+                    </h3>
                   </div>
 
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -2340,15 +2312,10 @@ export function DashboardOverview({
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shadow-2xs">
-                      <GraduationCap className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-slate-900 leading-tight">
-                        NAPS Apprentices
-                      </h3>
-                    </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 leading-tight">
+                      NAPS Apprentices
+                    </h3>
                   </div>
 
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
