@@ -1278,14 +1278,15 @@ export function DashboardOverview({
             <span>Late Excel</span>
           </button>
 
-          {/* Generate Consolidated Button */}
+          {/* Download Summary Button */}
           <button
             onClick={onExportMonthly}
             disabled={!batchResults.length}
             className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 rounded-xl text-xs flex items-center space-x-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
+            title="Download Monthly Summary Report in Excel"
           >
             <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span>Consolidated</span>
+            <span>Download Summary</span>
           </button>
 
           {/* Date Range Selector Pill */}
