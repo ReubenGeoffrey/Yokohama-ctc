@@ -639,6 +639,20 @@ export function App() {
             )}
           </AnimatePresence>
         </main>
+
+        {/* Global Executive Footer Watermark */}
+        <footer className="py-5 px-6 border-t border-slate-200/80 bg-white/70 backdrop-blur-xs mt-auto">
+          <div className="max-w-7xl w-full mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+            <div className="flex items-center space-x-2">
+              <span className="font-bold text-slate-800">Yokohama Tire Operations</span>
+              <span className="text-slate-300">•</span>
+              <span className="text-slate-500">Automated CTC &amp; Shift Reconciliation System</span>
+            </div>
+            <div className="text-xs text-slate-600 font-medium">
+              Built by <strong className="text-slate-950 font-bold">Joseph &amp; Reuben Geoffrey</strong> <span className="text-blue-700 font-bold">(Hr Team)</span>
+            </div>
+          </div>
+        </footer>
       </div>
 
       {/* ── MODALS ── */}

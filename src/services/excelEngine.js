@@ -280,6 +280,9 @@ export function getProjectStats(projectEmployees, empStats) {
 // Generate Combined Monthly Master Workbook
 export async function generateMonthlyWorkbook(batchResults, master, empStats, year, month) {
   const wb = new ExcelJS.Workbook();
+  wb.creator = 'Built by Joseph & Reuben Geoffrey (Hr Team)';
+  wb.company = 'Yokohama Tire Operations';
+  wb.created = new Date();
   const wsSummary = wb.addWorksheet('Summary');
   styleSummarySheet(wsSummary, year, month);
 
@@ -419,7 +422,8 @@ export async function generateZipBundle(batchResults, master, empStats, year, mo
 // ── Generate Dedicated WOP Statistics Workbook (Executive Blue Business Template) ──
 export async function generateWopReportWorkbook(wopMetrics, master, batchResults) {
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'Yokohama CTC Operations';
+  wb.creator = 'Built by Joseph & Reuben Geoffrey (Hr Team)';
+  wb.company = 'Yokohama Tire Operations';
   wb.created = new Date();
 
   const cBlueDark = 'FF0F172A';   // Deep Navy Slate
@@ -645,7 +649,8 @@ export async function generateWopReportWorkbook(wopMetrics, master, batchResults
 // ── Generate Dedicated Late Coming Report (Perfect Green Executive Theme) ──
 export async function generateLateReportWorkbook(lateMetrics, master, batchResults) {
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'Yokohama CTC Operations';
+  wb.creator = 'Built by Joseph & Reuben Geoffrey (Hr Team)';
+  wb.company = 'Yokohama Tire Operations';
   wb.created = new Date();
 
   const cGreenDark = 'FF064E3B';   // Deep Forest / Emerald

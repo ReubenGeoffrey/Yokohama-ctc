@@ -262,6 +262,11 @@ export function Sidebar({
             </span>
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
           </div>
+
+          {/* Watermark placement */}
+          <div className="mt-3 pt-2.5 border-t border-slate-200/60 text-[10.5px] text-slate-500 text-center font-medium leading-tight">
+            Built by <strong className="text-slate-800 font-bold">Joseph &amp; Reuben Geoffrey</strong> <span className="text-blue-700 font-bold">(Hr Team)</span>
+          </div>
         </div>
       </aside>
     </>
