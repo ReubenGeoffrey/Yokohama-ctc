@@ -82,7 +82,7 @@ export function styleSummarySheet(wsSummary, year, month) {
 
   for (let c = 2; c <= 37; c++) {
     const mod = (c - 2) % 4;
-    let label = 'Head Count';
+    let label = 'Man Days';
     if (mod === 1) label = 'CTC';
     else if (mod === 2) label = 'OT Wages';
     else if (mod === 3) label = 'Total';
@@ -100,7 +100,7 @@ export function styleSummarySheet(wsSummary, year, month) {
   wsSummary.getColumn(1).width = 14;
   for (let c = 2; c <= 37; c++) {
     const mod = (c - 2) % 4;
-    wsSummary.getColumn(c).width = (mod === 0) ? 11 : 14;
+    wsSummary.getColumn(c).width = (mod === 0) ? 13 : 14;
   }
 
   // Days styling (1 to 31) - Clean number format without rupee symbol
