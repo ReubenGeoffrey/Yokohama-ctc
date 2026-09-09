@@ -70,7 +70,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
         if (headerIdx < 0) continue;
 
         const date = extractDateFromAnywhere(rawRows, file.name);
-        const category = detectCategory(file.name, rawRows);
+        const category = detectCategory(rawRows, headerIdx, file.name);
 
         if (!date || !category) continue;
 
@@ -139,15 +139,27 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
     onNext();
   };
 
+  const getSelectedMonthYear = (results) => {
+    if (results && results.length > 0) {
+      const d = new Date(results[0].date);
+      const y = d.getUTCFullYear();
+      const m = d.getUTCMonth();
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      return { year: y, month: m, monthName: monthNames[m] || 'Month' };
+    }
+    return { year: 2026, month: 8, monthName: 'September' };
+  };
+
   const handleDownloadMonthly = async () => {
     const data = getReconciledData();
     if (!data) return;
     const effectiveMaster = getEffectiveMaster(master);
+    const { year, month, monthName } = getSelectedMonthYear(data.results);
     setIsDownloadingMonthly(true);
     try {
-      const buffer = await generateMonthlyWorkbook(data.results, effectiveMaster, data.empStats, 2026, 7);
+      const buffer = await generateMonthlyWorkbook(data.results, effectiveMaster, data.empStats, year, month);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `CTC_Output_August_2026.xlsx`);
+      downloadBlob(blob, `CTC_Output_${monthName}_${year}.xlsx`);
     } catch (err) {
       console.error(err);
       alert('Error downloading Monthly Master Workbook: ' + err.message);
@@ -160,6 +172,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
     const data = getReconciledData();
     if (!data) return;
     const effectiveMaster = getEffectiveMaster(master);
+    const { year, month, monthName } = getSelectedMonthYear(data.results);
     setIsDownloadingWop(true);
     try {
       const getStat = (catStats, code) => (catStats && catStats[code]) ? catStats[code] : { daysPresent: 0, wopCount: 0, wages: 0 };
@@ -216,7 +229,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
 
       const buffer = await generateWopReportWorkbook(wopMetrics, effectiveMaster, data.results);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `Yokohama_WOP_Weekly_Off_Report_August_2026.xlsx`);
+      downloadBlob(blob, `Yokohama_WOP_Weekly_Off_Report_${monthName}_${year}.xlsx`);
     } catch (err) {
       console.error(err);
       alert('Error downloading WOP Workbook: ' + err.message);
@@ -229,6 +242,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
     const data = getReconciledData();
     if (!data) return;
     const effectiveMaster = getEffectiveMaster(master);
+    const { year, month, monthName } = getSelectedMonthYear(data.results);
     setIsDownloadingLate(true);
     try {
       const shiftDefinitions = [
@@ -293,7 +307,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
 
       const buffer = await generateLateReportWorkbook(lateMetrics, effectiveMaster, data.results);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `Yokohama_Late_Coming_Punctuality_Report_August_2026.xlsx`);
+      downloadBlob(blob, `Yokohama_Late_Coming_Punctuality_Report_${monthName}_${year}.xlsx`);
     } catch (err) {
       console.error(err);
       alert('Error downloading Late Coming Workbook: ' + err.message);
@@ -306,10 +320,11 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
     const data = getReconciledData();
     if (!data) return;
     const effectiveMaster = getEffectiveMaster(master);
+    const { year, month, monthName } = getSelectedMonthYear(data.results);
     setIsDownloadingZip(true);
     try {
-      const blob = await generateZipBundle(data.results, effectiveMaster, data.empStats, 2026, 7);
-      downloadBlob(blob, `ATC_CTC_Reconciliation_August_2026.zip`);
+      const blob = await generateZipBundle(data.results, effectiveMaster, data.empStats, year, month);
+      downloadBlob(blob, `ATC_CTC_Reconciliation_${monthName}_${year}.zip`);
     } catch (err) {
       console.error(err);
       alert('Error downloading ZIP bundle: ' + err.message);

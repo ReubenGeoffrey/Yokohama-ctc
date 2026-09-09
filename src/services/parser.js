@@ -2,7 +2,8 @@ import * as XLSX from 'xlsx';
 
 const MONTH_MAP = {
   JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
-  JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11
+  JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
+  SEPT: 8, SEPTEMBER: 8, AUGUST: 7, OCTO: 9, NOVE: 10, DECE: 11
 };
 
 export function timeStrToHours(v) {
@@ -48,74 +49,176 @@ export function findHeaderRowIdx(rows) {
 }
 
 export function extractDateFromAnywhere(rows, filename) {
-  // 1. Check first 10 rows for printed header dates
-  for (let i = 0; i < Math.min(rows.length, 10); i++) {
-    const r = rows[i];
-    if (!r) continue;
-    for (let c = 0; c < Math.min(r.length, 8); c++) {
-      const cellStr = String(r[c] || '').trim();
-      if (cellStr.toUpperCase().includes('PRINTED ON') || cellStr.toUpperCase().includes('PRINTED AT')) {
-        continue;
-      }
-      const match = cellStr.match(/as of\s+(\d{1,2})\w{0,2}\s+([A-Za-z]{3,})\s+(\d{4})/i);
-      if (match) {
-        const day = parseInt(match[1], 10);
-        const monStr = match[2].slice(0, 3).toUpperCase();
-        const yr = parseInt(match[3], 10);
-        if (MONTH_MAP[monStr] !== undefined) {
-          return new Date(Date.UTC(yr, MONTH_MAP[monStr], day));
+  // 1. Check rows in sheet
+  if (Array.isArray(rows)) {
+    for (let i = 0; i < Math.min(rows.length, 12); i++) {
+      const r = rows[i];
+      if (!r) continue;
+      for (let c = 0; c < Math.min(r.length, 8); c++) {
+        const val = r[c];
+        if (!val) continue;
+
+        // Check if already a JS Date object from XLSX
+        if (val instanceof Date && !isNaN(val.getTime())) {
+          const yr = val.getUTCFullYear();
+          if (yr >= 2020 && yr <= 2035) {
+            const rStr = r.map(x => String(x || '')).join(' ').toUpperCase();
+            if (!rStr.includes('PRINTED ON') && !rStr.includes('PRINTED AT')) {
+              return new Date(Date.UTC(val.getUTCFullYear(), val.getUTCMonth(), val.getUTCDate()));
+            }
+          }
         }
-      }
-      const m2 = cellStr.match(/(\d{1,2})[-\s/]([A-Za-z]{3,})[-\s/](\d{4})/);
-      if (m2) {
-        const day = parseInt(m2[1], 10);
-        const monStr = m2[2].slice(0, 3).toUpperCase();
-        const yr = parseInt(m2[3], 10);
-        if (MONTH_MAP[monStr] !== undefined) {
-          return new Date(Date.UTC(yr, MONTH_MAP[monStr], day));
+
+        const cellStr = String(val).trim();
+        if (cellStr.toUpperCase().includes('PRINTED ON') || cellStr.toUpperCase().includes('PRINTED AT')) {
+          continue;
+        }
+
+        // 'as of 01st Sep 2026' or 'as of 1 Sep 2026' or 'as of 01-Sep-2026'
+        const mAsOf = cellStr.match(/as of\s+(\d{1,2})\w{0,2}\s+([A-Za-z]{3,})\s+(\d{2,4})/i);
+        if (mAsOf) {
+          const day = parseInt(mAsOf[1], 10);
+          const monStr = mAsOf[2].slice(0, 3).toUpperCase();
+          const yr = mAsOf[3].length === 2 ? 2000 + parseInt(mAsOf[3], 10) : parseInt(mAsOf[3], 10);
+          if (MONTH_MAP[monStr] !== undefined && day >= 1 && day <= 31) {
+            return new Date(Date.UTC(yr, MONTH_MAP[monStr], day));
+          }
+        }
+
+        const mText = cellStr.match(/(\d{1,2})\w{0,2}[-\s/.]+([A-Za-z]{3,})[-\s/.]+(\d{2,4})/);
+        if (mText) {
+          const day = parseInt(mText[1], 10);
+          const monStr = mText[2].slice(0, 3).toUpperCase();
+          const yr = mText[3].length === 2 ? 2000 + parseInt(mText[3], 10) : parseInt(mText[3], 10);
+          if (MONTH_MAP[monStr] !== undefined && day >= 1 && day <= 31) {
+            return new Date(Date.UTC(yr, MONTH_MAP[monStr], day));
+          }
+        }
+
+        const mNum = cellStr.match(/(\d{1,2})[-\s/.](\d{1,2})[-\s/.](\d{2,4})/);
+        if (mNum) {
+          const day = parseInt(mNum[1], 10);
+          const mon = parseInt(mNum[2], 10) - 1;
+          const yr = mNum[3].length === 2 ? 2000 + parseInt(mNum[3], 10) : parseInt(mNum[3], 10);
+          if (mon >= 0 && mon <= 11 && day >= 1 && day <= 31) {
+            return new Date(Date.UTC(yr, mon, day));
+          }
         }
       }
     }
   }
 
-  // 2. Check filename
+  // 2. Check filename (strip folder path e.g. 'September/01-09-2026 CL.xlsx')
   const fn = String(filename || '');
-  const m_dmy = fn.match(/(\d{1,2})\s*[-_/\.]\s*(\d{1,2})\s*[-_/\.]\s*(\d{4})/);
-  if (m_dmy) {
-    return new Date(Date.UTC(parseInt(m_dmy[3], 10), parseInt(m_dmy[2], 10) - 1, parseInt(m_dmy[1], 10)));
+  const base = fn.split(/[/\\]/).pop();
+
+  // Text month: 01-Sep-2026, 01-Sept-2026, 01 September 2026, 01_Sep_26
+  const mTextFn = base.match(/(\d{1,2})\s*[-_/\.\s]\s*([A-Za-z]{3,})\s*[-_/\.\s]?\s*(\d{2,4})?/i);
+  if (mTextFn) {
+    const day = parseInt(mTextFn[1], 10);
+    const monStr = mTextFn[2].slice(0, 3).toUpperCase();
+    const yr = mTextFn[3] ? (mTextFn[3].length === 2 ? 2000 + parseInt(mTextFn[3], 10) : parseInt(mTextFn[3], 10)) : 2026;
+    if (MONTH_MAP[monStr] !== undefined && day >= 1 && day <= 31) {
+      return new Date(Date.UTC(yr, MONTH_MAP[monStr], day));
+    }
   }
-  const m_iso = fn.match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (m_iso) {
-    return new Date(Date.UTC(parseInt(m_iso[1], 10), parseInt(m_iso[2], 10) - 1, parseInt(m_iso[3], 10)));
+
+  // Month first: Sep-01-2026, September 01
+  const mMonFirst = base.match(/([A-Za-z]{3,})\s*[-_/\.\s]\s*(\d{1,2})\s*[-_/\.\s]?\s*(\d{2,4})?/i);
+  if (mMonFirst) {
+    const monStr = mMonFirst[1].slice(0, 3).toUpperCase();
+    const day = parseInt(mMonFirst[2], 10);
+    const yr = mMonFirst[3] ? (mMonFirst[3].length === 2 ? 2000 + parseInt(mMonFirst[3], 10) : parseInt(mMonFirst[3], 10)) : 2026;
+    if (MONTH_MAP[monStr] !== undefined && day >= 1 && day <= 31) {
+      return new Date(Date.UTC(yr, MONTH_MAP[monStr], day));
+    }
   }
-  const m_fn = fn.match(/Date\s*(\d{1,2})/i) || fn.match(/(\d{1,2})[-_]Aug/i);
-  if (m_fn) {
-    return new Date(Date.UTC(2026, 7, parseInt(m_fn[1], 10)));
+
+  // Numeric: 01-09-2026, 01.09.2026, 01_09_2026, 01-09-26
+  const mNumFn = base.match(/(\d{1,2})\s*[-_/\.]\s*(\d{1,2})\s*[-_/\.]\s*(\d{2,4})/);
+  if (mNumFn) {
+    const day = parseInt(mNumFn[1], 10);
+    const mon = parseInt(mNumFn[2], 10) - 1;
+    const yr = mNumFn[3].length === 2 ? 2000 + parseInt(mNumFn[3], 10) : parseInt(mNumFn[3], 10);
+    if (mon >= 0 && mon <= 11 && day >= 1 && day <= 31) {
+      return new Date(Date.UTC(yr, mon, day));
+    }
   }
+
+  // ISO: 2026-09-01
+  const mIso = base.match(/(\d{4})[-\s/.](\d{1,2})[-\s/.](\d{1,2})/);
+  if (mIso) {
+    return new Date(Date.UTC(parseInt(mIso[1], 10), parseInt(mIso[2], 10) - 1, parseInt(mIso[3], 10)));
+  }
+
+  // Date 01 / Date 1
+  const mDateOnly = base.match(/Date\s*[-_]?\s*(\d{1,2})/i);
+  if (mDateOnly) {
+    const upperFull = fn.toUpperCase();
+    for (const [k, v] of Object.entries(MONTH_MAP)) {
+      if (upperFull.includes(k)) {
+        return new Date(Date.UTC(2026, v, parseInt(mDateOnly[1], 10)));
+      }
+    }
+    const now = new Date();
+    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), parseInt(mDateOnly[1], 10)));
+  }
+
   return null;
 }
 
-export function detectCategory(rows, hIdx, filename) {
-  // Check header area
-  for (let i = 0; i < Math.min(rows.length, 10); i++) {
-    const row = rows[i];
-    if (!row) continue;
-    for (let c = 0; c < Math.min(row.length, 8); c++) {
-      const cell = String(row[c] || '').toUpperCase();
-      if (cell.includes('CATEGORY :') || cell.includes('CATEGORY:')) {
-        if (cell.includes('OPERATOR')) return 'OP';
-        if (cell.includes('NAPS')) return 'NAPS';
-        if (cell.includes('CONTRACT') || cell.includes('CL')) return 'CL';
-      }
-    }
+export function detectCategory(arg1, arg2, arg3) {
+  let filename = '';
+  let rows = [];
+  let hIdx = -1;
+
+  if (typeof arg1 === 'string') {
+    filename = arg1;
+    if (Array.isArray(arg2)) rows = arg2;
+    if (typeof arg3 === 'number') hIdx = arg3;
+  } else if (Array.isArray(arg1)) {
+    rows = arg1;
+    if (typeof arg2 === 'number') hIdx = arg2;
+    if (typeof arg3 === 'string') filename = arg3;
+    else if (typeof arg2 === 'string') filename = arg2;
+  } else if (typeof arg3 === 'string') {
+    filename = arg3;
   }
 
-  // Check employee code patterns
-  if (hIdx !== -1 && rows[hIdx]) {
-    const header = rows[hIdx].map(h => String(h || '').trim().toUpperCase());
-    const cIdx = header.indexOf('CODE');
+  const fn = String(filename || '').toUpperCase();
+
+  // 1. Precise Filename Checks
+  if (fn.includes('OPERATOR') || fn.includes(' OP ') || fn.startsWith('OP ') || fn.includes('_OP_') || fn.includes('-OP-') || fn.includes('OP PRESENT') || fn.endsWith('OP.XLSX')) {
+    return 'OP';
+  }
+  if (fn.includes('NAPS') || fn.includes('APPRENTICE')) {
+    return 'NAPS';
+  }
+  if (fn.includes('CONTRACT') || fn.includes('CL ') || fn.startsWith('CL') || fn.includes('_CL_') || fn.includes('-CL-') || fn.includes('CL PRESENT') || fn.endsWith('CL.XLSX')) {
+    return 'CL';
+  }
+
+  // 2. Check header rows in file
+  if (Array.isArray(rows)) {
+    for (let i = 0; i < Math.min(rows.length, 12); i++) {
+      const row = rows[i];
+      if (!row) continue;
+      for (let c = 0; c < Math.min(row.length, 8); c++) {
+        const cell = String(row[c] || '').toUpperCase();
+        if (cell.includes('CATEGORY :') || cell.includes('CATEGORY:')) {
+          if (cell.includes('OPERATOR')) return 'OP';
+          if (cell.includes('NAPS') || cell.includes('APPRENTICE')) return 'NAPS';
+          if (cell.includes('CONTRACT') || cell.includes('CL')) return 'CL';
+        }
+      }
+    }
+
+    // 3. Check employee code patterns
+    const headerRow = (hIdx >= 0 && rows[hIdx]) ? rows[hIdx] : (rows.find(r => Array.isArray(r) && r.some(c => String(c).trim().toUpperCase() === 'CODE')) || []);
+    const cIdx = headerRow.findIndex(h => String(h || '').trim().toUpperCase() === 'CODE');
     if (cIdx !== -1) {
-      for (let r = hIdx + 1; r < Math.min(rows.length, hIdx + 10); r++) {
+      const startR = hIdx >= 0 ? hIdx + 1 : 1;
+      for (let r = startR; r < Math.min(rows.length, startR + 15); r++) {
         if (rows[r] && rows[r][cIdx]) {
           const sample = String(rows[r][cIdx]).trim().toUpperCase();
           if (sample.startsWith('9')) return 'OP';
@@ -126,9 +229,8 @@ export function detectCategory(rows, hIdx, filename) {
     }
   }
 
-  // Check filename
-  const fn = (filename || '').toUpperCase();
-  if (fn.includes('OPERATOR') || fn.includes('OP')) return 'OP';
+  // 4. Fallback checks
+  if (fn.includes('OP')) return 'OP';
   if (fn.includes('NAPS')) return 'NAPS';
   return 'CL';
 }

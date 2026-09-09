@@ -51,7 +51,13 @@ export function ExportPanel({ batchResults, master, empStats }) {
     return Object.values(map).sort((a, b) => a.key.localeCompare(b.key));
   }, [batchResults]);
 
-  const [selectedMonthKey, setSelectedMonthKey] = useState(availableMonths[0]?.key || '2026-08');
+  const [selectedMonthKey, setSelectedMonthKey] = useState(availableMonths[availableMonths.length - 1]?.key || '2026-08');
+
+  useEffect(() => {
+    if (availableMonths.length > 0 && !availableMonths.some(m => m.key === selectedMonthKey)) {
+      setSelectedMonthKey(availableMonths[availableMonths.length - 1].key);
+    }
+  }, [availableMonths, selectedMonthKey]);
 
   const currentMonthConfig = useMemo(() => {
     return availableMonths.find(m => m.key === selectedMonthKey) || availableMonths[0] || { year: 2026, month: 7, label: 'August 2026' };
