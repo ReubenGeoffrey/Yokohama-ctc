@@ -129,7 +129,7 @@ export const StorageService = {
         NAPS: state.empStats.NAPS instanceof Map ? Object.fromEntries(state.empStats.NAPS) : (state.empStats.NAPS || {})
       } : null,
       exportedAt: new Date().toISOString(),
-      app: 'Yokohama ATC CTC Hub',
+      app: 'ATC CTC Hub',
       version: '2.0.0'
     };
 
@@ -137,7 +137,7 @@ export const StorageService = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Yokohama_ATC_Workspace_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `ATC_Workspace_${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

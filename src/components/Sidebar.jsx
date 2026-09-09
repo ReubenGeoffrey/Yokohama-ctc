@@ -14,9 +14,9 @@ import {
   Menu,
   X,
   CalendarCheck,
-  Clock
+  Clock,
+  Users
 } from 'lucide-react';
-import { YokohamaLogo } from './YokohamaLogo';
 
 export function Sidebar({
   activeView,
@@ -114,7 +114,7 @@ export function Sidebar({
         {/* Brand Header */}
         <div className="h-16 px-5 flex items-center justify-between border-b border-slate-100 bg-white">
           <div className="flex items-center space-x-2.5 min-w-0">
-            <YokohamaLogo className="h-5.5 w-auto" />
+            {/* Blank header space */}
           </div>
 
           <button

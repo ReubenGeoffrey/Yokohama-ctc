@@ -12,7 +12,6 @@ import { SupabaseService, getSupabaseClient } from './services/supabase';
 import { AuthService } from './services/auth';
 import { generateMonthlyWorkbook, downloadBlob } from './services/excelEngine';
 import { reconcileDay, aggregateMonthlyStats } from './services/reconciliation';
-import { YokohamaLogo } from './components/YokohamaLogo';
 import {
   Menu,
   HardDrive,
@@ -468,7 +467,6 @@ export function App() {
 
             {/* Logo in Tab Section */}
             <div className="flex items-center space-x-2.5">
-              <YokohamaLogo className="h-5 w-auto hidden sm:inline-block" />
               <div className="flex items-center space-x-1.5">
                 <span className="text-xs font-bold text-slate-500 capitalize">
                   {activeView}
@@ -655,9 +653,7 @@ export function App() {
         <footer className="py-5 px-6 border-t border-slate-200/80 bg-white/70 backdrop-blur-xs mt-auto">
           <div className="max-w-7xl w-full mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-slate-800">Yokohama Tire Operations</span>
-              <span className="text-slate-300">•</span>
-              <span className="text-slate-500">Automated CTC &amp; Shift Reconciliation System</span>
+              <span className="font-bold text-slate-800">Automated CTC &amp; Shift Reconciliation System</span>
             </div>
             <div className="text-xs text-slate-600 font-medium">
               Built by <strong className="text-slate-950 font-bold">Joseph &amp; Reuben Geoffrey</strong> <span className="text-blue-700 font-bold">(Hr Team)</span>

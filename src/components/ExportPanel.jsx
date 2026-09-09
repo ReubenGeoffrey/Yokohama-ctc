@@ -379,7 +379,7 @@ export function ExportPanel({ batchResults, master, empStats }) {
     try {
       const buffer = await generateWopReportWorkbook(wopMetrics, master, targetBatchResults);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `Yokohama_WOP_Weekly_Off_Report_${currentMonthConfig.label.replace(/\s+/g, '_')}.xlsx`);
+      downloadBlob(blob, `WOP_Weekly_Off_Report_${currentMonthConfig.label.replace(/\s+/g, '_')}.xlsx`);
     } catch (err) {
       console.error(err);
       alert('Error exporting WOP Workbook: ' + err.message);
@@ -393,7 +393,7 @@ export function ExportPanel({ batchResults, master, empStats }) {
     try {
       const buffer = await generateLateReportWorkbook(lateMetrics, master, targetBatchResults);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `Yokohama_Late_Coming_Punctuality_Report_${currentMonthConfig.label.replace(/\s+/g, '_')}.xlsx`);
+      downloadBlob(blob, `Late_Coming_Punctuality_Report_${currentMonthConfig.label.replace(/\s+/g, '_')}.xlsx`);
     } catch (err) {
       console.error(err);
       alert('Error exporting Late Coming Workbook: ' + err.message);

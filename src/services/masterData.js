@@ -3,7 +3,7 @@ import builtinMasterJson from '../data/builtinMaster.json';
 export const BUILTIN_MASTER = builtinMasterJson;
 
 export const BUILTIN_MASTER_META = {
-  fileName: 'Yokohama_CTC_Master_Embedded.xlsx',
+  fileName: 'CTC_Master_Embedded.xlsx',
   savedAt: 'Embedded System Master',
   operatorCount: 561,
   contractCount: 1444,

@@ -22,7 +22,7 @@ export function Header({
       <div className="ticker-bar">
         <div className="ticker-inner">
           <span className="ticker-dot" />
-          <span>Yokohama Tire Operations - Automated CTC Mapping &amp; Overtime Analytics</span>
+          <span>Automated CTC Mapping &amp; Overtime Analytics</span>
           <span className="ticker-divider">-</span>
           <span>Enterprise Cloud Sync</span>
           <span className="ticker-divider">-</span>
@@ -47,7 +47,7 @@ export function Header({
           <div className="brand">
             <div className="brand-text">
               <h1 className="brand-name">
-                YOKOHAMA <span className="brand-accent">CTC</span>
+                <span className="brand-accent">CTC</span>
               </h1>
               <p className="brand-sub">Plant Operations - Attendance &amp; Cost Reconciliation</p>
             </div>

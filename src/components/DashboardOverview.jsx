@@ -684,7 +684,7 @@ export function DashboardOverview({
     ];
   }, [masterMeta, totDirHC, totIndHC]);
 
-  // Shift & Cost Bars (Card 3) - Exactly Yokohama Shift Matrix: A (7-3), B (3-11), C (11-7), G (9-5.30)
+  // Shift & Cost Bars (Card 3) - Shift Matrix: A (7-3), B (3-11), C (11-7), G (9-5.30)
   const shiftBars = useMemo(() => {
     const count = batchResults.length || 1;
     const avgDailyHC = totHC > 0 ? Math.round(totHC / count) : 1580;
@@ -1099,7 +1099,7 @@ export function DashboardOverview({
     ];
   }, [lateMetrics]);
 
-  // Late Shift Bars (Late Card 3 Bars) - Exactly Yokohama Shift Matrix: A (7-3), B (3-11), C (11-7), G (9-5.30)
+  // Late Shift Bars (Late Card 3 Bars) - Shift Matrix: A (7-3), B (3-11), C (11-7), G (9-5.30)
   const lateShiftBars = useMemo(() => {
     const tot = lateMetrics.totalCount || 84;
     return [
@@ -1205,7 +1205,7 @@ export function DashboardOverview({
     try {
       const buffer = await generateWopReportWorkbook(wopMetrics, master, batchResults);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `Yokohama_WOP_Statistics_Report.xlsx`);
+      downloadBlob(blob, `WOP_Statistics_Report.xlsx`);
     } catch (err) {
       console.error('Failed to export WOP report:', err);
     } finally {
@@ -1218,7 +1218,7 @@ export function DashboardOverview({
     try {
       const buffer = await generateLateReportWorkbook(lateMetrics, master, batchResults);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `Yokohama_Late_Coming_Report.xlsx`);
+      downloadBlob(blob, `Late_Coming_Report.xlsx`);
     } catch (err) {
       console.error('Failed to export Late Coming report:', err);
     } finally {
@@ -1237,7 +1237,7 @@ export function DashboardOverview({
             <span>&rsaquo;</span>
             <span>Dashboard</span>
             <span>&rsaquo;</span>
-            <span className="text-blue-600 font-bold">Yokohama CTC Operations</span>
+            <span className="text-blue-600 font-bold">Plant CTC Operations</span>
           </div>
 
           {/* Page Title */}

@@ -292,7 +292,6 @@ export function getProjectStats(projectEmployees, empStats) {
 export async function generateMonthlyWorkbook(batchResults, master, empStats, year, month) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Built by Joseph & Reuben Geoffrey (Hr Team)';
-  wb.company = 'Yokohama Tire Operations';
   wb.created = new Date();
   const wsSummary = wb.addWorksheet('Summary');
   styleSummarySheet(wsSummary, year, month);
@@ -434,7 +433,6 @@ export async function generateZipBundle(batchResults, master, empStats, year, mo
 export async function generateWopReportWorkbook(wopMetrics, master, batchResults) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Built by Joseph & Reuben Geoffrey (Hr Team)';
-  wb.company = 'Yokohama Tire Operations';
   wb.created = new Date();
 
   const cBlueDark = 'FF0F172A';   // Deep Navy Slate
@@ -465,7 +463,7 @@ export async function generateWopReportWorkbook(wopMetrics, master, batchResults
   // Banner Title
   wsSummary.mergeCells('A1:F1');
   const titleCell = wsSummary.getCell('A1');
-  titleCell.value = 'YOKOHAMA CTC — WEEKLY OFF PRESENT (WOP) EXECUTIVE AUDIT REPORT';
+  titleCell.value = 'CTC — WEEKLY OFF PRESENT (WOP) EXECUTIVE AUDIT REPORT';
   titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cBlueDark } };
   titleCell.font = { name: FONT_NAME, size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -661,7 +659,6 @@ export async function generateWopReportWorkbook(wopMetrics, master, batchResults
 export async function generateLateReportWorkbook(lateMetrics, master, batchResults) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Built by Joseph & Reuben Geoffrey (Hr Team)';
-  wb.company = 'Yokohama Tire Operations';
   wb.created = new Date();
 
   const cGreenDark = 'FF064E3B';   // Deep Forest / Emerald
@@ -692,7 +689,7 @@ export async function generateLateReportWorkbook(lateMetrics, master, batchResul
   // Banner Title
   wsSummary.mergeCells('A1:F1');
   const titleCell = wsSummary.getCell('A1');
-  titleCell.value = 'YOKOHAMA CTC — SHIFT PUNCTUALITY & LATE ARRIVAL EXECUTIVE REPORT';
+  titleCell.value = 'CTC — SHIFT PUNCTUALITY & LATE ARRIVAL EXECUTIVE REPORT';
   titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cGreenDark } };
   titleCell.font = { name: FONT_NAME, size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
