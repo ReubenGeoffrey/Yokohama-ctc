@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Table2,
@@ -12,10 +12,16 @@ import {
   CheckCircle2,
   RefreshCw,
   Building2,
-  Calendar
+  Calendar,
+  Layers
 } from 'lucide-react';
 import { formatDateDisplay } from '../services/parser';
-import { generateSingleDayWorkbook, downloadBlob } from '../services/excelEngine';
+import { generateSingleDayWorkbook, generateMonthlyWorkbook, downloadBlob } from '../services/excelEngine';
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 // ── Pure-SVG Donut Chart (Matching Enterprise Design) ───────────
 function DonutChart({ segments, size = 150, thickness = 28 }) {
@@ -63,6 +69,60 @@ function DonutChart({ segments, size = 150, thickness = 28 }) {
 
 export function ReconciliationMatrix({ batchResults, master, onNext }) {
   const [downloadingIdx, setDownloadingIdx] = useState(null);
+  const [downloadingMonth, setDownloadingMonth] = useState(false);
+
+  // Group batchResults by available months (e.g. June, July, August, September)
+  const availableMonths = useMemo(() => {
+    if (!batchResults || !batchResults.length) return [];
+    const map = {};
+    batchResults.forEach(r => {
+      if (!r.date) return;
+      const d = new Date(r.date);
+      const y = d.getUTCFullYear();
+      const m = d.getUTCMonth();
+      const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+      if (!map[key]) {
+        map[key] = {
+          year: y,
+          month: m,
+          label: `${MONTH_NAMES[m]} ${y}`,
+          shortLabel: `${MONTH_NAMES[m].slice(0, 3)} ${y}`,
+          key,
+          count: 0
+        };
+      }
+      map[key].count++;
+    });
+    return Object.values(map).sort((a, b) => a.key.localeCompare(b.key));
+  }, [batchResults]);
+
+  // Default to the latest month uploaded (e.g. September 2026 or June/July)
+  const [selectedMonthKey, setSelectedMonthKey] = useState(
+    availableMonths[availableMonths.length - 1]?.key || 'ALL'
+  );
+
+  useEffect(() => {
+    if (availableMonths.length > 0 && selectedMonthKey !== 'ALL' && !availableMonths.some(m => m.key === selectedMonthKey)) {
+      setSelectedMonthKey(availableMonths[availableMonths.length - 1].key);
+    }
+  }, [availableMonths, selectedMonthKey]);
+
+  // Filter batchResults to selected month
+  const displayResults = useMemo(() => {
+    if (!batchResults || !batchResults.length) return [];
+    if (selectedMonthKey === 'ALL') return batchResults;
+    return batchResults.filter(r => {
+      const d = new Date(r.date);
+      const y = d.getUTCFullYear();
+      const m = d.getUTCMonth();
+      const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+      return key === selectedMonthKey;
+    });
+  }, [batchResults, selectedMonthKey]);
+
+  const currentMonthObj = useMemo(() => {
+    return availableMonths.find(m => m.key === selectedMonthKey) || null;
+  }, [availableMonths, selectedMonthKey]);
 
   if (!batchResults || !batchResults.length) {
     return (
@@ -72,15 +132,15 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
     );
   }
 
-  // ── Aggregates ──────────────────────────────────────────────
-  const totDirHC  = batchResults.reduce((s, r) => s + r.dHC, 0);
-  const totIndHC  = batchResults.reduce((s, r) => s + r.iHC, 0);
-  const totHC     = batchResults.reduce((s, r) => s + r.gHC, 0);
-  const totCTC    = batchResults.reduce((s, r) => s + r.gCTC, 0);
-  const totOT     = batchResults.reduce((s, r) => s + r.gOT, 0);
-  const totCost   = totCTC + totOT;
-  const totDirCost = batchResults.reduce((s, r) => s + r.dTot, 0);
-  const totIndCost = batchResults.reduce((s, r) => s + r.iTot, 0);
+  // ── Aggregates for Displayed Month ───────────────────────────
+  const totDirHC   = displayResults.reduce((s, r) => s + (r.dHC || 0), 0);
+  const totIndHC   = displayResults.reduce((s, r) => s + (r.iHC || 0), 0);
+  const totHC      = displayResults.reduce((s, r) => s + (r.gHC || 0), 0);
+  const totCTC     = displayResults.reduce((s, r) => s + (r.gCTC || 0), 0);
+  const totOT      = displayResults.reduce((s, r) => s + (r.gOT || 0), 0);
+  const totCost    = totCTC + totOT;
+  const totDirCost = displayResults.reduce((s, r) => s + (r.dTot || 0), 0);
+  const totIndCost = displayResults.reduce((s, r) => s + (r.iTot || 0), 0);
 
   const handleDownloadDay = async (r, idx) => {
     setDownloadingIdx(idx);
@@ -95,6 +155,26 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
       alert('Error generating day workbook: ' + e.message);
     } finally {
       setDownloadingIdx(null);
+    }
+  };
+
+  const handleDownloadSelectedMonth = async () => {
+    if (!displayResults.length) return;
+    setDownloadingMonth(true);
+    try {
+      const targetM = currentMonthObj || {
+        year: new Date(displayResults[0].date).getUTCFullYear(),
+        month: new Date(displayResults[0].date).getUTCMonth(),
+        label: 'Monthly'
+      };
+      const buffer = await generateMonthlyWorkbook(displayResults, master, null, targetM.year, targetM.month);
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      downloadBlob(blob, `CTC_Output_${MONTH_NAMES[targetM.month] || 'Month'}_${targetM.year}.xlsx`);
+    } catch (e) {
+      console.error(e);
+      alert('Error generating month workbook: ' + e.message);
+    } finally {
+      setDownloadingMonth(false);
     }
   };
 
@@ -142,10 +222,61 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
         </button>
       </div>
 
+      {/* ── Month Selection Filter Bar ── */}
+      {availableMonths.length > 0 && (
+        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center space-x-2">
+            <Calendar className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-black uppercase tracking-wider text-slate-800">
+              Filter by Month:
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {availableMonths.map((m) => (
+              <button
+                key={m.key}
+                onClick={() => setSelectedMonthKey(m.key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                  selectedMonthKey === m.key
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                }`}
+              >
+                <span>{m.label}</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  selectedMonthKey === m.key ? 'bg-white/20 text-white' : 'bg-white text-slate-700 border border-slate-200'
+                }`}>
+                  {m.count}
+                </span>
+              </button>
+            ))}
+
+            {availableMonths.length > 1 && (
+              <button
+                onClick={() => setSelectedMonthKey('ALL')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                  selectedMonthKey === 'ALL'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                }`}
+              >
+                <span>All Months</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  selectedMonthKey === 'ALL' ? 'bg-white/20 text-white' : 'bg-white text-slate-700 border border-slate-200'
+                }`}>
+                  {batchResults.length}
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── KPI Cards (Matching Dashboard Style) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total Man-days',  value: fmtN(totHC),      sub: `${batchResults.length} dates` },
+          { label: 'Total Man-days',  value: fmtN(totHC),      sub: `${displayResults.length} dates` },
           { label: 'Daily CTC Wages',  value: fmt(totCTC),      sub: 'Standard working wages' },
           { label: 'OT Compensation',  value: fmt(totOT),       sub: 'Overtime wages' },
           { label: 'Plant Total Cost', value: fmt(totCost),     sub: 'CTC + OT combined', highlight: true },
@@ -241,13 +372,29 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
 
       {/* ── Main Reconciliation Table (Matching Dashboard Table Design) ── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-            Reconciled Daily Matrix Records ({batchResults.length} Dates)
-          </h3>
-          <span className="text-xs text-slate-400 font-medium">
-            Single day Excel workbooks ready
-          </span>
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+              {currentMonthObj ? `${currentMonthObj.label} Matrix Records` : 'Reconciled Daily Matrix Records'} ({displayResults.length} Dates)
+            </h3>
+            <span className="text-xs text-slate-400 font-medium">
+              Single day Excel workbooks ready for {currentMonthObj ? currentMonthObj.label : 'all dates'}
+            </span>
+          </div>
+
+          <button
+            onClick={handleDownloadSelectedMonth}
+            disabled={downloadingMonth || !displayResults.length}
+            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50 self-start sm:self-auto"
+            title="Download full month Excel summary workbook"
+          >
+            {downloadingMonth ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+            )}
+            <span>Download {currentMonthObj ? currentMonthObj.shortLabel : 'Month'} Master</span>
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -265,7 +412,7 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {batchResults.map((r, idx) => (
+              {displayResults.map((r, idx) => (
                 <tr key={idx} className="hover:bg-slate-50/80 transition font-medium">
                   <td className="py-3.5 px-5 font-black text-slate-900">
                     {formatDateDisplay(r.date)}
