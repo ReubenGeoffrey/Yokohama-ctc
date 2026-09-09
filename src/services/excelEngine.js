@@ -162,21 +162,32 @@ export function buildDetailSheet(wb, title, employeeMap, statMap) {
   });
 
   let r = 2, sno = 1;
-  Object.keys(employeeMap).forEach(code => {
-    const info = employeeMap[code];
+  const statKeys = statMap instanceof Map ? Array.from(statMap.keys()) : Object.keys(statMap || {});
+  const allCodes = Array.from(new Set([
+    ...Object.keys(employeeMap || {}),
+    ...statKeys
+  ]));
+
+  allCodes.forEach(code => {
     const st = getStatFromCat(statMap, code) || { daysPresent: 0, wopCount: 0, workHrs: 0, otHrs: 0, otAmount: 0, wages: 0 };
+    const info = (employeeMap && employeeMap[code]) || {
+      name: st.name || code,
+      dept: st.dept || 'Production',
+      dailyOT: st.dailyOT || 162.61,
+      dailyCTC: st.dailyCTC || 783.59
+    };
     const otAmt = st.otAmount !== undefined ? st.otAmount : Math.round((st.otHrs || 0) * (info.dailyOT || 0) * 100) / 100;
 
     ws.getCell(r, 1).value = sno;
     ws.getCell(r, 2).value = code;
-    ws.getCell(r, 3).value = info.name;
-    ws.getCell(r, 4).value = info.dept;
-    ws.getCell(r, 5).value = Math.round(st.workHrs * 100) / 100;
-    ws.getCell(r, 6).value = st.daysPresent;
-    ws.getCell(r, 7).value = st.wopCount;
-    ws.getCell(r, 8).value = Math.round(st.otHrs * 100) / 100;
+    ws.getCell(r, 3).value = info.name || st.name || code;
+    ws.getCell(r, 4).value = info.dept || st.dept || 'Production';
+    ws.getCell(r, 5).value = Math.round((st.workHrs || 0) * 100) / 100;
+    ws.getCell(r, 6).value = st.daysPresent || 0;
+    ws.getCell(r, 7).value = st.wopCount || 0;
+    ws.getCell(r, 8).value = Math.round((st.otHrs || 0) * 100) / 100;
     ws.getCell(r, 9).value = Math.round(otAmt * 100) / 100;
-    ws.getCell(r, 10).value = Math.round(st.wages * 100) / 100;
+    ws.getCell(r, 10).value = Math.round((st.wages || 0) * 100) / 100;
 
     const banded = sno % 2 === 0;
     ws.getRow(r).height = 20;

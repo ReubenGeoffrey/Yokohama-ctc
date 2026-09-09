@@ -16,21 +16,46 @@ export function reconcileDay(date, dayRecords, master) {
   const empDayMap = new Map(); // code -> { workHrs, daysPresent, wopCount, otHrs, wages }
 
   function processCategory(list, map, dKey, iKey, label) {
-    if (!list || !map) return;
+    if (!list) return;
     list.forEach(rec => {
       // Both P and WOP are considered present at work
       if (rec.status !== 'P' && rec.status !== 'WOP') return;
 
-      const info = map[rec.code];
+      let info = map ? map[rec.code] : null;
       if (!info) {
+        // Fallback: Contractor / Category Rate Auto-Inheritance
+        const prefix = rec.code.replace(/[0-9]/g, '').toUpperCase();
+        let sample = null;
+        if (map) {
+          for (const existingCode in map) {
+            if (existingCode.startsWith(prefix)) {
+              sample = map[existingCode];
+              break;
+            }
+          }
+        }
+        const defaultCTC = sample ? sample.dailyCTC : (label === 'NAPS' ? 575 : 783.59);
+        const defaultOT = sample ? sample.dailyOT : (label === 'NAPS' ? 0 : 162.61);
+        const isDirect = sample ? sample.direct : (label === 'Operator');
+        const dept = rec.dept || (sample ? sample.dept : 'Production');
+
+        info = {
+          name: rec.name || 'New Employee',
+          dept,
+          direct: isDirect,
+          dailyCTC: defaultCTC,
+          dailyOT: defaultOT,
+          isAutoMapped: true
+        };
+
         unmatched.push({
           code: rec.code,
           name: rec.name || '',
           category: label,
           status: rec.status,
-          date
+          date,
+          autoMappedRate: defaultCTC
         });
-        return;
       }
 
       const b = info.direct ? buckets[dKey] : buckets[iKey];
@@ -42,6 +67,10 @@ export function reconcileDay(date, dayRecords, master) {
 
       if (!empDayMap.has(rec.code)) {
         empDayMap.set(rec.code, {
+          name: info.name || rec.name || rec.code,
+          dept: info.dept || 'Production',
+          dailyCTC: info.dailyCTC,
+          dailyOT: info.dailyOT,
           workHrs: 0,
           daysPresent: 0,
           wopCount: 0,
@@ -128,15 +157,29 @@ export function aggregateMonthlyStats(batchResults, master) {
     if (r.empDayMap) {
       r.empDayMap.forEach((st, code) => {
         let cat = 'CL';
-        if (master.operator && master.operator[code]) cat = 'OP';
-        else if (master.naps && master.naps[code]) cat = 'NAPS';
+        if (master?.operator && master.operator[code]) cat = 'OP';
+        else if (master?.naps && master.naps[code]) cat = 'NAPS';
+        else if (code.startsWith('LN')) cat = 'NAPS';
 
         const map = empStats[cat];
         if (map) {
           if (!map.has(code)) {
-            map.set(code, { workHrs: 0, daysPresent: 0, wopCount: 0, otHrs: 0, otAmount: 0, wages: 0 });
+            map.set(code, {
+              name: st.name || code,
+              dept: st.dept || 'Production',
+              dailyCTC: st.dailyCTC || (cat === 'NAPS' ? 575 : 783.59),
+              dailyOT: st.dailyOT || (cat === 'NAPS' ? 0 : 162.61),
+              workHrs: 0,
+              daysPresent: 0,
+              wopCount: 0,
+              otHrs: 0,
+              otAmount: 0,
+              wages: 0
+            });
           }
           const emp = map.get(code);
+          if (st.name && (!emp.name || emp.name === code)) emp.name = st.name;
+          if (st.dept && (!emp.dept || emp.dept === 'Production')) emp.dept = st.dept;
           emp.workHrs += st.workHrs;
           emp.daysPresent += st.daysPresent;
           emp.wopCount += st.wopCount;
