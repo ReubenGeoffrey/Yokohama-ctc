@@ -129,7 +129,10 @@ export function Sidebar({
         <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
           {/* HOME Section */}
           <div>
-            <div className="px-3 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+            <div
+              className="px-3 mb-2 text-[10px] font-black uppercase tracking-wider text-black"
+              style={{ color: '#000000' }}
+            >
               HOME
             </div>
             <div className="space-y-1">
@@ -146,13 +149,13 @@ export function Sidebar({
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-black transition cursor-pointer ${
                       isActive
                         ? 'bg-blue-50 text-blue-600 font-black shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        : 'text-slate-800 hover:text-black hover:bg-slate-100'
                     }`}
                   >
                     <div className="flex items-center space-x-2.5">
                       <Icon
                         className={`w-4 h-4 ${
-                          isActive ? 'text-blue-600' : 'text-slate-400'
+                          isActive ? 'text-blue-600' : 'text-slate-600'
                         }`}
                       />
                       <span>{item.label}</span>
@@ -168,7 +171,10 @@ export function Sidebar({
 
           {/* MODULES Section */}
           <div>
-            <div className="px-3 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+            <div
+              className="px-3 mb-2 text-[10px] font-black uppercase tracking-wider text-black"
+              style={{ color: '#000000' }}
+            >
               OPERATIONS &amp; MODULES
             </div>
             <div className="space-y-1">
@@ -189,13 +195,13 @@ export function Sidebar({
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition cursor-pointer text-left ${
                       isActive
                         ? 'bg-amber-50/80 text-amber-950 font-black shadow-2xs border border-amber-200/60'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        : 'text-slate-800 hover:text-black hover:bg-slate-100'
                     }`}
                   >
                     <div className="flex items-center space-x-2.5 min-w-0">
                       <Icon
                         className={`w-4 h-4 shrink-0 ${
-                          isActive ? 'text-amber-600' : 'text-slate-400'
+                          isActive ? 'text-amber-600' : 'text-slate-600'
                         }`}
                       />
                       <div className="truncate">
@@ -255,10 +261,12 @@ export function Sidebar({
           )}
 
           {/* Cloud Sync indicator */}
-          <div className="mt-2 pt-2 border-t border-slate-200/50 flex items-center justify-between text-[10px] text-slate-400 font-medium px-1">
+          <div className="mt-2 pt-2 border-t border-slate-200/50 flex items-center justify-between text-[10px] px-1 font-bold text-black" style={{ color: '#000000' }}>
             <span className="flex items-center space-x-1">
               <Cloud className={`w-3 h-3 ${isSyncing ? 'text-blue-500 animate-spin' : 'text-emerald-500'}`} />
-              <span>{isSyncing ? 'Syncing...' : 'Cloud Sync Active'}</span>
+              <span className="text-black font-bold" style={{ color: '#000000' }}>
+                {isSyncing ? 'Syncing...' : 'Cloud Sync Active'}
+              </span>
             </span>
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
           </div>
