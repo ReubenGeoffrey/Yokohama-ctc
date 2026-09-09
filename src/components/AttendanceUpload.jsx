@@ -582,7 +582,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
               {availableMonths.map((m) => {
                 const isSelected = selectedMonthKey === m.key;
                 return (
@@ -590,17 +590,25 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
                     key={m.key}
                     type="button"
                     onClick={() => setSelectedMonthKey(m.key)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 cursor-pointer ${
+                    style={
                       isSelected
-                        ? 'bg-slate-900 text-white shadow-xs ring-2 ring-slate-900/20'
-                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80 shadow-2xs'
+                        ? { backgroundColor: '#0f172a', color: '#ffffff', borderColor: '#0f172a' }
+                        : { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }
+                    }
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center space-x-2 cursor-pointer shadow-xs border ${
+                      isSelected
+                        ? 'ring-2 ring-slate-900/30'
+                        : 'hover:bg-slate-100'
                     }`}
                   >
-                    <span>{m.label}</span>
+                    <span style={{ color: isSelected ? '#ffffff' : '#0f172a' }}>{m.label}</span>
                     <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                        isSelected ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
-                      }`}
+                      style={
+                        isSelected
+                          ? { backgroundColor: 'rgba(255, 255, 255, 0.25)', color: '#ffffff' }
+                          : { backgroundColor: '#f1f5f9', color: '#0f172a', borderColor: '#cbd5e1' }
+                      }
+                      className="px-2 py-0.5 rounded-full text-[10px] font-black border"
                     >
                       {m.count} {m.count === 1 ? 'Day' : 'Days'}
                     </span>
@@ -612,17 +620,25 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
                 <button
                   type="button"
                   onClick={() => setSelectedMonthKey('ALL')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 cursor-pointer ${
+                  style={
                     selectedMonthKey === 'ALL'
-                      ? 'bg-slate-900 text-white shadow-xs ring-2 ring-slate-900/20'
-                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80 shadow-2xs'
+                      ? { backgroundColor: '#0f172a', color: '#ffffff', borderColor: '#0f172a' }
+                      : { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }
+                  }
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center space-x-2 cursor-pointer shadow-xs border ${
+                    selectedMonthKey === 'ALL'
+                      ? 'ring-2 ring-slate-900/30'
+                      : 'hover:bg-slate-100'
                   }`}
                 >
-                  <span>All Months</span>
+                  <span style={{ color: selectedMonthKey === 'ALL' ? '#ffffff' : '#0f172a' }}>All Months</span>
                   <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                      selectedMonthKey === 'ALL' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
-                    }`}
+                    style={
+                      selectedMonthKey === 'ALL'
+                        ? { backgroundColor: 'rgba(255, 255, 255, 0.25)', color: '#ffffff' }
+                        : { backgroundColor: '#f1f5f9', color: '#0f172a', borderColor: '#cbd5e1' }
+                    }
+                    className="px-2 py-0.5 rounded-full text-[10px] font-black border"
                   >
                     {detectedDateKeys.length} Total
                   </span>

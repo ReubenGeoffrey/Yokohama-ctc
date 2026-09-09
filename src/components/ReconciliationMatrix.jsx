@@ -232,39 +232,58 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
-            {availableMonths.map((m) => (
-              <button
-                key={m.key}
-                onClick={() => setSelectedMonthKey(m.key)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
-                  selectedMonthKey === m.key
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-                }`}
-              >
-                <span>{m.label}</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                  selectedMonthKey === m.key ? 'bg-white/20 text-white' : 'bg-white text-slate-700 border border-slate-200'
-                }`}>
-                  {m.count}
-                </span>
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            {availableMonths.map((m) => {
+              const isSelected = selectedMonthKey === m.key;
+              return (
+                <button
+                  key={m.key}
+                  onClick={() => setSelectedMonthKey(m.key)}
+                  style={
+                    isSelected
+                      ? { backgroundColor: '#0f172a', color: '#ffffff', borderColor: '#0f172a' }
+                      : { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }
+                  }
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center space-x-2 cursor-pointer shadow-xs border ${
+                    isSelected ? 'ring-2 ring-slate-900/30' : 'hover:bg-slate-100'
+                  }`}
+                >
+                  <span style={{ color: isSelected ? '#ffffff' : '#0f172a' }}>{m.label}</span>
+                  <span
+                    style={
+                      isSelected
+                        ? { backgroundColor: 'rgba(255, 255, 255, 0.25)', color: '#ffffff' }
+                        : { backgroundColor: '#f1f5f9', color: '#0f172a', borderColor: '#cbd5e1' }
+                    }
+                    className="px-1.5 py-0.2 rounded-full text-[10px] font-black border"
+                  >
+                    {m.count}
+                  </span>
+                </button>
+              );
+            })}
 
             {availableMonths.length > 1 && (
               <button
                 onClick={() => setSelectedMonthKey('ALL')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                style={
                   selectedMonthKey === 'ALL'
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+                    ? { backgroundColor: '#0f172a', color: '#ffffff', borderColor: '#0f172a' }
+                    : { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }
+                }
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center space-x-2 cursor-pointer shadow-xs border ${
+                  selectedMonthKey === 'ALL' ? 'ring-2 ring-slate-900/30' : 'hover:bg-slate-100'
                 }`}
               >
-                <span>All Months</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                  selectedMonthKey === 'ALL' ? 'bg-white/20 text-white' : 'bg-white text-slate-700 border border-slate-200'
-                }`}>
+                <span style={{ color: selectedMonthKey === 'ALL' ? '#ffffff' : '#0f172a' }}>All Months</span>
+                <span
+                  style={
+                    selectedMonthKey === 'ALL'
+                      ? { backgroundColor: 'rgba(255, 255, 255, 0.25)', color: '#ffffff' }
+                      : { backgroundColor: '#f1f5f9', color: '#0f172a', borderColor: '#cbd5e1' }
+                  }
+                  className="px-1.5 py-0.2 rounded-full text-[10px] font-black border"
+                >
                   {batchResults.length}
                 </span>
               </button>
