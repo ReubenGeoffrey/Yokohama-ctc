@@ -64,11 +64,18 @@ export function MasterUpload({ master, masterMeta, onMasterLoaded, onNext }) {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 sm:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Employee Compensation Master
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center space-x-2">
+              <span>Employee Compensation Master</span>
+              {masterMeta?.isBuiltIn && (
+                <span className="px-2 py-0.5 text-[11px] font-black uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Built-in
+                </span>
+              )}
             </h2>
             <p className="text-xs text-slate-500 font-medium mt-1">
-              Upload the employee wage and CTC rate master workbook.
+              {masterMeta?.isBuiltIn
+                ? 'Standard CTC Rate Master is pre-loaded inside the system — no external input file needed.'
+                : 'Upload or update the employee wage and CTC rate master workbook.'}
             </p>
           </div>
 
@@ -78,7 +85,7 @@ export function MasterUpload({ master, masterMeta, onMasterLoaded, onNext }) {
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-xs transition flex items-center space-x-2 cursor-pointer"
             >
               <UploadCloud className="w-4 h-4" />
-              <span>Select Rate Master</span>
+              <span>Update Rate Master</span>
             </button>
 
             {master && (
@@ -132,12 +139,16 @@ export function MasterUpload({ master, masterMeta, onMasterLoaded, onNext }) {
             <div className="text-sm font-black text-slate-800">
               {loading
                 ? 'Processing Rate Master...'
+                : masterMeta?.isBuiltIn
+                ? 'Built-in CTC Master Active (No Input File Needed)'
                 : master
                 ? 'Employee Rate Master Active'
                 : 'Click to select or drag & drop Employee Rate Master'}
             </div>
             <p className="text-xs text-slate-400 font-medium mt-1">
-              Supports Operator, Contract Labour, and Apprentice standard rate sheets.
+              {masterMeta?.isBuiltIn
+                ? '2,241 employee rates embedded inside. Drop a new file only if you wish to override standard rates.'
+                : 'Supports Operator, Contract Labour, and Apprentice standard rate sheets.'}
             </p>
           </div>
         </div>

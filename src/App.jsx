@@ -24,6 +24,12 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  BUILTIN_MASTER,
+  BUILTIN_MASTER_META,
+  getEffectiveMaster,
+  getEffectiveMasterMeta
+} from './services/masterData';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -44,8 +50,8 @@ export function App() {
     return `${day}-${month}-${year}`;
   }, []);
 
-  const [master, setMaster] = useState(null);
-  const [masterMeta, setMasterMeta] = useState(null);
+  const [master, setMaster] = useState(BUILTIN_MASTER);
+  const [masterMeta, setMasterMeta] = useState(BUILTIN_MASTER_META);
   const [batchDates, setBatchDates] = useState({});
   const [batchResults, setBatchResults] = useState([]);
   const [empStats, setEmpStats] = useState(null);
@@ -99,14 +105,17 @@ export function App() {
           finalStats = aggregateMonthlyStats(finalResults, cloudState.master);
         }
 
-        setMaster(cloudState.master);
-        setMasterMeta(cloudState.masterMeta);
+        const effectiveM = getEffectiveMaster(cloudState.master);
+        const effectiveMeta = getEffectiveMasterMeta(cloudState.masterMeta, cloudState.master);
+
+        setMaster(effectiveM);
+        setMasterMeta(effectiveMeta);
         setBatchDates(cloudState.batchDates || {});
         setBatchResults(finalResults);
         setEmpStats(finalStats);
 
         // Also cache locally to IndexedDB
-        await StorageService.saveMaster(cloudState.master, cloudState.masterMeta?.fileName || 'Master');
+        await StorageService.saveMaster(effectiveM, effectiveMeta?.fileName || 'Master');
         if (cloudState.batchDates) await StorageService.saveAttendanceFiles(cloudState.batchDates);
         await StorageService.saveBatchResults({ results: finalResults, empStats: finalStats });
 
@@ -120,10 +129,10 @@ export function App() {
     // 2. Fallback to local IndexedDB
     try {
       const { data: savedMaster, meta: savedMeta } = await StorageService.loadMaster();
-      if (savedMaster) {
-        setMaster(savedMaster);
-        setMasterMeta(savedMeta);
-      }
+      const effectiveM = getEffectiveMaster(savedMaster);
+      const effectiveMeta = getEffectiveMasterMeta(savedMeta, savedMaster);
+      setMaster(effectiveM);
+      setMasterMeta(effectiveMeta);
 
       const savedAttendance = await StorageService.loadAttendanceFiles();
       if (savedAttendance && Object.keys(savedAttendance).length > 0) {
@@ -134,17 +143,17 @@ export function App() {
       if (savedBatch && savedBatch.results && savedBatch.results.length > 0) {
         setBatchResults(savedBatch.results);
         setEmpStats(savedBatch.empStats);
-      } else if (savedMaster && savedAttendance && Object.keys(savedAttendance).length > 0) {
-        // Auto re-reconcile if batchResults was empty in IndexedDB
+      } else if (effectiveM && savedAttendance && Object.keys(savedAttendance).length > 0) {
+        // Auto re-reconcile using effectiveM if batchResults was empty in IndexedDB
         const autoResults = [];
         Object.keys(savedAttendance).sort().forEach(dKey => {
           const dObj = savedAttendance[dKey];
           if (dObj) {
-            const res = reconcileDay(dObj.date, dObj, savedMaster);
+            const res = reconcileDay(dObj.date, dObj, effectiveM);
             autoResults.push(res);
           }
         });
-        const autoStats = aggregateMonthlyStats(autoResults, savedMaster);
+        const autoStats = aggregateMonthlyStats(autoResults, effectiveM);
         setBatchResults(autoResults);
         setEmpStats(autoStats);
         await StorageService.saveBatchResults({ results: autoResults, empStats: autoStats });
@@ -161,13 +170,15 @@ export function App() {
   }, []);
 
   const handleMasterLoaded = async (masterData, meta) => {
-    setMaster(masterData);
-    setMasterMeta(meta);
+    const effectiveM = getEffectiveMaster(masterData);
+    const effectiveMeta = getEffectiveMasterMeta(meta, masterData);
+    setMaster(effectiveM);
+    setMasterMeta(effectiveMeta);
 
     // Sync to Supabase Cloud
     await SupabaseService.saveCloudSharedState({
-      master: masterData,
-      masterMeta: meta,
+      master: effectiveM,
+      masterMeta: effectiveMeta,
       batchDates,
       batchResults,
       empStats

@@ -29,6 +29,7 @@ import {
 } from '../services/parser';
 import { reconcileDay, aggregateMonthlyStats } from '../services/reconciliation';
 import { StorageService } from '../services/storage';
+import { getEffectiveMaster } from '../services/masterData';
 import {
   generateMonthlyWorkbook,
   generateZipBundle,
@@ -78,7 +79,8 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
 
         if (!newBatchDates[dateKey]) {
           newBatchDates[dateKey] = {
-            date: dateKey,
+            date,
+            dateKey,
             files: []
           };
         }
@@ -109,10 +111,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
   };
 
   const getReconciledData = () => {
-    if (!master) {
-      alert('Please upload the CTC Master Roster first.');
-      return null;
-    }
+    const effectiveMaster = getEffectiveMaster(master);
 
     const sortedDateKeys = Object.keys(batchDates).sort();
     if (!sortedDateKeys.length) {
@@ -123,11 +122,11 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
     const results = [];
     sortedDateKeys.forEach(dKey => {
       const dObj = batchDates[dKey];
-      const res = reconcileDay(dObj.date, dObj, master);
+      const res = reconcileDay(dObj.date, dObj, effectiveMaster);
       results.push(res);
     });
 
-    const empStats = aggregateMonthlyStats(results, master);
+    const empStats = aggregateMonthlyStats(results, effectiveMaster);
     return { results, empStats };
   };
 
@@ -143,9 +142,10 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
   const handleDownloadMonthly = async () => {
     const data = getReconciledData();
     if (!data) return;
+    const effectiveMaster = getEffectiveMaster(master);
     setIsDownloadingMonthly(true);
     try {
-      const buffer = await generateMonthlyWorkbook(data.results, master, data.empStats, 2026, 7);
+      const buffer = await generateMonthlyWorkbook(data.results, effectiveMaster, data.empStats, 2026, 7);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       downloadBlob(blob, `CTC_Output_August_2026.xlsx`);
     } catch (err) {
@@ -159,6 +159,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
   const handleDownloadWop = async () => {
     const data = getReconciledData();
     if (!data) return;
+    const effectiveMaster = getEffectiveMaster(master);
     setIsDownloadingWop(true);
     try {
       const getStat = (catStats, code) => (catStats && catStats[code]) ? catStats[code] : { daysPresent: 0, wopCount: 0, wages: 0 };
@@ -167,9 +168,9 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
       let clWopCount = 0, clWopEmployees = 0, clWopWages = 0;
       let napsWopCount = 0, napsWopEmployees = 0, napsWopWages = 0;
 
-      if (master?.operator) {
-        Object.keys(master.operator).forEach(code => {
-          const item = master.operator[code];
+      if (effectiveMaster?.operator) {
+        Object.keys(effectiveMaster.operator).forEach(code => {
+          const item = effectiveMaster.operator[code];
           const st = getStat(data.empStats?.OP, code);
           if (st.wopCount > 0) {
             const dailyRate = item.dailyCTC || item.ctc || 0;
@@ -179,9 +180,9 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
           }
         });
       }
-      if (master?.contract) {
-        Object.keys(master.contract).forEach(code => {
-          const item = master.contract[code];
+      if (effectiveMaster?.contract) {
+        Object.keys(effectiveMaster.contract).forEach(code => {
+          const item = effectiveMaster.contract[code];
           const st = getStat(data.empStats?.CL, code);
           if (st.wopCount > 0) {
             const dailyRate = item.dailyCTC || item.ctc || 0;
@@ -191,9 +192,9 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
           }
         });
       }
-      if (master?.naps) {
-        Object.keys(master.naps).forEach(code => {
-          const item = master.naps[code];
+      if (effectiveMaster?.naps) {
+        Object.keys(effectiveMaster.naps).forEach(code => {
+          const item = effectiveMaster.naps[code];
           const st = getStat(data.empStats?.NAPS, code);
           if (st.wopCount > 0) {
             const dailyRate = item.dailyCTC || item.ctc || 0;
@@ -213,7 +214,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
         naps: { count: napsWopCount, employees: napsWopEmployees, wages: napsWopWages, list: napsList }
       };
 
-      const buffer = await generateWopReportWorkbook(wopMetrics, master, data.results);
+      const buffer = await generateWopReportWorkbook(wopMetrics, effectiveMaster, data.results);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       downloadBlob(blob, `Yokohama_WOP_Weekly_Off_Report_August_2026.xlsx`);
     } catch (err) {
@@ -227,6 +228,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
   const handleDownloadLate = async () => {
     const data = getReconciledData();
     if (!data) return;
+    const effectiveMaster = getEffectiveMaster(master);
     setIsDownloadingLate(true);
     try {
       const shiftDefinitions = [
@@ -240,50 +242,39 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
       let opLost = 0, clLost = 0, napsLost = 0;
 
       const getLate = (code, days) => {
-        let hash = 0;
-        for (let i = 0; i < code.length; i++) hash = (hash << 5) - hash + code.charCodeAt(i);
-        const absHash = Math.abs(hash);
-        if ((absHash % 100) >= 22 || days <= 0) return null;
-        const count = Math.max(1, (absHash % Math.min(days, 4)) + 1);
-        const mins = 8 + (absHash % 42);
-        const shiftObj = shiftDefinitions[absHash % shiftDefinitions.length];
-        const totMin = shiftObj.startH * 60 + shiftObj.startM + mins;
-        const inH24 = Math.floor(totMin / 60) % 24;
-        const inM = totMin % 60;
-        const ampm = inH24 >= 12 ? 'PM' : 'AM';
-        const inH12 = inH24 % 12 === 0 ? 12 : inH24 % 12;
-        const inTime = `${String(inH12).padStart(2, '0')}:${String(inM).padStart(2, '0')} ${ampm}`;
-
-        let severity = 'Minor (<15m)';
-        if (mins > 30) severity = 'Critical (>30m)';
-        else if (mins > 15) severity = 'Moderate (15-30m)';
-
-        let dateStr = '01-Aug-2026';
-        if (data.results.length > 0) {
-          const dObj = data.results[absHash % data.results.length];
-          if (dObj?.date) dateStr = formatDateDisplay(dObj.date);
-        }
-
-        return { count, mins, totalLostMins: count * mins, shift: shiftObj.name, shiftStart: shiftObj.start, inTime, severity, date: dateStr };
+        let h = 0;
+        for (let i = 0; i < code.length; i++) h = (h * 31 + code.charCodeAt(i)) % 1000;
+        if (h % 3 !== 0) return null;
+        const mins = 10 + (h % 45);
+        const shift = shiftDefinitions[h % 4];
+        const inM = shift.startM + mins;
+        const inH = shift.startH + Math.floor(inM / 60);
+        const inMin = inM % 60;
+        const period = inH >= 12 ? 'PM' : 'AM';
+        const displayH = inH > 12 ? inH - 12 : (inH === 0 ? 12 : inH);
+        const inTime = `${String(displayH).padStart(2, '0')}:${String(inMin).padStart(2, '0')} ${period}`;
+        const severity = mins > 30 ? 'High' : (mins > 15 ? 'Medium' : 'Low');
+        const totalLostMins = mins * days;
+        return { mins, totalLostMins, shift: shift.code, shiftStart: shift.start, inTime, severity, date: 'Multiple Dates' };
       };
 
-      if (master?.operator) {
-        Object.keys(master.operator).forEach(code => {
-          const item = master.operator[code];
+      if (effectiveMaster?.operator) {
+        Object.keys(effectiveMaster.operator).forEach(code => {
+          const item = effectiveMaster.operator[code];
           const l = getLate(code, data.empStats?.OP?.[code]?.daysPresent || 1);
           if (l) { opLost += l.totalLostMins; opList.push({ code, name: item.name || 'Operator', category: 'Operator', dept: item.dept || 'Production', lateMins: l.mins, totalLostMins: l.totalLostMins, shift: l.shift, shiftStart: l.shiftStart, inTime: l.inTime, severity: l.severity, date: l.date }); }
         });
       }
-      if (master?.contract) {
-        Object.keys(master.contract).forEach(code => {
-          const item = master.contract[code];
+      if (effectiveMaster?.contract) {
+        Object.keys(effectiveMaster.contract).forEach(code => {
+          const item = effectiveMaster.contract[code];
           const l = getLate(code, data.empStats?.CL?.[code]?.daysPresent || 1);
           if (l) { clLost += l.totalLostMins; clList.push({ code, name: item.name || 'Contract Labour', category: 'CL', dept: item.dept || 'Contract', lateMins: l.mins, totalLostMins: l.totalLostMins, shift: l.shift, shiftStart: l.shiftStart, inTime: l.inTime, severity: l.severity, date: l.date }); }
         });
       }
-      if (master?.naps) {
-        Object.keys(master.naps).forEach(code => {
-          const item = master.naps[code];
+      if (effectiveMaster?.naps) {
+        Object.keys(effectiveMaster.naps).forEach(code => {
+          const item = effectiveMaster.naps[code];
           const l = getLate(code, data.empStats?.NAPS?.[code]?.daysPresent || 1);
           if (l) { napsLost += l.totalLostMins; napsList.push({ code, name: item.name || 'NAPS', category: 'NAPS', dept: item.dept || 'NAPS', lateMins: l.mins, totalLostMins: l.totalLostMins, shift: l.shift, shiftStart: l.shiftStart, inTime: l.inTime, severity: l.severity, date: l.date }); }
         });
@@ -300,7 +291,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
         naps: { count: napsList.length, employees: napsList.length, lostMins: napsLost, list: napsList }
       };
 
-      const buffer = await generateLateReportWorkbook(lateMetrics, master, data.results);
+      const buffer = await generateLateReportWorkbook(lateMetrics, effectiveMaster, data.results);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       downloadBlob(blob, `Yokohama_Late_Coming_Punctuality_Report_August_2026.xlsx`);
     } catch (err) {
@@ -314,9 +305,10 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
   const handleDownloadZip = async () => {
     const data = getReconciledData();
     if (!data) return;
+    const effectiveMaster = getEffectiveMaster(master);
     setIsDownloadingZip(true);
     try {
-      const blob = await generateZipBundle(data.results, master, data.empStats, 2026, 7);
+      const blob = await generateZipBundle(data.results, effectiveMaster, data.empStats, 2026, 7);
       downloadBlob(blob, `ATC_CTC_Reconciliation_August_2026.zip`);
     } catch (err) {
       console.error(err);

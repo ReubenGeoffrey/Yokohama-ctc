@@ -60,7 +60,7 @@ export function Sidebar({
       label: 'Employee Rate Master',
       subtitle: 'Wage & Rate Master',
       icon: FileSpreadsheet,
-      badge: masterMeta ? 'Loaded' : null,
+      badge: masterMeta ? (masterMeta.isBuiltIn ? 'Built-in' : 'Loaded') : 'Built-in',
       badgeColor: 'bg-emerald-100 text-emerald-800'
     },
     {
