@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   FolderUp,
@@ -15,7 +15,9 @@ import {
   FileDown,
   Archive,
   RefreshCw,
-  CalendarCheck
+  CalendarCheck,
+  Filter,
+  Layers
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
@@ -38,6 +40,31 @@ import {
   downloadBlob
 } from '../services/excelEngine';
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+const parseMonthYearFromDate = (dateVal, dateKey) => {
+  if (dateVal) {
+    const d = new Date(dateVal);
+    if (!isNaN(d.getTime())) {
+      return { year: d.getUTCFullYear(), month: d.getUTCMonth() };
+    }
+  }
+  if (typeof dateKey === 'string') {
+    const parts = dateKey.split('-');
+    if (parts.length >= 2) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      if (!isNaN(y) && !isNaN(m)) {
+        return { year: y, month: m };
+      }
+    }
+  }
+  return null;
+};
+
 export function AttendanceUpload({ master, batchDates, setBatchDates, onReconciled, onNext }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -49,11 +76,71 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
 
+  // Group batchDates by month (e.g. August 2026, September 2026)
+  const availableMonths = useMemo(() => {
+    const keys = Object.keys(batchDates || {});
+    if (!keys.length) return [];
+    const map = {};
+    keys.forEach(dKey => {
+      const item = batchDates[dKey];
+      const parsed = parseMonthYearFromDate(item?.date, dKey);
+      if (!parsed) return;
+      const { year: y, month: m } = parsed;
+      const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+      if (!map[key]) {
+        map[key] = {
+          year: y,
+          month: m,
+          label: `${MONTH_NAMES[m]} ${y}`,
+          shortLabel: `${MONTH_NAMES[m].slice(0, 3)} ${y}`,
+          key,
+          count: 0
+        };
+      }
+      map[key].count++;
+    });
+    return Object.values(map).sort((a, b) => a.key.localeCompare(b.key));
+  }, [batchDates]);
+
+  // Selected month filter: default to latest month uploaded
+  const [selectedMonthKey, setSelectedMonthKey] = useState(null);
+
+  useEffect(() => {
+    if (availableMonths.length > 0) {
+      if (selectedMonthKey === null) {
+        // Auto-select latest month (e.g. September 2026)
+        setSelectedMonthKey(availableMonths[availableMonths.length - 1].key);
+      } else if (selectedMonthKey !== 'ALL' && !availableMonths.some(m => m.key === selectedMonthKey)) {
+        setSelectedMonthKey(availableMonths[availableMonths.length - 1].key);
+      }
+    } else {
+      setSelectedMonthKey('ALL');
+    }
+  }, [availableMonths, selectedMonthKey]);
+
+  // Filtered date keys according to selected month
+  const displayDateKeys = useMemo(() => {
+    const allKeys = Object.keys(batchDates || {}).sort();
+    if (!selectedMonthKey || selectedMonthKey === 'ALL') return allKeys;
+    return allKeys.filter(k => {
+      const item = batchDates[k];
+      const parsed = parseMonthYearFromDate(item?.date, k);
+      if (!parsed) return false;
+      const key = `${parsed.year}-${String(parsed.month + 1).padStart(2, '0')}`;
+      return key === selectedMonthKey;
+    });
+  }, [batchDates, selectedMonthKey]);
+
+  const currentMonthObj = useMemo(() => {
+    return availableMonths.find(m => m.key === selectedMonthKey) || null;
+  }, [availableMonths, selectedMonthKey]);
+
   const handleFiles = async (fileList) => {
     if (!fileList || !fileList.length) return;
     setIsProcessing(true);
 
     const newBatchDates = { ...batchDates };
+    let latestDetectedMonthKey = null;
 
     for (const file of Array.from(fileList)) {
       if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) continue;
@@ -76,6 +163,11 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
 
         const dateKey = formatDateToInput(date);
         const records = parsePresentRecords(rawRows, headerIdx, category, date);
+
+        const d = new Date(date);
+        if (!isNaN(d.getTime())) {
+          latestDetectedMonthKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+        }
 
         if (!newBatchDates[dateKey]) {
           newBatchDates[dateKey] = {
@@ -107,23 +199,28 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
 
     setBatchDates(newBatchDates);
     await StorageService.saveAttendanceFiles(newBatchDates);
+    if (latestDetectedMonthKey) {
+      setSelectedMonthKey(latestDetectedMonthKey);
+    }
     setIsProcessing(false);
   };
 
-  const getReconciledData = () => {
+  const getReconciledData = (customDateKeys = null) => {
     const effectiveMaster = getEffectiveMaster(master);
 
-    const sortedDateKeys = Object.keys(batchDates).sort();
-    if (!sortedDateKeys.length) {
-      alert('No valid attendance dates detected.');
+    const keysToUse = customDateKeys || displayDateKeys;
+    if (!keysToUse || !keysToUse.length) {
+      alert('No valid attendance dates detected for this month.');
       return null;
     }
 
     const results = [];
-    sortedDateKeys.forEach(dKey => {
+    [...keysToUse].sort().forEach(dKey => {
       const dObj = batchDates[dKey];
-      const res = reconcileDay(dObj.date, dObj, effectiveMaster);
-      results.push(res);
+      if (dObj) {
+        const res = reconcileDay(dObj.date, dObj, effectiveMaster);
+        results.push(res);
+      }
     });
 
     const empStats = aggregateMonthlyStats(results, effectiveMaster);
@@ -140,12 +237,18 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
   };
 
   const getSelectedMonthYear = (results) => {
+    if (currentMonthObj) {
+      return {
+        year: currentMonthObj.year,
+        month: currentMonthObj.month,
+        monthName: MONTH_NAMES[currentMonthObj.month] || 'Month'
+      };
+    }
     if (results && results.length > 0) {
       const d = new Date(results[0].date);
       const y = d.getUTCFullYear();
       const m = d.getUTCMonth();
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-      return { year: y, month: m, monthName: monthNames[m] || 'Month' };
+      return { year: y, month: m, monthName: MONTH_NAMES[m] || 'Month' };
     }
     return { year: 2026, month: 8, monthName: 'September' };
   };
@@ -341,6 +444,26 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
     await StorageService.saveAttendanceFiles(updated);
   };
 
+  const handleClearMonth = async (monthKey) => {
+    const monthObj = availableMonths.find(m => m.key === monthKey);
+    const label = monthObj ? monthObj.label : monthKey;
+    if (!window.confirm(`Are you sure you want to remove all attendance dates for ${label}?`)) return;
+
+    const updated = { ...batchDates };
+    Object.keys(updated).forEach(k => {
+      const item = updated[k];
+      const parsed = parseMonthYearFromDate(item?.date, k);
+      if (parsed) {
+        const key = `${parsed.year}-${String(parsed.month + 1).padStart(2, '0')}`;
+        if (key === monthKey) {
+          delete updated[k];
+        }
+      }
+    });
+    setBatchDates(updated);
+    await StorageService.saveAttendanceFiles(updated);
+  };
+
   const detectedDateKeys = Object.keys(batchDates).sort();
 
   return (
@@ -428,7 +551,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
               {isProcessing
                 ? 'Processing attendance workbooks...'
                 : detectedDateKeys.length
-                ? `${detectedDateKeys.length} Attendance Dates Loaded`
+                ? `${detectedDateKeys.length} Total Attendance Dates Loaded`
                 : 'Click to select daily attendance folder or drag & drop files here'}
             </div>
             <p className="text-xs text-slate-400 font-medium mt-1">
@@ -437,15 +560,97 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
           </div>
         </div>
 
+        {/* ── Month Selection Filter Bar ── */}
+        {availableMonths.length > 0 && (
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-blue-600 shadow-2xs">
+                <Calendar className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                    Select Month Option
+                  </span>
+                  <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                    {availableMonths.length} {availableMonths.length === 1 ? 'Month' : 'Months'} Detected
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  Choose a month to isolate dates and prevent August &amp; September mixing:
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              {availableMonths.map((m) => {
+                const isSelected = selectedMonthKey === m.key;
+                return (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => setSelectedMonthKey(m.key)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 cursor-pointer ${
+                      isSelected
+                        ? 'bg-slate-900 text-white shadow-xs ring-2 ring-slate-900/20'
+                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80 shadow-2xs'
+                    }`}
+                  >
+                    <span>{m.label}</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                        isSelected ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
+                      }`}
+                    >
+                      {m.count} {m.count === 1 ? 'Day' : 'Days'}
+                    </span>
+                  </button>
+                );
+              })}
+
+              {availableMonths.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedMonthKey('ALL')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-2 cursor-pointer ${
+                    selectedMonthKey === 'ALL'
+                      ? 'bg-slate-900 text-white shadow-xs ring-2 ring-slate-900/20'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80 shadow-2xs'
+                  }`}
+                >
+                  <span>All Months</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                      selectedMonthKey === 'ALL' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    {detectedDateKeys.length} Total
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {detectedDateKeys.length > 0 && (
-          <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-1">
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-2xs">
               <div>
-                <div className="text-xs font-black uppercase tracking-wider text-slate-900">
-                  Detected Attendance Dates ({detectedDateKeys.length} Days Loaded)
+                <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                    {currentMonthObj ? `${currentMonthObj.label} Attendance Dates` : 'All Detected Attendance Dates'}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800">
+                    {displayDateKeys.length} {displayDateKeys.length === 1 ? 'Day' : 'Days'}
+                  </span>
+                  {availableMonths.length > 1 && selectedMonthKey !== 'ALL' && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                      Cleanly Isolated
+                    </span>
+                  )}
                 </div>
                 <div className="text-[11px] text-slate-500 font-medium mt-0.5">
-                  1-Click instant report downloads or compute full payroll below:
+                  Instant download workbooks for {currentMonthObj ? currentMonthObj.label : 'all dates'} or proceed to Cost Summary:
                 </div>
               </div>
 
@@ -453,18 +658,18 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
                 <button
                   type="button"
                   onClick={handleDownloadMonthly}
-                  disabled={isDownloadingMonthly}
+                  disabled={isDownloadingMonthly || displayDateKeys.length === 0}
                   className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
-                  title="Download Consolidated Monthly Master Workbook"
+                  title={`Download Consolidated ${currentMonthObj ? currentMonthObj.label : 'Monthly'} Master Workbook`}
                 >
                   {isDownloadingMonthly ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
-                  <span>Master Excel</span>
+                  <span>{currentMonthObj ? `${currentMonthObj.shortLabel} Master` : 'Master Excel'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleDownloadWop}
-                  disabled={isDownloadingWop}
+                  disabled={isDownloadingWop || displayDateKeys.length === 0}
                   style={{ backgroundColor: '#1e40af', color: '#ffffff' }}
                   className="px-3.5 py-1.5 bg-blue-800 hover:bg-blue-900 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
                   title="Download Weekly Off Present (WOP) Report"
@@ -476,7 +681,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
                 <button
                   type="button"
                   onClick={handleDownloadLate}
-                  disabled={isDownloadingLate}
+                  disabled={isDownloadingLate || displayDateKeys.length === 0}
                   style={{ backgroundColor: '#047857', color: '#ffffff' }}
                   className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
                   title="Download Late Coming Punctuality Report"
@@ -488,7 +693,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
                 <button
                   type="button"
                   onClick={handleDownloadZip}
-                  disabled={isDownloadingZip}
+                  disabled={isDownloadingZip || displayDateKeys.length === 0}
                   className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold shadow-2xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
                   title="Download All Daily Workbooks as ZIP"
                 >
@@ -498,84 +703,107 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {detectedDateKeys.map(dKey => {
-                const item = batchDates[dKey];
-                const totalFiles = item.files ? item.files.length : 0;
-                return (
-                  <div
-                    key={dKey}
-                    className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition flex flex-col justify-between space-y-2.5"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-2xs font-bold text-xs">
-                          <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-black text-slate-900">
-                            {formatDateDisplay(item.date)}
+            {displayDateKeys.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 border border-slate-200 rounded-2xl text-slate-500 font-medium">
+                No attendance dates found for {currentMonthObj ? currentMonthObj.label : 'the selected filter'}.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {displayDateKeys.map(dKey => {
+                  const item = batchDates[dKey];
+                  const totalFiles = item.files ? item.files.length : 0;
+                  return (
+                    <div
+                      key={dKey}
+                      className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition flex flex-col justify-between space-y-2.5"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-2xs font-bold text-xs">
+                            <Calendar className="w-3.5 h-3.5 text-blue-600" />
                           </div>
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            {totalFiles} file{totalFiles > 1 ? 's' : ''} parsed
-                          </span>
+                          <div>
+                            <div className="text-xs font-black text-slate-900">
+                              {formatDateDisplay(item.date)}
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {totalFiles} file{totalFiles > 1 ? 's' : ''} parsed
+                            </span>
+                          </div>
                         </div>
+
+                        <button
+                          onClick={(e) => handleDeleteDate(e, dKey)}
+                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition cursor-pointer"
+                          title="Remove this date"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
 
-                      <button
-                        onClick={(e) => handleDeleteDate(e, dKey)}
-                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition cursor-pointer"
-                        title="Remove this date"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-200/60">
+                        {item.OP && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-100 text-blue-800">
+                            OP ({item.OP.length})
+                          </span>
+                        )}
+                        {item.CL && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800">
+                            CL ({item.CL.length})
+                          </span>
+                        )}
+                        {item.NAPS && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-800">
+                            NAPS ({item.NAPS.length})
+                          </span>
+                        )}
+                      </div>
                     </div>
-
-                    <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-200/60">
-                      {item.OP && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-100 text-blue-800">
-                          OP ({item.OP.length})
-                        </span>
-                      )}
-                      {item.CL && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800">
-                          CL ({item.CL.length})
-                        </span>
-                      )}
-                      {item.NAPS && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-800">
-                          NAPS ({item.NAPS.length})
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100">
               <div className="text-xs text-slate-500 font-medium flex items-center space-x-1.5">
                 <Check className="w-4 h-4 text-emerald-600" />
-                <span>Attendance records verified across all {detectedDateKeys.length} days.</span>
+                <span>
+                  {currentMonthObj
+                    ? `${displayDateKeys.length} attendance dates isolated for ${currentMonthObj.label}.`
+                    : `Attendance records verified across all ${displayDateKeys.length} days.`}
+                </span>
               </div>
 
-              <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+                {currentMonthObj && (
+                  <button
+                    type="button"
+                    onClick={() => handleClearMonth(selectedMonthKey)}
+                    className="px-3.5 py-2.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer"
+                    title={`Remove all ${currentMonthObj.label} files`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Clear {currentMonthObj.shortLabel}</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={handleDownloadMonthly}
-                  disabled={isDownloadingMonthly}
+                  disabled={isDownloadingMonthly || displayDateKeys.length === 0}
                   className="w-full sm:w-auto px-4 py-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 rounded-xl text-xs font-black shadow-2xs transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
                 >
                   <Download className="w-4 h-4 text-slate-600" />
-                  <span>Download Master Excel</span>
+                  <span>Download {currentMonthObj ? currentMonthObj.shortLabel : 'Master'} Excel</span>
                 </button>
 
                 <button
                   onClick={handleReconcileAll}
-                  className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md transition flex items-center justify-center space-x-2 cursor-pointer"
+                  disabled={displayDateKeys.length === 0}
+                  className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
                 >
                   <Zap className="w-4 h-4 text-amber-300" />
-                  <span>Generate Cost Summary</span>
+                  <span>Generate {currentMonthObj ? `${currentMonthObj.shortLabel} ` : ''}Cost Summary</span>
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </button>
               </div>
