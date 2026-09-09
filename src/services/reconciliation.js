@@ -24,20 +24,35 @@ export function reconcileDay(date, dayRecords, master) {
       let info = map ? map[rec.code] : null;
       if (!info) {
         // Fallback: Contractor / Category Rate Auto-Inheritance
-        const prefix = rec.code.replace(/[0-9]/g, '').toUpperCase();
-        let sample = null;
-        if (map) {
-          for (const existingCode in map) {
-            if (existingCode.startsWith(prefix)) {
-              sample = map[existingCode];
-              break;
+        const isNAPS = label === 'NAPS' || rec.code.startsWith('LN');
+        let defaultCTC = 783.59;
+        let defaultOT = 162.61;
+        let isDirect = false;
+        let dept = rec.dept || 'Production';
+
+        if (isNAPS) {
+          // Executive Rule: NAPS new joiners without master sheet get 483 / day
+          defaultCTC = 483;
+          defaultOT = 0;
+          isDirect = true;
+          dept = rec.dept || 'Apprentice';
+        } else {
+          // Contract Labour prefix lookup
+          const prefix = rec.code.replace(/[0-9]/g, '').toUpperCase();
+          let sample = null;
+          if (map) {
+            for (const existingCode in map) {
+              if (existingCode.startsWith(prefix)) {
+                sample = map[existingCode];
+                break;
+              }
             }
           }
+          defaultCTC = sample ? sample.dailyCTC : 783.59;
+          defaultOT = sample ? sample.dailyOT : 162.61;
+          isDirect = sample ? sample.direct : (label === 'Operator');
+          dept = rec.dept || (sample ? sample.dept : 'Production');
         }
-        const defaultCTC = sample ? sample.dailyCTC : (label === 'NAPS' ? 575 : 783.59);
-        const defaultOT = sample ? sample.dailyOT : (label === 'NAPS' ? 0 : 162.61);
-        const isDirect = sample ? sample.direct : (label === 'Operator');
-        const dept = rec.dept || (sample ? sample.dept : 'Production');
 
         info = {
           name: rec.name || 'New Employee',
@@ -167,7 +182,7 @@ export function aggregateMonthlyStats(batchResults, master) {
             map.set(code, {
               name: st.name || code,
               dept: st.dept || 'Production',
-              dailyCTC: st.dailyCTC || (cat === 'NAPS' ? 575 : 783.59),
+              dailyCTC: st.dailyCTC || (cat === 'NAPS' ? 483 : 783.59),
               dailyOT: st.dailyOT || (cat === 'NAPS' ? 0 : 162.61),
               workHrs: 0,
               daysPresent: 0,

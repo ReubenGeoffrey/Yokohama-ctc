@@ -169,12 +169,12 @@ export function buildDetailSheet(wb, title, employeeMap, statMap) {
   ]));
 
   allCodes.forEach(code => {
-    const st = getStatFromCat(statMap, code) || { daysPresent: 0, wopCount: 0, workHrs: 0, otHrs: 0, otAmount: 0, wages: 0 };
+    const isNapsCode = title === 'NAPS' || String(code).startsWith('LN');
     const info = (employeeMap && employeeMap[code]) || {
       name: st.name || code,
-      dept: st.dept || 'Production',
-      dailyOT: st.dailyOT || 162.61,
-      dailyCTC: st.dailyCTC || 783.59
+      dept: st.dept || (isNapsCode ? 'Apprentice' : 'Production'),
+      dailyOT: st.dailyOT || (isNapsCode ? 0 : 162.61),
+      dailyCTC: st.dailyCTC || (isNapsCode ? 483 : 783.59)
     };
     const otAmt = st.otAmount !== undefined ? st.otAmount : Math.round((st.otHrs || 0) * (info.dailyOT || 0) * 100) / 100;
 

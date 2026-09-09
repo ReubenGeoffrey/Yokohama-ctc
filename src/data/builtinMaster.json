@@ -11878,14 +11878,14 @@
       "name": "VALLIYAMMAL",
       "dept": "PRODUCTION",
       "direct": true,
-      "dailyCTC": 575,
+      "dailyCTC": 483,
       "dailyOT": 0
     },
     "LN1357": {
       "name": "MUTHUMARI T",
       "dept": "PRODUCTION",
       "direct": true,
-      "dailyCTC": 575,
+      "dailyCTC": 483,
       "dailyOT": 0
     },
     "LN1358": {
@@ -11906,7 +11906,7 @@
       "name": "CHERMAKANI",
       "dept": "PRODUCTION",
       "direct": true,
-      "dailyCTC": 575,
+      "dailyCTC": 483,
       "dailyOT": 0
     },
     "LN1361": {
@@ -11927,28 +11927,28 @@
       "name": "PERATCHI PRIYA",
       "dept": "PRODUCTION",
       "direct": true,
-      "dailyCTC": 575,
+      "dailyCTC": 483,
       "dailyOT": 0
     },
     "LN1367": {
       "name": "DEEPA KANNAN",
       "dept": "PRODUCTION",
       "direct": true,
-      "dailyCTC": 575,
+      "dailyCTC": 483,
       "dailyOT": 0
     },
     "LN1368": {
       "name": "PONNUTHAI C",
       "dept": "PRODUCTION",
       "direct": true,
-      "dailyCTC": 575,
+      "dailyCTC": 483,
       "dailyOT": 0
     },
     "LN1369": {
       "name": "LEETHIYA",
       "dept": "PRODUCTION",
       "direct": true,
-      "dailyCTC": 575,
+      "dailyCTC": 483,
       "dailyOT": 0
     }
   },
