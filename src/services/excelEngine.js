@@ -169,6 +169,7 @@ export function buildDetailSheet(wb, title, employeeMap, statMap) {
   ]));
 
   allCodes.forEach(code => {
+    const st = getStatFromCat(statMap, code) || {};
     const isNapsCode = title === 'NAPS' || String(code).startsWith('LN');
     const info = (employeeMap && employeeMap[code]) || {
       name: st.name || code,

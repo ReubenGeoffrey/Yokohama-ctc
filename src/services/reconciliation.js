@@ -170,7 +170,11 @@ export function aggregateMonthlyStats(batchResults, master) {
   // Aggregate across all dates
   batchResults.forEach(r => {
     if (r.empDayMap) {
-      r.empDayMap.forEach((st, code) => {
+      const entries = r.empDayMap instanceof Map
+        ? Array.from(r.empDayMap.entries())
+        : Object.entries(r.empDayMap);
+
+      entries.forEach(([code, st]) => {
         let cat = 'CL';
         if (master?.operator && master.operator[code]) cat = 'OP';
         else if (master?.naps && master.naps[code]) cat = 'NAPS';
@@ -195,12 +199,12 @@ export function aggregateMonthlyStats(batchResults, master) {
           const emp = map.get(code);
           if (st.name && (!emp.name || emp.name === code)) emp.name = st.name;
           if (st.dept && (!emp.dept || emp.dept === 'Production')) emp.dept = st.dept;
-          emp.workHrs += st.workHrs;
-          emp.daysPresent += st.daysPresent;
-          emp.wopCount += st.wopCount;
-          emp.otHrs += st.otHrs;
+          emp.workHrs += (st.workHrs || 0);
+          emp.daysPresent += (st.daysPresent || 0);
+          emp.wopCount += (st.wopCount || 0);
+          emp.otHrs += (st.otHrs || 0);
           emp.otAmount = (emp.otAmount || 0) + (st.otAmount || 0);
-          emp.wages += st.wages;
+          emp.wages += (st.wages || 0);
         }
       });
     }
