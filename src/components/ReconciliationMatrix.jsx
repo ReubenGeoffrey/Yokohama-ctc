@@ -13,7 +13,9 @@ import {
   RefreshCw,
   Building2,
   Calendar,
-  Layers
+  Layers,
+  PieChart as PieIcon,
+  BarChart2
 } from 'lucide-react';
 import { formatDateDisplay } from '../services/parser';
 import { generateSingleDayWorkbook, generateMonthlyWorkbook, downloadBlob } from '../services/excelEngine';
@@ -67,9 +69,41 @@ function DonutChart({ segments, size = 150, thickness = 28 }) {
   );
 }
 
+// ── Pure-SVG Rounded Bar Chart for Reconciliation Matrix ─────────
+function ReconBarChart({ segments, size = 140 }) {
+  const maxVal = Math.max(...segments.map(s => s.value), 1);
+  return (
+    <div className="flex flex-col items-center justify-center select-none" style={{ width: size, height: size }}>
+      <div className="flex items-end justify-center space-x-6 h-[95px] w-full border-b border-slate-200 pb-1">
+        {segments.map((seg, i) => {
+          const barH = Math.max(14, Math.round((seg.value / maxVal) * 75));
+          return (
+            <div key={i} className="flex flex-col items-center space-y-1">
+              <span className="text-[10px] font-black text-slate-800 font-mono">
+                {seg.total || (seg.value >= 100000 ? `₹${Math.round(seg.value / 1000)}k` : seg.value)}
+              </span>
+              <div
+                className="w-9 rounded-t-lg transition-all duration-300 shadow-xs"
+                style={{ height: `${barH}px`, backgroundColor: seg.color }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex justify-center space-x-6 w-full pt-1.5 text-[10px] font-bold text-slate-500">
+        {segments.map((seg, i) => (
+          <span key={i} className="w-9 text-center truncate">{seg.label}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ReconciliationMatrix({ batchResults, master, onNext }) {
   const [downloadingIdx, setDownloadingIdx] = useState(null);
   const [downloadingMonth, setDownloadingMonth] = useState(false);
+  const [hcChartMode, setHcChartMode] = useState('pie'); // 'pie' | 'bar'
+  const [costChartMode, setCostChartMode] = useState('pie'); // 'pie' | 'bar'
 
   // Group batchResults by available months (e.g. June, July, August, September)
   const availableMonths = useMemo(() => {
@@ -321,16 +355,46 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
         ))}
       </div>
 
-      {/* ── Analytics Row: Donut Charts ── */}
+      {/* ── Analytics Row: Pie Charts & Bar Graphs ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Headcount Distribution */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-black text-slate-900">Man-days Distribution</h3>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">Direct vs Indirect workers across all dates</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-black text-slate-900">Man-days Distribution</h3>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">Direct vs Indirect workers across all dates</p>
+            </div>
+            <div className="flex items-center bg-slate-100/90 p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold shrink-0">
+              <button
+                type="button"
+                onClick={() => setHcChartMode('pie')}
+                className={`px-2 py-1 rounded-md transition flex items-center space-x-1 cursor-pointer ${
+                  hcChartMode === 'pie' ? 'bg-white text-slate-900 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="View as Pie / Donut Chart"
+              >
+                <PieIcon className="w-3 h-3 text-blue-600" />
+                <span>Pie</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setHcChartMode('bar')}
+                className={`px-2 py-1 rounded-md transition flex items-center space-x-1 cursor-pointer ${
+                  hcChartMode === 'bar' ? 'bg-white text-slate-900 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="View as Bar Graph"
+              >
+                <BarChart2 className="w-3 h-3 text-emerald-600" />
+                <span>Bar</span>
+              </button>
+            </div>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-6">
-            <DonutChart segments={hcSegments} size={140} thickness={26} />
+            {hcChartMode === 'pie' ? (
+              <DonutChart segments={hcSegments} size={140} thickness={26} />
+            ) : (
+              <ReconBarChart segments={hcSegments} size={140} />
+            )}
             <div className="flex-1 w-full space-y-3">
               {[
                 { label: 'Direct Labour',   value: fmtN(totDirHC), color: '#0ea5e9', cost: `${fmt(totDirCost)}` },
@@ -359,12 +423,42 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
 
         {/* Cost Breakdown */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-black text-slate-900">Cost Breakdown</h3>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">CTC vs Overtime compensation</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-black text-slate-900">Cost Breakdown</h3>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">CTC vs Overtime compensation</p>
+            </div>
+            <div className="flex items-center bg-slate-100/90 p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold shrink-0">
+              <button
+                type="button"
+                onClick={() => setCostChartMode('pie')}
+                className={`px-2 py-1 rounded-md transition flex items-center space-x-1 cursor-pointer ${
+                  costChartMode === 'pie' ? 'bg-white text-slate-900 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="View as Pie / Donut Chart"
+              >
+                <PieIcon className="w-3 h-3 text-blue-600" />
+                <span>Pie</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCostChartMode('bar')}
+                className={`px-2 py-1 rounded-md transition flex items-center space-x-1 cursor-pointer ${
+                  costChartMode === 'bar' ? 'bg-white text-slate-900 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="View as Bar Graph"
+              >
+                <BarChart2 className="w-3 h-3 text-emerald-600" />
+                <span>Bar</span>
+              </button>
+            </div>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-6">
-            <DonutChart segments={costSegments} size={140} thickness={26} />
+            {costChartMode === 'pie' ? (
+              <DonutChart segments={costSegments} size={140} thickness={26} />
+            ) : (
+              <ReconBarChart segments={costSegments} size={140} />
+            )}
             <div className="flex-1 w-full space-y-3">
               {[
                 { label: 'Standard CTC', value: totCTC, color: '#6366f1', pctVal: pct(totCTC, totCost) },
