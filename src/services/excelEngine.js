@@ -22,7 +22,7 @@ const thinBorder = {
 };
 
 // Build Summary Sheet
-export function styleSummarySheet(wsSummary, year, month) {
+export function styleSummarySheet(wsSummary, year, month, monthResults = []) {
   wsSummary.views = [{ state: 'frozen', xSplit: 1, ySplit: 3, showGridLines: true }];
 
   // Row 1: Main Categories
@@ -103,27 +103,52 @@ export function styleSummarySheet(wsSummary, year, month) {
     wsSummary.getColumn(c).width = (mod === 0) ? 13 : 14;
   }
 
-  // Days styling (1 to 31) - Clean number format without rupee symbol
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  for (let d = 1; d <= daysInMonth; d++) {
-    const r = 3 + d;
-    wsSummary.getRow(r).height = 20;
-    const cellDate = wsSummary.getCell(r, 1);
-    cellDate.value = new Date(Date.UTC(year, month, d));
-    cellDate.numFmt = 'dd-mmm-yyyy';
-    cellDate.font = { name: FONT_NAME, size: 10, color: { argb: cTextSub } };
-    cellDate.alignment = { horizontal: 'center', vertical: 'middle' };
-    cellDate.border = thinBorder;
+  // Days styling: If single month, style 1 to daysInMonth; if all months / full year, style all dates dynamically
+  const isAll = year === 'ALL' || month === 'ALL' || (year === undefined && month === undefined);
+  if (!isAll && typeof year === 'number' && typeof month === 'number') {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const r = 3 + d;
+      wsSummary.getRow(r).height = 20;
+      const cellDate = wsSummary.getCell(r, 1);
+      cellDate.value = new Date(Date.UTC(year, month, d));
+      cellDate.numFmt = 'dd-mmm-yyyy';
+      cellDate.font = { name: FONT_NAME, size: 10, color: { argb: cTextSub } };
+      cellDate.alignment = { horizontal: 'center', vertical: 'middle' };
+      cellDate.border = thinBorder;
 
-    const rowBg = d % 2 === 0 ? 'FFFAFAFA' : 'FFFFFFFF';
-    for (let c = 2; c <= 37; c++) {
-      const cell = wsSummary.getCell(r, c);
-      cell.border = thinBorder;
-      cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
-      cell.alignment = { horizontal: 'right', vertical: 'middle' };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
-      cell.numFmt = '#,##0';
+      const rowBg = d % 2 === 0 ? 'FFFAFAFA' : 'FFFFFFFF';
+      for (let c = 2; c <= 37; c++) {
+        const cell = wsSummary.getCell(r, c);
+        cell.border = thinBorder;
+        cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
+        cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+        cell.numFmt = '#,##0';
+      }
     }
+  } else {
+    // Multi-month / Full year: Style rows dynamically for all dates
+    monthResults.forEach((res, idx) => {
+      const r = 4 + idx;
+      wsSummary.getRow(r).height = 20;
+      const cellDate = wsSummary.getCell(r, 1);
+      cellDate.value = new Date(res.date);
+      cellDate.numFmt = 'dd-mmm-yyyy';
+      cellDate.font = { name: FONT_NAME, size: 10, color: { argb: cTextSub } };
+      cellDate.alignment = { horizontal: 'center', vertical: 'middle' };
+      cellDate.border = thinBorder;
+
+      const rowBg = idx % 2 === 0 ? 'FFFFFFFF' : 'FFFAFAFA';
+      for (let c = 2; c <= 37; c++) {
+        const cell = wsSummary.getCell(r, c);
+        cell.border = thinBorder;
+        cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
+        cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+        cell.numFmt = '#,##0';
+      }
+    });
   }
 }
 
@@ -294,23 +319,25 @@ export async function generateMonthlyWorkbook(batchResults, master, empStats, ye
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Built by Joseph & Reuben Geoffrey (Hr Team)';
   wb.created = new Date();
-  const wsSummary = wb.addWorksheet('Summary');
-  styleSummarySheet(wsSummary, year, month);
 
-  // Strictly filter to the requested month and year so months never mix
+  const isAll = year === 'ALL' || month === 'ALL' || (year === undefined && month === undefined);
+
+  // Filter to requested month or keep all dates sorted chronologically
   const monthResults = (batchResults || []).filter(r => {
     if (!r.date) return false;
     const d = new Date(r.date);
-    if (year !== undefined && month !== undefined) {
+    if (!isAll && typeof year === 'number' && typeof month === 'number') {
       return d.getUTCFullYear() === year && d.getUTCMonth() === month;
     }
     return true;
-  });
+  }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const wsSummary = wb.addWorksheet('Summary');
+  styleSummarySheet(wsSummary, year, month, monthResults);
 
   // Fill Summary data
-  monthResults.forEach(r => {
-    const dayNum = new Date(r.date).getUTCDate();
-    const targetRow = 3 + dayNum;
+  monthResults.forEach((r, idx) => {
+    const targetRow = isAll ? (4 + idx) : (3 + new Date(r.date).getUTCDate());
     const b = r.buckets;
 
     const dTotOp = b.directOperator.ctc + b.directOperator.ot;
@@ -338,13 +365,13 @@ export async function generateMonthlyWorkbook(batchResults, master, empStats, ye
     });
   });
 
-  // Compute monthly stats strictly for this month's results so employee totals are clean
+  // Compute monthly stats strictly for these results so employee totals are clean
   const effectiveEmpStats = monthResults.length > 0 && master ? aggregateMonthlyStats(monthResults, master) : (empStats || { OP: new Map(), CL: new Map(), NAPS: new Map() });
 
   // Build Detail Sheets: ATC, CL, NAPS, and Project (Right of NAPS)
-  buildDetailSheet(wb, 'ATC', master.operator || {}, effectiveEmpStats.OP);
-  buildDetailSheet(wb, 'CL', master.contract || {}, effectiveEmpStats.CL);
-  buildDetailSheet(wb, 'NAPS', master.naps || {}, effectiveEmpStats.NAPS);
+  buildDetailSheet(wb, 'ATC', master?.operator || {}, effectiveEmpStats.OP);
+  buildDetailSheet(wb, 'CL', master?.contract || {}, effectiveEmpStats.CL);
+  buildDetailSheet(wb, 'NAPS', master?.naps || {}, effectiveEmpStats.NAPS);
 
   const projectEmployees = getProjectEmployees(master);
   const projectStats = getProjectStats(projectEmployees, effectiveEmpStats);
@@ -358,7 +385,7 @@ export async function generateMonthlyWorkbook(batchResults, master, empStats, ye
 export async function generateSingleDayWorkbook(dayResult, master, year, month) {
   const wb = new ExcelJS.Workbook();
   const wsSummary = wb.addWorksheet('Summary');
-  styleSummarySheet(wsSummary, year, month);
+  styleSummarySheet(wsSummary, year, month, [dayResult]);
 
   const dayNum = new Date(dayResult.date).getUTCDate();
   const targetRow = 3 + dayNum;
@@ -388,15 +415,14 @@ export async function generateSingleDayWorkbook(dayResult, master, year, month) 
     wsSummary.getCell(targetRow, Number(col)).value = val;
   });
 
-  const singleDayStats = aggregateMonthlyStats([dayResult], master);
-
-  buildDetailSheet(wb, 'ATC', master.operator || {}, singleDayStats.OP);
-  buildDetailSheet(wb, 'CL', master.contract || {}, singleDayStats.CL);
-  buildDetailSheet(wb, 'NAPS', master.naps || {}, singleDayStats.NAPS);
+  const dayStats = aggregateMonthlyStats([dayResult], master);
+  buildDetailSheet(wb, 'ATC', master?.operator || {}, dayStats.OP);
+  buildDetailSheet(wb, 'CL', master?.contract || {}, dayStats.CL);
+  buildDetailSheet(wb, 'NAPS', master?.naps || {}, dayStats.NAPS);
 
   const projectEmployees = getProjectEmployees(master);
-  const projectDayStats = getProjectStats(projectEmployees, singleDayStats);
-  buildDetailSheet(wb, 'Project', projectEmployees, projectDayStats);
+  const projectStats = getProjectStats(projectEmployees, dayStats);
+  buildDetailSheet(wb, 'Project', projectEmployees, projectStats);
 
   return await wb.xlsx.writeBuffer();
 }
@@ -405,26 +431,54 @@ export async function generateSingleDayWorkbook(dayResult, master, year, month) 
 export async function generateZipBundle(batchResults, master, empStats, year, month) {
   const zip = new JSZip();
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const mName = monthNames[month] || 'Monthly';
+  const isAll = year === 'ALL' || month === 'ALL' || (year === undefined && month === undefined);
 
-  const monthResults = (batchResults || []).filter(r => {
-    if (!r.date) return false;
-    const d = new Date(r.date);
-    if (year !== undefined && month !== undefined) {
-      return d.getUTCFullYear() === year && d.getUTCMonth() === month;
+  if (isAll) {
+    // 1. Group results by month to generate per-month master workbooks
+    const monthGroups = {};
+    (batchResults || []).forEach(r => {
+      if (!r.date) return;
+      const d = new Date(r.date);
+      const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
+      if (!monthGroups[key]) monthGroups[key] = { year: d.getUTCFullYear(), month: d.getUTCMonth(), results: [] };
+      monthGroups[key].results.push(r);
+    });
+
+    for (const group of Object.values(monthGroups)) {
+      const gName = monthNames[group.month] || 'Month';
+      const gBuf = await generateMonthlyWorkbook(group.results, master, empStats, group.year, group.month);
+      zip.file(`CTC_Output_${gName}_${group.year}.xlsx`, gBuf);
     }
-    return true;
-  });
 
-  // 1. Monthly Master
-  const monthlyBuf = await generateMonthlyWorkbook(monthResults, master, empStats, year, month);
-  zip.file(`CTC_Output_${mName}_${year}.xlsx`, monthlyBuf);
+    // 2. Full Year master workbook
+    const fullYearBuf = await generateMonthlyWorkbook(batchResults, master, empStats, 'ALL', 'ALL');
+    zip.file(`CTC_Output_Full_Year.xlsx`, fullYearBuf);
 
-  // 2. Individual Dates
-  for (const r of monthResults) {
-    const dayBuf = await generateSingleDayWorkbook(r, master, year, month);
-    const dateStr = formatDateToInput(r.date);
-    zip.file(`CTC_Output_${dateStr}.xlsx`, dayBuf);
+    // 3. Individual Dates
+    for (const r of (batchResults || [])) {
+      const d = new Date(r.date);
+      const dayBuf = await generateSingleDayWorkbook(r, master, d.getUTCFullYear(), d.getUTCMonth());
+      const dateStr = formatDateToInput(r.date);
+      zip.file(`CTC_Output_${dateStr}.xlsx`, dayBuf);
+    }
+  } else {
+    const mName = monthNames[month] || 'Monthly';
+    const monthResults = (batchResults || []).filter(r => {
+      if (!r.date) return false;
+      const d = new Date(r.date);
+      return d.getUTCFullYear() === year && d.getUTCMonth() === month;
+    });
+
+    // 1. Monthly Master
+    const monthlyBuf = await generateMonthlyWorkbook(monthResults, master, empStats, year, month);
+    zip.file(`CTC_Output_${mName}_${year}.xlsx`, monthlyBuf);
+
+    // 2. Individual Dates
+    for (const r of monthResults) {
+      const dayBuf = await generateSingleDayWorkbook(r, master, year, month);
+      const dateStr = formatDateToInput(r.date);
+      zip.file(`CTC_Output_${dateStr}.xlsx`, dayBuf);
+    }
   }
 
   return await zip.generateAsync({ type: 'blob' });

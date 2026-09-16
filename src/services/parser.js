@@ -1,10 +1,24 @@
 import * as XLSX from 'xlsx';
 
 const MONTH_MAP = {
-  JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
-  JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
-  SEPT: 8, SEPTEMBER: 8, AUGUST: 7, OCTO: 9, NOVE: 10, DECE: 11
+  JAN: 0, JANUARY: 0,
+  FEB: 1, FEBRUARY: 1,
+  MAR: 2, MARCH: 2,
+  APR: 3, APRIL: 3,
+  MAY: 4,
+  JUN: 5, JUNE: 5,
+  JUL: 6, JULY: 6,
+  AUG: 7, AUGUST: 7,
+  SEP: 8, SEPT: 8, SEPTEMBER: 8,
+  OCT: 9, OCTO: 9, OCTOBER: 9,
+  NOV: 10, NOVE: 10, NOVEMBER: 10,
+  DEC: 11, DECE: 11, DECEMBER: 11
 };
+
+export const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export function timeStrToHours(v) {
   if (!v) return 0;
@@ -49,6 +63,10 @@ export function findHeaderRowIdx(rows) {
 }
 
 export function extractDateFromAnywhere(rows, filename) {
+  const fn = String(filename || '');
+  const fnYearMatch = fn.match(/\b(202\d|203\d)\b/);
+  const defaultYear = fnYearMatch ? parseInt(fnYearMatch[1], 10) : new Date().getFullYear();
+
   // 1. Check rows in sheet
   if (Array.isArray(rows)) {
     for (let i = 0; i < Math.min(rows.length, 12); i++) {
@@ -109,7 +127,6 @@ export function extractDateFromAnywhere(rows, filename) {
   }
 
   // 2. Check filename (strip folder path e.g. 'September/01-09-2026 CL.xlsx')
-  const fn = String(filename || '');
   const base = fn.split(/[/\\]/).pop();
 
   // Text month: 01-Sep-2026, 01-Sept-2026, 01 September 2026, 01_Sep_26
@@ -117,7 +134,7 @@ export function extractDateFromAnywhere(rows, filename) {
   if (mTextFn) {
     const day = parseInt(mTextFn[1], 10);
     const monStr = mTextFn[2].slice(0, 3).toUpperCase();
-    const yr = mTextFn[3] ? (mTextFn[3].length === 2 ? 2000 + parseInt(mTextFn[3], 10) : parseInt(mTextFn[3], 10)) : 2026;
+    const yr = mTextFn[3] ? (mTextFn[3].length === 2 ? 2000 + parseInt(mTextFn[3], 10) : parseInt(mTextFn[3], 10)) : defaultYear;
     if (MONTH_MAP[monStr] !== undefined && day >= 1 && day <= 31) {
       return new Date(Date.UTC(yr, MONTH_MAP[monStr], day));
     }
@@ -128,7 +145,7 @@ export function extractDateFromAnywhere(rows, filename) {
   if (mMonFirst) {
     const monStr = mMonFirst[1].slice(0, 3).toUpperCase();
     const day = parseInt(mMonFirst[2], 10);
-    const yr = mMonFirst[3] ? (mMonFirst[3].length === 2 ? 2000 + parseInt(mMonFirst[3], 10) : parseInt(mMonFirst[3], 10)) : 2026;
+    const yr = mMonFirst[3] ? (mMonFirst[3].length === 2 ? 2000 + parseInt(mMonFirst[3], 10) : parseInt(mMonFirst[3], 10)) : defaultYear;
     if (MONTH_MAP[monStr] !== undefined && day >= 1 && day <= 31) {
       return new Date(Date.UTC(yr, MONTH_MAP[monStr], day));
     }
@@ -157,7 +174,7 @@ export function extractDateFromAnywhere(rows, filename) {
     const upperFull = fn.toUpperCase();
     for (const [k, v] of Object.entries(MONTH_MAP)) {
       if (upperFull.includes(k)) {
-        return new Date(Date.UTC(2026, v, parseInt(mDateOnly[1], 10)));
+        return new Date(Date.UTC(defaultYear, v, parseInt(mDateOnly[1], 10)));
       }
     }
     const now = new Date();

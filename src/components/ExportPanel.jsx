@@ -36,47 +36,61 @@ export function ExportPanel({ batchResults, master, empStats }) {
 
   // Detect months present in batchResults
   const availableMonths = useMemo(() => {
-    if (!batchResults || !batchResults.length) return [{ year: 2026, month: 7, label: 'August 2026', key: '2026-08' }];
+    if (!batchResults || !batchResults.length) return [];
     const map = {};
     batchResults.forEach(r => {
       const d = new Date(r.date);
+      if (isNaN(d.getTime())) return;
       const y = d.getUTCFullYear();
       const m = d.getUTCMonth();
       const key = `${y}-${String(m + 1).padStart(2, '0')}`;
       if (!map[key]) {
-        map[key] = { year: y, month: m, label: `${MONTH_NAMES[m]} ${y}`, key, count: 0 };
+        map[key] = { year: y, month: m, label: `${MONTH_NAMES[m]} ${y}`, shortLabel: MONTH_NAMES[m], key, count: 0 };
       }
       map[key].count++;
     });
     return Object.values(map).sort((a, b) => a.key.localeCompare(b.key));
   }, [batchResults]);
 
-  const [selectedMonthKey, setSelectedMonthKey] = useState(availableMonths[availableMonths.length - 1]?.key || '2026-08');
+  const [selectedMonthKey, setSelectedMonthKey] = useState(
+    availableMonths[availableMonths.length - 1]?.key || 'ALL'
+  );
 
   useEffect(() => {
-    if (availableMonths.length > 0 && !availableMonths.some(m => m.key === selectedMonthKey)) {
+    if (availableMonths.length > 0 && selectedMonthKey !== 'ALL' && !availableMonths.some(m => m.key === selectedMonthKey)) {
       setSelectedMonthKey(availableMonths[availableMonths.length - 1].key);
     }
   }, [availableMonths, selectedMonthKey]);
 
   const currentMonthConfig = useMemo(() => {
-    return availableMonths.find(m => m.key === selectedMonthKey) || availableMonths[0] || { year: 2026, month: 7, label: 'August 2026' };
-  }, [availableMonths, selectedMonthKey]);
+    if (selectedMonthKey === 'ALL') {
+      const year = availableMonths[0]?.year || new Date().getFullYear();
+      return { year: 'ALL', month: 'ALL', label: 'All Months (Full Year)', shortLabel: 'Full_Year', key: 'ALL', count: batchResults?.length || 0 };
+    }
+    return availableMonths.find(m => m.key === selectedMonthKey) || availableMonths[0] || {
+      year: new Date().getFullYear(),
+      month: new Date().getMonth(),
+      label: `${MONTH_NAMES[new Date().getMonth()]} ${new Date().getFullYear()}`,
+      shortLabel: MONTH_NAMES[new Date().getMonth()],
+      key: 'CURRENT'
+    };
+  }, [availableMonths, selectedMonthKey, batchResults]);
 
   // Filter batchResults for selected month
   const targetBatchResults = useMemo(() => {
     if (!batchResults) return [];
-    if (availableMonths.length <= 1) return batchResults;
+    if (selectedMonthKey === 'ALL' || availableMonths.length <= 1) return batchResults;
     return batchResults.filter(r => {
       const d = new Date(r.date);
       return d.getUTCFullYear() === currentMonthConfig.year && d.getUTCMonth() === currentMonthConfig.month;
     });
-  }, [batchResults, currentMonthConfig, availableMonths]);
+  }, [batchResults, currentMonthConfig, selectedMonthKey, availableMonths]);
 
   // Helper function to extract stats
   const getEmpStat = (catStats, code) => {
-    if (!catStats || !catStats[code]) return { daysPresent: 0, wopCount: 0, wages: 0 };
-    return catStats[code];
+    if (!catStats) return { daysPresent: 0, wopCount: 0, wages: 0 };
+    if (typeof catStats.get === 'function') return catStats.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
+    return catStats[code] || { daysPresent: 0, wopCount: 0, wages: 0 };
   };
 
   // Compute WOP Metrics for Export
@@ -348,10 +362,12 @@ export function ExportPanel({ batchResults, master, empStats }) {
   const handleDownloadMonthly = async () => {
     setDownloadingMonthly(true);
     try {
-      const monthName = MONTH_NAMES[currentMonthConfig.month];
+      const isAll = selectedMonthKey === 'ALL';
+      const monthName = isAll ? 'Full_Year' : (MONTH_NAMES[currentMonthConfig.month] || 'Month');
+      const year = isAll ? (availableMonths[0]?.year || new Date().getFullYear()) : currentMonthConfig.year;
       const buffer = await generateMonthlyWorkbook(targetBatchResults, master, empStats, currentMonthConfig.year, currentMonthConfig.month);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `CTC_Output_${monthName}_${currentMonthConfig.year}.xlsx`);
+      downloadBlob(blob, `CTC_Output_${monthName}_${year}.xlsx`);
     } catch (err) {
       console.error(err);
       alert('Error exporting Monthly Master Workbook: ' + err.message);
@@ -363,9 +379,11 @@ export function ExportPanel({ batchResults, master, empStats }) {
   const handleDownloadZip = async () => {
     setDownloadingZip(true);
     try {
-      const monthName = MONTH_NAMES[currentMonthConfig.month];
+      const isAll = selectedMonthKey === 'ALL';
+      const monthName = isAll ? 'Full_Year' : (MONTH_NAMES[currentMonthConfig.month] || 'Month');
+      const year = isAll ? (availableMonths[0]?.year || new Date().getFullYear()) : currentMonthConfig.year;
       const blob = await generateZipBundle(targetBatchResults, master, empStats, currentMonthConfig.year, currentMonthConfig.month);
-      downloadBlob(blob, `ATC_CTC_Reconciliation_${monthName}_${currentMonthConfig.year}.zip`);
+      downloadBlob(blob, `ATC_CTC_Reconciliation_${monthName}_${year}.zip`);
     } catch (err) {
       console.error(err);
       alert('Error exporting ZIP bundle: ' + err.message);
@@ -428,10 +446,10 @@ export function ExportPanel({ batchResults, master, empStats }) {
 
       {/* Month Selection Tabs (if multiple months exist) */}
       {availableMonths.length > 1 && (
-        <div className="flex items-center space-x-2 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="flex items-center space-x-2 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs flex-wrap gap-y-2">
           <Calendar className="w-4 h-4 text-slate-400 ml-2" />
           <span className="text-xs font-black uppercase tracking-wider text-slate-700">Choose Month:</span>
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             {availableMonths.map(m => (
               <button
                 key={m.key}
@@ -445,6 +463,16 @@ export function ExportPanel({ batchResults, master, empStats }) {
                 {m.label} ({m.count} dates)
               </button>
             ))}
+            <button
+              onClick={() => setSelectedMonthKey('ALL')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                selectedMonthKey === 'ALL'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              All Months (Full Year) ({batchResults?.length || 0} dates)
+            </button>
           </div>
         </div>
       )}

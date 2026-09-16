@@ -196,14 +196,20 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
     if (!displayResults.length) return;
     setDownloadingMonth(true);
     try {
-      const targetM = currentMonthObj || {
+      const isAll = selectedMonthKey === 'ALL';
+      const targetM = isAll ? {
+        year: 'ALL',
+        month: 'ALL',
+        label: 'Full Year'
+      } : (currentMonthObj || {
         year: new Date(displayResults[0].date).getUTCFullYear(),
         month: new Date(displayResults[0].date).getUTCMonth(),
         label: 'Monthly'
-      };
+      });
       const buffer = await generateMonthlyWorkbook(displayResults, master, null, targetM.year, targetM.month);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `CTC_Output_${MONTH_NAMES[targetM.month] || 'Month'}_${targetM.year}.xlsx`);
+      const filename = isAll ? `CTC_Output_Full_Year.xlsx` : `CTC_Output_${MONTH_NAMES[targetM.month] || 'Month'}_${targetM.year}.xlsx`;
+      downloadBlob(blob, filename);
     } catch (e) {
       console.error(e);
       alert('Error generating month workbook: ' + e.message);

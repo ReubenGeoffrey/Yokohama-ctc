@@ -5,8 +5,9 @@ import { SupabaseService, getSupabaseClient } from '../services/supabase';
 import { downloadBlob } from '../services/excelEngine';
 
 export function YearArchiveModal({ isOpen, onClose }) {
-  const [selectedYear, setSelectedYear] = useState(2026);
-  const [selectedMonth, setSelectedMonth] = useState(7); // August (0-indexed)
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [filesList, setFilesList] = useState({ master: [], attendance: [], output: [] });
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -17,7 +18,7 @@ export function YearArchiveModal({ isOpen, onClose }) {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  const years = [2024, 2025, 2026, 2027, 2028];
+  const years = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
 
   const loadData = async () => {
     if (!getSupabaseClient()) return;

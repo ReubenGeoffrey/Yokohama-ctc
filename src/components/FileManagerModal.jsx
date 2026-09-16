@@ -85,8 +85,40 @@ export function FileManagerModal({
 }) {
   const fileImportRef = React.useRef(null);
   const [downloading, setDownloading] = useState(null);
-  const [calYear, setCalYear] = useState(2026);
-  const [calMonth, setCalMonth] = useState(7); // 7 = August (0-indexed)
+
+  const initialYear = useMemo(() => {
+    if (batchResults && batchResults.length > 0) {
+      const d = new Date(batchResults[batchResults.length - 1].date);
+      if (!isNaN(d.getTime())) return d.getUTCFullYear();
+    }
+    const bKeys = Object.keys(batchDates || {});
+    if (bKeys.length > 0) {
+      const d = new Date(bKeys[bKeys.length - 1]);
+      if (!isNaN(d.getTime())) return d.getUTCFullYear();
+    }
+    return new Date().getFullYear();
+  }, [batchResults, batchDates]);
+
+  const initialMonth = useMemo(() => {
+    if (batchResults && batchResults.length > 0) {
+      const d = new Date(batchResults[batchResults.length - 1].date);
+      if (!isNaN(d.getTime())) return d.getUTCMonth();
+    }
+    const bKeys = Object.keys(batchDates || {});
+    if (bKeys.length > 0) {
+      const d = new Date(bKeys[bKeys.length - 1]);
+      if (!isNaN(d.getTime())) return d.getUTCMonth();
+    }
+    return new Date().getMonth();
+  }, [batchResults, batchDates]);
+
+  const [calYear, setCalYear] = useState(initialYear);
+  const [calMonth, setCalMonth] = useState(initialMonth);
+
+  useEffect(() => {
+    setCalYear(initialYear);
+    setCalMonth(initialMonth);
+  }, [initialYear, initialMonth]);
 
   const safeBatchDates = batchDates || {};
   const safeBatchResults = Array.isArray(batchResults) ? batchResults : [];
@@ -384,7 +416,7 @@ export function FileManagerModal({
                 >
                   Today
                 </button>
-                {[2025, 2026, 2027].map(y => (
+                {[calYear - 2, calYear - 1, calYear, calYear + 1, calYear + 2].map(y => (
                   <button
                     key={y}
                     onClick={() => setCalYear(y)}

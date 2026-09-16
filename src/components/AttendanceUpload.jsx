@@ -228,7 +228,9 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
   };
 
   const handleReconcileAll = async () => {
-    const data = getReconciledData();
+    // Reconcile ALL detected attendance dates across all months so multi-month data is preserved
+    const allKeys = Object.keys(batchDates || {}).sort();
+    const data = getReconciledData(allKeys);
     if (!data) return;
 
     await StorageService.saveBatchResults({ results: data.results, empStats: data.empStats });
@@ -237,6 +239,10 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
   };
 
   const getSelectedMonthYear = (results) => {
+    if (selectedMonthKey === 'ALL') {
+      const y = results && results.length > 0 ? new Date(results[0].date).getUTCFullYear() : new Date().getFullYear();
+      return { year: y, month: 'ALL', monthName: 'Full_Year' };
+    }
     if (currentMonthObj) {
       return {
         year: currentMonthObj.year,
@@ -250,7 +256,9 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
       const m = d.getUTCMonth();
       return { year: y, month: m, monthName: MONTH_NAMES[m] || 'Month' };
     }
-    return { year: 2026, month: 8, monthName: 'September' };
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+    return { year: currentYear, month: currentMonth, monthName: MONTH_NAMES[currentMonth] || 'Month' };
   };
 
   const handleDownloadMonthly = async () => {
@@ -262,7 +270,8 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
     try {
       const buffer = await generateMonthlyWorkbook(data.results, effectiveMaster, data.empStats, year, month);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `CTC_Output_${monthName}_${year}.xlsx`);
+      const filename = monthName === 'Full_Year' ? `CTC_Output_Full_Year_${year}.xlsx` : `CTC_Output_${monthName}_${year}.xlsx`;
+      downloadBlob(blob, filename);
     } catch (err) {
       console.error(err);
       alert('Error downloading Monthly Master Workbook: ' + err.message);
@@ -278,7 +287,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
     const { year, month, monthName } = getSelectedMonthYear(data.results);
     setIsDownloadingWop(true);
     try {
-      const getStat = (catStats, code) => (catStats && catStats[code]) ? catStats[code] : { daysPresent: 0, wopCount: 0, wages: 0 };
+      const getStat = (catStats, code) => (!catStats ? { daysPresent: 0, wopCount: 0, wages: 0 } : (typeof catStats.get === 'function' ? catStats.get(code) : catStats[code]) || { daysPresent: 0, wopCount: 0, wages: 0 });
       const opList = [], clList = [], napsList = [];
       let opWopCount = 0, opWopEmployees = 0, opWopWages = 0;
       let clWopCount = 0, clWopEmployees = 0, clWopWages = 0;
@@ -321,10 +330,14 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
         });
       }
 
+      const totalWopCount = opWopCount + clWopCount + napsWopCount;
+      const totalWopEmployees = opWopEmployees + clWopEmployees + napsWopEmployees;
+      const totalWopWages = opWopWages + clWopWages + napsWopWages;
+
       const wopMetrics = {
-        totalCount: opWopCount + clWopCount + napsWopCount,
-        totalEmployees: opWopEmployees + clWopEmployees + napsWopEmployees,
-        totalWages: opWopWages + clWopWages + napsWopWages,
+        totalCount: totalWopCount,
+        totalEmployees: totalWopEmployees,
+        totalWages: totalWopWages,
         op: { count: opWopCount, employees: opWopEmployees, wages: opWopWages, list: opList },
         cl: { count: clWopCount, employees: clWopEmployees, wages: clWopWages, list: clList },
         naps: { count: napsWopCount, employees: napsWopEmployees, wages: napsWopWages, list: napsList }
@@ -332,7 +345,8 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
 
       const buffer = await generateWopReportWorkbook(wopMetrics, effectiveMaster, data.results);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `WOP_Weekly_Off_Report_${monthName}_${year}.xlsx`);
+      const filename = monthName === 'Full_Year' ? `Weekly_Off_Present_Report_Full_Year_${year}.xlsx` : `Weekly_Off_Present_Report_${monthName}_${year}.xlsx`;
+      downloadBlob(blob, filename);
     } catch (err) {
       console.error(err);
       alert('Error downloading WOP Workbook: ' + err.message);
@@ -375,24 +389,26 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
         return { mins, totalLostMins, shift: shift.code, shiftStart: shift.start, inTime, severity, date: 'Multiple Dates' };
       };
 
+      const getDays = (catStats, code) => (!catStats ? 1 : (typeof catStats.get === 'function' ? catStats.get(code)?.daysPresent : catStats[code]?.daysPresent) || 1);
+
       if (effectiveMaster?.operator) {
         Object.keys(effectiveMaster.operator).forEach(code => {
           const item = effectiveMaster.operator[code];
-          const l = getLate(code, data.empStats?.OP?.[code]?.daysPresent || 1);
+          const l = getLate(code, getDays(data.empStats?.OP, code));
           if (l) { opLost += l.totalLostMins; opList.push({ code, name: item.name || 'Operator', category: 'Operator', dept: item.dept || 'Production', lateMins: l.mins, totalLostMins: l.totalLostMins, shift: l.shift, shiftStart: l.shiftStart, inTime: l.inTime, severity: l.severity, date: l.date }); }
         });
       }
       if (effectiveMaster?.contract) {
         Object.keys(effectiveMaster.contract).forEach(code => {
           const item = effectiveMaster.contract[code];
-          const l = getLate(code, data.empStats?.CL?.[code]?.daysPresent || 1);
+          const l = getLate(code, getDays(data.empStats?.CL, code));
           if (l) { clLost += l.totalLostMins; clList.push({ code, name: item.name || 'Contract Labour', category: 'CL', dept: item.dept || 'Contract', lateMins: l.mins, totalLostMins: l.totalLostMins, shift: l.shift, shiftStart: l.shiftStart, inTime: l.inTime, severity: l.severity, date: l.date }); }
         });
       }
       if (effectiveMaster?.naps) {
         Object.keys(effectiveMaster.naps).forEach(code => {
           const item = effectiveMaster.naps[code];
-          const l = getLate(code, data.empStats?.NAPS?.[code]?.daysPresent || 1);
+          const l = getLate(code, getDays(data.empStats?.NAPS, code));
           if (l) { napsLost += l.totalLostMins; napsList.push({ code, name: item.name || 'NAPS', category: 'NAPS', dept: item.dept || 'NAPS', lateMins: l.mins, totalLostMins: l.totalLostMins, shift: l.shift, shiftStart: l.shiftStart, inTime: l.inTime, severity: l.severity, date: l.date }); }
         });
       }
@@ -410,7 +426,8 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
 
       const buffer = await generateLateReportWorkbook(lateMetrics, effectiveMaster, data.results);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `Late_Coming_Punctuality_Report_${monthName}_${year}.xlsx`);
+      const filename = monthName === 'Full_Year' ? `Late_Coming_Punctuality_Report_Full_Year_${year}.xlsx` : `Late_Coming_Punctuality_Report_${monthName}_${year}.xlsx`;
+      downloadBlob(blob, filename);
     } catch (err) {
       console.error(err);
       alert('Error downloading Late Coming Workbook: ' + err.message);
@@ -427,7 +444,8 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
     setIsDownloadingZip(true);
     try {
       const blob = await generateZipBundle(data.results, effectiveMaster, data.empStats, year, month);
-      downloadBlob(blob, `ATC_CTC_Reconciliation_${monthName}_${year}.zip`);
+      const filename = monthName === 'Full_Year' ? `ATC_CTC_Reconciliation_Full_Year_${year}.zip` : `ATC_CTC_Reconciliation_${monthName}_${year}.zip`;
+      downloadBlob(blob, filename);
     } catch (err) {
       console.error(err);
       alert('Error downloading ZIP bundle: ' + err.message);

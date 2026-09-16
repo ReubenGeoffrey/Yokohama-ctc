@@ -398,19 +398,39 @@ export function App() {
   };
 
   // Instant Monthly Consolidated Master Export
-  const handleExportMonthlyConsolidated = async () => {
+  const handleExportMonthlyConsolidated = async (targetMonthKey = null) => {
     if (!batchResults.length) {
       alert('Please upload daily attendance files and run reconciliation first.');
       return;
     }
     try {
-      const d = new Date(batchResults[0].date);
-      const year = d.getUTCFullYear();
-      const month = d.getUTCMonth();
-      const monthName = MONTH_NAMES[month] || 'Month';
-      const buffer = await generateMonthlyWorkbook(batchResults, master, empStats, year, month);
+      let filteredResults = batchResults;
+      let year, month, monthName;
+
+      if (targetMonthKey && targetMonthKey !== 'ALL') {
+        const [yStr, mStr] = targetMonthKey.split('-');
+        year = parseInt(yStr, 10);
+        month = parseInt(mStr, 10) - 1;
+        monthName = MONTH_NAMES[month] || 'Month';
+        filteredResults = batchResults.filter(r => {
+          const d = new Date(r.date);
+          return d.getUTCFullYear() === year && d.getUTCMonth() === month;
+        });
+      } else if (targetMonthKey === 'ALL') {
+        year = 'ALL';
+        month = 'ALL';
+        monthName = 'Full_Year';
+      } else {
+        const d = new Date(batchResults[0].date);
+        year = d.getUTCFullYear();
+        month = d.getUTCMonth();
+        monthName = MONTH_NAMES[month] || 'Month';
+      }
+
+      const buffer = await generateMonthlyWorkbook(filteredResults, master, empStats, year, month);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `CTC_Consolidated_Master_${monthName}_${year}.xlsx`);
+      const filename = monthName === 'Full_Year' ? `CTC_Consolidated_Full_Year.xlsx` : `CTC_Consolidated_Master_${monthName}_${year}.xlsx`;
+      downloadBlob(blob, filename);
     } catch (err) {
       alert('Export failed: ' + err.message);
     }

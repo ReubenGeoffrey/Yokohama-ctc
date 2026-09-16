@@ -34,7 +34,8 @@ import {
   RefreshCw,
   Cloud
 } from 'lucide-react';
-import { formatDateDisplay } from '../services/parser';
+import { formatDateDisplay, MONTH_NAMES } from '../services/parser';
+import { aggregateMonthlyStats } from '../services/reconciliation';
 import {
   generateWopReportWorkbook,
   generateLateReportWorkbook,
@@ -905,29 +906,83 @@ export function DashboardOverview({
   const fmt = (n) => (Math.round(n) || 0).toLocaleString('en-IN');
   const fmtN = (n) => (n || 0).toLocaleString('en-IN');
 
-  // Aggregates across batchResults
-  const totHC = batchResults.reduce((s, r) => s + (r.gHC || 0), 0);
-  const totCost = batchResults.reduce((s, r) => s + (r.gTot || 0), 0);
-  const totCTC = batchResults.reduce((s, r) => s + (r.gCTC || 0), 0);
-  const totOT = batchResults.reduce((s, r) => s + (r.gOT || 0), 0);
-  const totDirHC = batchResults.reduce((s, r) => s + (r.dHC || 0), 0);
-  const totIndHC = batchResults.reduce((s, r) => s + (r.iHC || 0), 0);
+  // Available Months detected from batchResults
+  const availableMonths = useMemo(() => {
+    if (!batchResults || !batchResults.length) return [];
+    const map = {};
+    batchResults.forEach(r => {
+      const d = new Date(r.date);
+      if (isNaN(d.getTime())) return;
+      const y = d.getUTCFullYear();
+      const m = d.getUTCMonth();
+      const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+      if (!map[key]) {
+        map[key] = {
+          year: y,
+          month: m,
+          label: `${MONTH_NAMES[m]} ${y}`,
+          shortLabel: MONTH_NAMES[m],
+          key,
+          count: 0
+        };
+      }
+      map[key].count++;
+    });
+    return Object.values(map).sort((a, b) => a.key.localeCompare(b.key));
+  }, [batchResults]);
+
+  // Selected Month State: default to latest month if multiple exist, or 'ALL'
+  const [selectedMonthKey, setSelectedMonthKey] = useState('ALL');
+
+  useEffect(() => {
+    if (availableMonths.length > 0) {
+      if (selectedMonthKey !== 'ALL' && !availableMonths.some(m => m.key === selectedMonthKey)) {
+        setSelectedMonthKey(availableMonths[availableMonths.length - 1].key);
+      }
+    }
+  }, [availableMonths, selectedMonthKey]);
+
+  // Filtered batchResults for currently selected month or all months
+  const displayResults = useMemo(() => {
+    if (!batchResults || !batchResults.length) return [];
+    if (selectedMonthKey === 'ALL') return batchResults;
+    return batchResults.filter(r => {
+      const d = new Date(r.date);
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      return key === selectedMonthKey;
+    });
+  }, [batchResults, selectedMonthKey]);
+
+  // Dynamically compute employee stats for the active display results
+  const displayEmpStats = useMemo(() => {
+    if (!master || !displayResults.length) return empStats || { OP: new Map(), CL: new Map(), NAPS: new Map() };
+    if (selectedMonthKey === 'ALL') return empStats || aggregateMonthlyStats(displayResults, master);
+    return aggregateMonthlyStats(displayResults, master);
+  }, [master, displayResults, selectedMonthKey, empStats]);
+
+  // Aggregates across displayResults
+  const totHC = displayResults.reduce((s, r) => s + (r.gHC || 0), 0);
+  const totCost = displayResults.reduce((s, r) => s + (r.gTot || 0), 0);
+  const totCTC = displayResults.reduce((s, r) => s + (r.gCTC || 0), 0);
+  const totOT = displayResults.reduce((s, r) => s + (r.gOT || 0), 0);
+  const totDirHC = displayResults.reduce((s, r) => s + (r.dHC || 0), 0);
+  const totIndHC = displayResults.reduce((s, r) => s + (r.iHC || 0), 0);
 
   // Active date range text
   const dateRangeText = useMemo(() => {
-    if (!batchResults || batchResults.length === 0) return 'No dates loaded';
-    const dates = batchResults.map(r => new Date(r.date)).sort((a, b) => a - b);
+    if (!displayResults || displayResults.length === 0) return 'No dates loaded';
+    const dates = displayResults.map(r => new Date(r.date)).sort((a, b) => a - b);
     const start = dates[0];
     const end = dates[dates.length - 1];
     const f = (d) => `${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCDate()).padStart(2, '0')}/${d.getUTCFullYear()}`;
     return `${f(start)} - ${f(end)}`;
-  }, [batchResults]);
+  }, [displayResults]);
 
   // Daily Trend Data (Card 1)
   const waveData = useMemo(() => {
-    if (!batchResults || batchResults.length === 0) return [];
+    if (!displayResults || displayResults.length === 0) return [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return batchResults.map(r => {
+    return displayResults.map(r => {
       const d = new Date(r.date);
       const day = d.getUTCDate();
       const monthShort = monthNames[d.getUTCMonth()] || 'Aug';
@@ -945,7 +1000,7 @@ export function DashboardOverview({
         isoDate: r.date
       };
     });
-  }, [batchResults]);
+  }, [displayResults]);
 
   // Labour Category Segments (Card 2)
   const labourSegments = useMemo(() => {
@@ -968,7 +1023,7 @@ export function DashboardOverview({
 
   // Shift & Cost Bars (Card 3) - Shift Matrix: A (7-3), B (3-11), C (11-7), G (9-5.30)
   const shiftBars = useMemo(() => {
-    const count = batchResults.length || 1;
+    const count = displayResults.length || 1;
     const avgDailyHC = totHC > 0 ? Math.round(totHC / count) : 1580;
     return [
       { label: 'A (7-3)', value: Math.round(avgDailyHC * 0.44) || 695, color: '#6366f1' },
@@ -976,7 +1031,7 @@ export function DashboardOverview({
       { label: 'C (11-7)', value: Math.round(avgDailyHC * 0.16) || 253, color: '#a5b4fc' },
       { label: 'G (9-5.30)', value: Math.round(avgDailyHC * 0.08) || 127, color: '#c7d2fe' }
     ];
-  }, [batchResults, totHC]);
+  }, [displayResults, totHC]);
 
   // Consolidated Employee Roster for the Table
   const employeeRows = useMemo(() => {
@@ -987,7 +1042,7 @@ export function DashboardOverview({
     if (master.operator) {
       Object.keys(master.operator).forEach(code => {
         const item = master.operator[code];
-        const stats = getEmpStat(empStats?.OP, code);
+        const stats = getEmpStat(displayEmpStats?.OP, code);
         rows.push({
           code,
           name: item.name || 'Operator',
@@ -1006,7 +1061,7 @@ export function DashboardOverview({
     if (master.contract) {
       Object.keys(master.contract).forEach(code => {
         const item = master.contract[code];
-        const stats = getEmpStat(empStats?.CL, code);
+        const stats = getEmpStat(displayEmpStats?.CL, code);
         rows.push({
           code,
           name: item.name || 'Contract Labour',
@@ -1025,7 +1080,7 @@ export function DashboardOverview({
     if (master.naps) {
       Object.keys(master.naps).forEach(code => {
         const item = master.naps[code];
-        const stats = getEmpStat(empStats?.NAPS, code);
+        const stats = getEmpStat(displayEmpStats?.NAPS, code);
         rows.push({
           code,
           name: item.name || 'NAPS Apprentice',
@@ -1041,7 +1096,7 @@ export function DashboardOverview({
     }
 
     return rows;
-  }, [master, empStats]);
+  }, [master, displayEmpStats]);
 
   // Detailed WOP Statistics for Operator, CL, and NAPS
   const wopMetrics = useMemo(() => {
@@ -1065,7 +1120,7 @@ export function DashboardOverview({
       if (master.operator) {
         Object.keys(master.operator).forEach(code => {
           const item = master.operator[code];
-          const st = getEmpStat(empStats?.OP, code);
+          const st = getEmpStat(displayEmpStats?.OP, code);
           const wops = st.wopCount || 0;
           const dailyRate = item.dailyCTC || item.ctc || 0;
           const wopPay = wops * dailyRate;
@@ -1092,7 +1147,7 @@ export function DashboardOverview({
       if (master.contract) {
         Object.keys(master.contract).forEach(code => {
           const item = master.contract[code];
-          const st = getEmpStat(empStats?.CL, code);
+          const st = getEmpStat(displayEmpStats?.CL, code);
           const wops = st.wopCount || 0;
           const dailyRate = item.dailyCTC || item.ctc || 0;
           const wopPay = wops * dailyRate;
@@ -1119,7 +1174,7 @@ export function DashboardOverview({
       if (master.naps) {
         Object.keys(master.naps).forEach(code => {
           const item = master.naps[code];
-          const st = getEmpStat(empStats?.NAPS, code);
+          const st = getEmpStat(displayEmpStats?.NAPS, code);
           const wops = st.wopCount || 0;
           const dailyRate = item.dailyCTC || item.ctc || 0;
           const wopPay = wops * dailyRate;
@@ -1157,7 +1212,7 @@ export function DashboardOverview({
       totalWages: totalWopWages,
       allList: [...opList, ...clList, ...napsList].sort((a, b) => b.wopCount - a.wopCount)
     };
-  }, [master, empStats]);
+  }, [master, displayEmpStats]);
 
   // Detailed Late Coming / Punctuality Statistics across Operators, CL, and NAPS
   const lateMetrics = useMemo(() => {
@@ -1209,11 +1264,11 @@ export function DashboardOverview({
         severityColor = 'bg-amber-50 text-amber-700 border-amber-200';
       }
 
-      let dateStr = '01-Aug-2026';
-      let rawDateStr = '2026-08-01';
-      if (batchResults && batchResults.length > 0) {
-        const dateIdx = absHash % batchResults.length;
-        const bDate = batchResults[dateIdx]?.date;
+      let dateStr = '01-Jan';
+      let rawDateStr = '';
+      if (displayResults && displayResults.length > 0) {
+        const dateIdx = absHash % displayResults.length;
+        const bDate = displayResults[dateIdx]?.date;
         if (bDate) {
           dateStr = formatDateDisplay(bDate);
           rawDateStr = bDate;
@@ -1237,7 +1292,7 @@ export function DashboardOverview({
     if (master?.operator) {
       Object.keys(master.operator).forEach(code => {
         const item = master.operator[code];
-        const st = getEmpStat(empStats?.OP, code);
+        const st = getEmpStat(displayEmpStats?.OP, code);
         const days = st.daysPresent || 1;
         const lInfo = getLateInfo(code, days);
         if (lInfo) {
@@ -1267,7 +1322,7 @@ export function DashboardOverview({
     if (master?.contract) {
       Object.keys(master.contract).forEach(code => {
         const item = master.contract[code];
-        const st = getEmpStat(empStats?.CL, code);
+        const st = getEmpStat(displayEmpStats?.CL, code);
         const days = st.daysPresent || 1;
         const lInfo = getLateInfo(code, days);
         if (lInfo) {
@@ -1297,7 +1352,7 @@ export function DashboardOverview({
     if (master?.naps) {
       Object.keys(master.naps).forEach(code => {
         const item = master.naps[code];
-        const st = getEmpStat(empStats?.NAPS, code);
+        const st = getEmpStat(displayEmpStats?.NAPS, code);
         const days = st.daysPresent || 1;
         const lInfo = getLateInfo(code, days);
         if (lInfo) {
@@ -1347,13 +1402,13 @@ export function DashboardOverview({
       complianceRate: Math.max(88, Math.min(99.4, Number(complianceRate))).toFixed(1),
       allList: [...opList, ...clList, ...napsList].sort((a, b) => b.totalLostMins - a.totalLostMins)
     };
-  }, [master, empStats, totHC]);
+  }, [master, displayEmpStats, totHC, displayResults]);
 
   // Daily Late Arrival Trend (Late Card 1)
   const lateWaveData = useMemo(() => {
-    if (!batchResults || batchResults.length === 0) return [];
+    if (!displayResults || displayResults.length === 0) return [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return batchResults.map((r, i) => {
+    return displayResults.map((r, i) => {
       const d = new Date(r.date);
       const day = d.getUTCDate();
       const monthShort = monthNames[d.getUTCMonth()] || 'Aug';
@@ -1370,7 +1425,7 @@ export function DashboardOverview({
         isoDate: r.date
       };
     });
-  }, [batchResults]);
+  }, [displayResults]);
 
   // Late Category Segments (Late Card 2 Donut)
   const lateCategorySegments = useMemo(() => {
@@ -1412,11 +1467,11 @@ export function DashboardOverview({
 
   // Daily WOP Trend (WOP Card 1 Trend Wave / Bar)
   const wopDailyTrend = useMemo(() => {
-    if (!batchResults || batchResults.length === 0) return [];
+    if (!displayResults || displayResults.length === 0) return [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const totWops = wopMetrics.totalCount || 0;
 
-    return batchResults.map((r, i) => {
+    return displayResults.map((r, i) => {
       const d = new Date(r.date);
       const day = d.getUTCDate();
       const dayOfWeek = d.getUTCDay(); // 0 is Sunday
@@ -1443,7 +1498,7 @@ export function DashboardOverview({
         if (dayOfWeek === 0) {
           dayCount = Math.max(1, Math.round(totWops * 0.22) + ((i * 3) % 5));
         } else {
-          dayCount = Math.max(0, Math.round((totWops / (batchResults.length || 31)) * 0.4) + ((i * 5 + day) % 3));
+          dayCount = Math.max(0, Math.round((totWops / (displayResults.length || 31)) * 0.4) + ((i * 5 + day) % 3));
         }
       }
 
@@ -1457,7 +1512,7 @@ export function DashboardOverview({
         isoDate: r.date
       };
     });
-  }, [batchResults, wopMetrics]);
+  }, [displayResults, wopMetrics]);
 
   // Filtered employees (General Overview Table)
   const filteredEmployees = useMemo(() => {
@@ -1552,9 +1607,10 @@ export function DashboardOverview({
   const handleExportWopExcel = async () => {
     setIsExportingWop(true);
     try {
-      const buffer = await generateWopReportWorkbook(wopMetrics, master, batchResults);
+      const monthLabel = selectedMonthKey === 'ALL' ? 'Full_Year' : (availableMonths.find(m => m.key === selectedMonthKey)?.shortLabel || 'Month');
+      const buffer = await generateWopReportWorkbook(wopMetrics, master, displayResults);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `WOP_Statistics_Report.xlsx`);
+      downloadBlob(blob, `WOP_Statistics_Report_${monthLabel}.xlsx`);
     } catch (err) {
       console.error('Failed to export WOP report:', err);
     } finally {
@@ -1565,9 +1621,10 @@ export function DashboardOverview({
   const handleExportLateExcel = async () => {
     setIsExportingLate(true);
     try {
-      const buffer = await generateLateReportWorkbook(lateMetrics, master, batchResults);
+      const monthLabel = selectedMonthKey === 'ALL' ? 'Full_Year' : (availableMonths.find(m => m.key === selectedMonthKey)?.shortLabel || 'Month');
+      const buffer = await generateLateReportWorkbook(lateMetrics, master, displayResults);
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      downloadBlob(blob, `Late_Coming_Report.xlsx`);
+      downloadBlob(blob, `Late_Coming_Report_${monthLabel}.xlsx`);
     } catch (err) {
       console.error('Failed to export Late Coming report:', err);
     } finally {
@@ -1629,8 +1686,8 @@ export function DashboardOverview({
 
           {/* Download Summary Button */}
           <button
-            onClick={onExportMonthly}
-            disabled={!batchResults.length}
+            onClick={() => onExportMonthly && onExportMonthly(selectedMonthKey)}
+            disabled={!displayResults.length}
             className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 rounded-xl text-xs flex items-center space-x-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
             title="Download Monthly Summary Report in Excel"
           >
@@ -1658,6 +1715,95 @@ export function DashboardOverview({
           </button>
         </div>
       </div>
+
+      {/* ── Month & Year Filter Bar (Prevents Multi-Month / Full-Year mixing) ── */}
+      {availableMonths.length > 0 && (
+        <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-blue-600 shadow-2xs">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                  Month &amp; Year Filter
+                </span>
+                <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                  {availableMonths.length} {availableMonths.length === 1 ? 'Month' : 'Months'} Detected
+                </span>
+                {selectedMonthKey !== 'ALL' && (
+                  <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                    Cleanly Isolated
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] text-slate-500 font-medium">
+                Choose a month to isolate metrics and charts, or select full year:
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {availableMonths.map((m) => {
+              const isSelected = selectedMonthKey === m.key;
+              return (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => setSelectedMonthKey(m.key)}
+                  style={
+                    isSelected
+                      ? { backgroundColor: '#0f172a', color: '#ffffff', borderColor: '#0f172a' }
+                      : { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }
+                  }
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center space-x-2 cursor-pointer shadow-xs border ${
+                    isSelected ? 'ring-2 ring-slate-900/30' : 'hover:bg-slate-100'
+                  }`}
+                >
+                  <span style={{ color: isSelected ? '#ffffff' : '#0f172a' }}>{m.label}</span>
+                  <span
+                    style={
+                      isSelected
+                        ? { backgroundColor: 'rgba(255, 255, 255, 0.25)', color: '#ffffff' }
+                        : { backgroundColor: '#f1f5f9', color: '#0f172a', borderColor: '#cbd5e1' }
+                    }
+                    className="px-2 py-0.5 rounded-full text-[10px] font-black border"
+                  >
+                    {m.count} {m.count === 1 ? 'Day' : 'Days'}
+                  </span>
+                </button>
+              );
+            })}
+
+            {availableMonths.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setSelectedMonthKey('ALL')}
+                style={
+                  selectedMonthKey === 'ALL'
+                    ? { backgroundColor: '#0f172a', color: '#ffffff', borderColor: '#0f172a' }
+                    : { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }
+                }
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center space-x-2 cursor-pointer shadow-xs border ${
+                  selectedMonthKey === 'ALL' ? 'ring-2 ring-slate-900/30' : 'hover:bg-slate-100'
+                }`}
+              >
+                <span style={{ color: selectedMonthKey === 'ALL' ? '#ffffff' : '#0f172a' }}>All Months (Full Year)</span>
+                <span
+                  style={
+                    selectedMonthKey === 'ALL'
+                      ? { backgroundColor: 'rgba(255, 255, 255, 0.25)', color: '#ffffff' }
+                      : { backgroundColor: '#f1f5f9', color: '#0f172a', borderColor: '#cbd5e1' }
+                  }
+                  className="px-2 py-0.5 rounded-full text-[10px] font-black border"
+                >
+                  {batchResults.length} Total
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Executive View Headings / Tabs + Global Chart View Controller ── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
