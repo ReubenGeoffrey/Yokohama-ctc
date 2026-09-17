@@ -18,7 +18,10 @@ export function reconcileDay(date, dayRecords, master) {
   function processCategory(list, map, dKey, iKey, label) {
     if (!list) return;
     list.forEach(rec => {
-      const hasOT = (rec.otHours || 0) > 0;
+      // Plant Overtime Eligibility Policy: 1 hr OT not eligible, >= 2 hrs only eligible take value
+      const rawOt = rec.otHours || 0;
+      const otHours = rawOt >= 2 ? rawOt : 0;
+      const hasOT = otHours > 0;
       const isPresent = rec.status === 'P' || rec.status === 'WOP';
 
       // Keep record if present (P or WOP) OR if employee worked Overtime
@@ -78,14 +81,14 @@ export function reconcileDay(date, dayRecords, master) {
 
       const b = info.direct ? buckets[dKey] : buckets[iKey];
       const otRate = info.dailyOT || 0;
-      const dayOtAmt = (rec.otHours || 0) * otRate;
+      const dayOtAmt = otHours * otRate;
 
       if (isPresent) {
         b.headcount += 1;
         b.ctc += info.dailyCTC;
       }
       b.ot += dayOtAmt;
-      b.otHours = (b.otHours || 0) + (rec.otHours || 0);
+      b.otHours = (b.otHours || 0) + otHours;
 
       if (!empDayMap.has(rec.code)) {
         empDayMap.set(rec.code, {
@@ -110,7 +113,7 @@ export function reconcileDay(date, dayRecords, master) {
         st.wopCount += 1;
       }
       st.workHrs += (rec.workHours || 0);
-      st.otHrs += (rec.otHours || 0);
+      st.otHrs += otHours;
       st.otAmount = (st.otAmount || 0) + dayOtAmt;
       const basePay = isPresent ? info.dailyCTC : 0;
       st.wages += basePay + dayOtAmt;

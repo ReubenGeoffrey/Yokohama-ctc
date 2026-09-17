@@ -338,12 +338,15 @@ export function parsePresentRecords(rows, hIdx) {
     const codeStr = String(r[idxCode]).trim().toUpperCase();
     if (codeStr === 'GRANDTOTAL' || codeStr.startsWith('TOTAL')) continue;
     const stStr = idxStatus !== -1 ? String(r[idxStatus] || '').trim().toUpperCase() : 'P';
+    const rawOt = idxOT !== -1 ? timeStrToHours(r[idxOT]) : 0;
+    // Plant Overtime Eligibility Policy: 1 hr OT not eligible, >= 2 hrs only eligible take value
+    const otHours = rawOt >= 2 ? rawOt : 0;
     out.push({
       code: codeStr,
       name: idxName !== -1 ? String(r[idxName] || '').trim() : '',
       status: stStr,
       isWop: stStr === 'WOP',
-      otHours: idxOT !== -1 ? timeStrToHours(r[idxOT]) : 0,
+      otHours,
       workHours: idxWorkHrs !== -1 ? timeStrToHours(r[idxWorkHrs]) : 0
     });
   }
