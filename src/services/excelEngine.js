@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
-import { formatDateDisplay, formatDateToInput } from './parser.js';
+import { formatDateDisplay, formatDateToInput, formatHoursBadge, decimalToHHMM } from './parser.js';
 import { aggregateMonthlyStats } from './reconciliation.js';
 
 const FONT_NAME = 'Segoe UI';
@@ -208,10 +208,10 @@ export function buildDetailSheet(wb, title, employeeMap, statMap) {
     ws.getCell(r, 2).value = code;
     ws.getCell(r, 3).value = info.name || st.name || code;
     ws.getCell(r, 4).value = info.dept || st.dept || 'Production';
-    ws.getCell(r, 5).value = Math.round((st.workHrs || 0) * 100) / 100;
+    ws.getCell(r, 5).value = st.workHrs ? formatHoursBadge(st.workHrs) : '0h';
     ws.getCell(r, 6).value = st.daysPresent || 0;
     ws.getCell(r, 7).value = st.wopCount || 0;
-    ws.getCell(r, 8).value = Math.round((st.otHrs || 0) * 100) / 100;
+    ws.getCell(r, 8).value = st.otHrs ? formatHoursBadge(st.otHrs) : '0h';
     ws.getCell(r, 9).value = Math.round(otAmt * 100) / 100;
     ws.getCell(r, 10).value = Math.round((st.wages || 0) * 100) / 100;
 
@@ -223,10 +223,10 @@ export function buildDetailSheet(wb, title, employeeMap, statMap) {
       cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
       cell.alignment = (c === 3)
         ? { horizontal: 'left', vertical: 'middle' }
-        : ((c === 5 || c === 8 || c === 9 || c === 10) ? { horizontal: 'right', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' });
+        : ((c === 9 || c === 10) ? { horizontal: 'right', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' });
       if (banded) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
-      if (c === 5 || c === 8) cell.numFmt = '#,##0.00';
-      else if (c === 6 || c === 7 || c === 9 || c === 10) cell.numFmt = '#,##0';
+      if (c === 9 || c === 10) cell.numFmt = '#,##0.00';
+      else if (c === 6 || c === 7) cell.numFmt = '#,##0';
     }
     r += 1;
     sno += 1;
@@ -1095,7 +1095,7 @@ export async function generateOvertimeReportWorkbook(otMetrics, master, batchRes
       ws.getCell(r, 4).value = emp.dept;
       ws.getCell(r, 5).value = emp.shift || ((emp.category === 'Operator' || emp.category === 'OPERATOR') ? 'AA' : 'GG');
       ws.getCell(r, 6).value = emp.days || 1;
-      ws.getCell(r, 7).value = Math.round((emp.otHours || 0) * 100) / 100;
+      ws.getCell(r, 7).value = formatHoursBadge(emp.otHours);
       ws.getCell(r, 8).value = Math.round((emp.dailyRate || 0) * 100) / 100;
       ws.getCell(r, 9).value = Math.round((emp.otWages || 0) * 100) / 100;
       ws.getCell(r, 10).value = Math.round((emp.totalWages || 0) * 100) / 100;
@@ -1107,9 +1107,10 @@ export async function generateOvertimeReportWorkbook(otMetrics, master, batchRes
         cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
         if (banded) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cAmberRowEven } };
         if (c === 6) cell.numFmt = '#,##0';
-        if (c === 7) cell.numFmt = '#,##0.00';
         if (c === 8 || c === 9 || c === 10) cell.numFmt = '#,##0.00';
-        cell.alignment = (c === 3 || c === 4) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+        cell.alignment = (c === 3 || c === 4)
+          ? { horizontal: 'left', vertical: 'middle' }
+          : ((c === 8 || c === 9 || c === 10) ? { horizontal: 'right', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' });
       }
       ws.getRow(r).height = 20;
     });
@@ -1122,7 +1123,7 @@ export async function generateOvertimeReportWorkbook(otMetrics, master, batchRes
     ws.getCell(lastR, 4).value = `${list.length} Employees`;
     ws.getCell(lastR, 5).value = '';
     ws.getCell(lastR, 6).value = '';
-    ws.getCell(lastR, 7).value = Math.round(totHours * 100) / 100;
+    ws.getCell(lastR, 7).value = formatHoursBadge(totHours);
     ws.getCell(lastR, 8).value = '';
     ws.getCell(lastR, 9).value = Math.round(totOtWages * 100) / 100;
     ws.getCell(lastR, 10).value = Math.round(totAllWages * 100) / 100;
@@ -1132,9 +1133,10 @@ export async function generateOvertimeReportWorkbook(otMetrics, master, batchRes
       cell.border = amberDoubleBottomBorder;
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cAmberTotal } };
       cell.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-      if (c === 7) cell.numFmt = '#,##0.00';
       if (c === 9 || c === 10) cell.numFmt = '#,##0.00';
-      cell.alignment = (c === 3 || c === 4) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+      cell.alignment = (c === 3 || c === 4)
+        ? { horizontal: 'left', vertical: 'middle' }
+        : ((c === 9 || c === 10) ? { horizontal: 'right', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' });
     }
     ws.getRow(lastR).height = 24;
 

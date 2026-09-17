@@ -34,7 +34,7 @@ import {
   RefreshCw,
   Cloud
 } from 'lucide-react';
-import { formatDateDisplay, MONTH_NAMES } from '../services/parser';
+import { formatDateDisplay, MONTH_NAMES, formatHoursBadge, decimalToHHMM } from '../services/parser';
 import { aggregateMonthlyStats } from '../services/reconciliation';
 import {
   generateWopReportWorkbook,
@@ -1627,9 +1627,9 @@ export function DashboardOverview({
   // Overtime Category Segments (OT Card 2 Donut / Bar)
   const otCategorySegments = useMemo(() => {
     return [
-      { label: 'Plant Operators', value: Math.round(otMetrics.op.hours), color: '#0ea5e9', formattedValue: `${otMetrics.op.hours} hrs` },
-      { label: 'Contract Labour (CL)', value: Math.round(otMetrics.cl.hours), color: '#059669', formattedValue: `${otMetrics.cl.hours} hrs` },
-      { label: 'NAPS Apprentices', value: Math.round(otMetrics.naps.hours), color: '#f59e0b', formattedValue: `${otMetrics.naps.hours} hrs` }
+      { label: 'Plant Operators', value: Math.round(otMetrics.op.hours), color: '#0ea5e9', formattedValue: `${formatHoursBadge(otMetrics.op.hours)}` },
+      { label: 'Contract Labour (CL)', value: Math.round(otMetrics.cl.hours), color: '#059669', formattedValue: `${formatHoursBadge(otMetrics.cl.hours)}` },
+      { label: 'NAPS Apprentices', value: Math.round(otMetrics.naps.hours), color: '#f59e0b', formattedValue: `${formatHoursBadge(otMetrics.naps.hours)}` }
     ];
   }, [otMetrics]);
 
@@ -2395,7 +2395,7 @@ export function DashboardOverview({
                         <td className="py-3 px-3 text-center">
                           {emp.otHours > 0 ? (
                             <span className="px-2 py-0.5 bg-amber-50 text-amber-900 border border-amber-200 rounded-md font-mono text-[11px] font-black">
-                              {emp.otHours}h
+                              {formatHoursBadge(emp.otHours)}
                             </span>
                           ) : (
                             <span className="text-slate-300 font-mono">—</span>
@@ -3956,7 +3956,7 @@ export function DashboardOverview({
                         </td>
                         <td className="py-3 px-4 text-center font-mono font-black text-amber-900 bg-amber-50/30">
                           <span className="px-2 py-0.5 bg-amber-100 text-amber-950 border border-amber-300 rounded-md font-bold">
-                            {emp.otHours}h
+                            {formatHoursBadge(emp.otHours)}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right font-mono text-slate-600">
