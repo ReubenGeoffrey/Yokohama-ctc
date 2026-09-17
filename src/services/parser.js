@@ -364,6 +364,10 @@ export function parsePresentRecords(rows, hIdx) {
     idxStatus = header.findIndex(h => /^(?:STATUS|ATTENDANCE|P\/A)$/i.test(h));
   }
 
+  let idxPresent = header.indexOf('PRESENT');
+  let idxAbsent = header.indexOf('ABSENT');
+  let idxWO = header.findIndex(h => /^(?:WO|WEEKLY[\s_-]*OFF)$/i.test(h));
+
   let idxShift = header.indexOf('SHIFT');
   if (idxShift === -1) {
     idxShift = header.findIndex(h => /^SHIFT/i.test(h));
@@ -398,7 +402,31 @@ export function parsePresentRecords(rows, hIdx) {
     if (!r || idxCode === -1 || !r[idxCode]) continue;
     const codeStr = String(r[idxCode]).trim().toUpperCase();
     if (codeStr === 'GRANDTOTAL' || codeStr.startsWith('TOTAL')) continue;
-    const stStr = idxStatus !== -1 ? String(r[idxStatus] || '').trim().toUpperCase() : 'P';
+
+    // Accurate Attendance Status Determination
+    let stStr = 'P';
+    if (idxStatus !== -1 && r[idxStatus] && String(r[idxStatus]).trim() !== '') {
+      stStr = String(r[idxStatus]).trim().toUpperCase();
+    } else if (idxPresent !== -1 || idxAbsent !== -1 || idxWO !== -1) {
+      const pVal = idxPresent !== -1 ? parseFloat(r[idxPresent]) || 0 : 0;
+      const aVal = idxAbsent !== -1 ? parseFloat(r[idxAbsent]) || 0 : 0;
+      const woVal = idxWO !== -1 ? parseFloat(r[idxWO]) || 0 : 0;
+      const workVal = idxWorkHrs !== -1 ? String(r[idxWorkHrs] || '').trim() : '';
+      const otVal = idxOT !== -1 ? String(r[idxOT] || '').trim() : '';
+      const hasWorkOrOt = (workVal !== '' && workVal !== '00:00' && workVal !== '0') || (otVal !== '' && otVal !== '00:00' && otVal !== '0');
+
+      if (woVal > 0) {
+        stStr = hasWorkOrOt ? 'WOP' : 'WO';
+      } else if (pVal > 0) {
+        stStr = 'P';
+      } else if (aVal > 0) {
+        stStr = 'A';
+      } else if (hasWorkOrOt) {
+        stStr = 'P';
+      } else {
+        stStr = 'A';
+      }
+    }
     const rawOt = idxOT !== -1 ? timeStrToHours(r[idxOT]) : 0;
 
     // Detect shift from column or sub-rows
