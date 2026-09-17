@@ -118,9 +118,9 @@ export const StorageService = {
       batchResults: (state.batchResults || []).map(r => ({
         date: r.date,
         buckets: r.buckets,
-        dHC: r.dHC, dCTC: r.dCTC, dOT: r.dOT, dTot: r.dTot,
-        iHC: r.iHC, iCTC: r.iCTC, iOT: r.iOT, iTot: r.iTot,
-        gHC: r.gHC, gCTC: r.gCTC, gOT: r.gOT, gTot: r.gTot,
+        dHC: r.dHC, dCTC: r.dCTC, dOT: r.dOT, dOtHrs: r.dOtHrs || 0, dTot: r.dTot,
+        iHC: r.iHC, iCTC: r.iCTC, iOT: r.iOT, iOtHrs: r.iOtHrs || 0, iTot: r.iTot,
+        gHC: r.gHC, gCTC: r.gCTC, gOT: r.gOT, gOtHrs: r.gOtHrs || 0, gTot: r.gTot,
         empDayMap: r.empDayMap instanceof Map ? Object.fromEntries(r.empDayMap) : (r.empDayMap || {})
       })),
       empStats: state.empStats ? {

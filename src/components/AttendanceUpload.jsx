@@ -37,6 +37,7 @@ import {
   generateZipBundle,
   generateWopReportWorkbook,
   generateLateReportWorkbook,
+  generateOvertimeReportWorkbook,
   downloadBlob
 } from '../services/excelEngine';
 
@@ -71,6 +72,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
   const [isDownloadingMonthly, setIsDownloadingMonthly] = useState(false);
   const [isDownloadingWop, setIsDownloadingWop] = useState(false);
   const [isDownloadingLate, setIsDownloadingLate] = useState(false);
+  const [isDownloadingOt, setIsDownloadingOt] = useState(false);
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
 
   const fileInputRef = useRef(null);
@@ -436,6 +438,88 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
     }
   };
 
+  const handleDownloadOt = async () => {
+    const data = getReconciledData();
+    if (!data) return;
+    const effectiveMaster = getEffectiveMaster(master);
+    const { year, month, monthName } = getSelectedMonthYear(data.results);
+    setIsDownloadingOt(true);
+    try {
+      const getStat = (catStats, code) => (!catStats ? { otHrs: 0, otAmount: 0, daysPresent: 0, wages: 0 } : (typeof catStats.get === 'function' ? catStats.get(code) : catStats[code]) || { otHrs: 0, otAmount: 0, daysPresent: 0, wages: 0 });
+      const opList = [], clList = [], napsList = [];
+      let opOtHours = 0, opOtEmployees = 0, opOtWages = 0;
+      let clOtHours = 0, clOtEmployees = 0, clOtWages = 0;
+      let napsOtHours = 0, napsOtEmployees = 0, napsOtWages = 0;
+
+      const allOpCodes = new Set([
+        ...Object.keys(effectiveMaster?.operator || {}),
+        ...(data.empStats?.OP instanceof Map ? Array.from(data.empStats.OP.keys()) : Object.keys(data.empStats?.OP || {}))
+      ]);
+      allOpCodes.forEach(code => {
+        const item = effectiveMaster?.operator?.[code] || {};
+        const st = getStat(data.empStats?.OP, code);
+        const otHrs = st.otHrs || 0;
+        const dailyRate = item.dailyOT || st.dailyOT || 0;
+        const otWages = st.otAmount !== undefined ? st.otAmount : Math.round(otHrs * dailyRate * 100) / 100;
+        if (otHrs > 0) {
+          opOtHours += otHrs; opOtEmployees += 1; opOtWages += otWages;
+          opList.push({ code, name: item.name || st.name || 'Operator', category: 'Operator', dept: item.dept || st.dept || 'Production', days: st.daysPresent, otHours: otHrs, dailyRate, otWages, totalWages: st.wages });
+        }
+      });
+
+      const allClCodes = new Set([
+        ...Object.keys(effectiveMaster?.contract || {}),
+        ...(data.empStats?.CL instanceof Map ? Array.from(data.empStats.CL.keys()) : Object.keys(data.empStats?.CL || {}))
+      ]);
+      allClCodes.forEach(code => {
+        const item = effectiveMaster?.contract?.[code] || {};
+        const st = getStat(data.empStats?.CL, code);
+        const otHrs = st.otHrs || 0;
+        const dailyRate = item.dailyOT || st.dailyOT || 0;
+        const otWages = st.otAmount !== undefined ? st.otAmount : Math.round(otHrs * dailyRate * 100) / 100;
+        if (otHrs > 0) {
+          clOtHours += otHrs; clOtEmployees += 1; clOtWages += otWages;
+          clList.push({ code, name: item.name || st.name || 'Contract Labour', category: 'CL', dept: item.dept || st.dept || 'Contract', days: st.daysPresent, otHours: otHrs, dailyRate, otWages, totalWages: st.wages });
+        }
+      });
+
+      const allNapsCodes = new Set([
+        ...Object.keys(effectiveMaster?.naps || {}),
+        ...(data.empStats?.NAPS instanceof Map ? Array.from(data.empStats.NAPS.keys()) : Object.keys(data.empStats?.NAPS || {}))
+      ]);
+      allNapsCodes.forEach(code => {
+        const item = effectiveMaster?.naps?.[code] || {};
+        const st = getStat(data.empStats?.NAPS, code);
+        const otHrs = st.otHrs || 0;
+        const dailyRate = item.dailyOT || st.dailyOT || 0;
+        const otWages = st.otAmount !== undefined ? st.otAmount : Math.round(otHrs * dailyRate * 100) / 100;
+        if (otHrs > 0) {
+          napsOtHours += otHrs; napsOtEmployees += 1; napsOtWages += otWages;
+          napsList.push({ code, name: item.name || st.name || 'NAPS Apprentice', category: 'NAPS', dept: item.dept || st.dept || 'NAPS', days: st.daysPresent, otHours: otHrs, dailyRate, otWages, totalWages: st.wages });
+        }
+      });
+
+      const otMetrics = {
+        totalHours: opOtHours + clOtHours + napsOtHours,
+        totalEmployees: opOtEmployees + clOtEmployees + napsOtEmployees,
+        totalWages: opOtWages + clOtWages + napsOtWages,
+        op: { hours: opOtHours, employees: opOtEmployees, wages: opOtWages, list: opList },
+        cl: { hours: clOtHours, employees: clOtEmployees, wages: clOtWages, list: clList },
+        naps: { hours: napsOtHours, employees: napsOtEmployees, wages: napsOtWages, list: napsList }
+      };
+
+      const buffer = await generateOvertimeReportWorkbook(otMetrics, effectiveMaster, data.results);
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const filename = monthName === 'Full_Year' ? `Overtime_Audit_Report_Full_Year_${year}.xlsx` : `Overtime_Audit_Report_${monthName}_${year}.xlsx`;
+      downloadBlob(blob, filename);
+    } catch (err) {
+      console.error(err);
+      alert('Error downloading Overtime Workbook: ' + err.message);
+    } finally {
+      setIsDownloadingOt(false);
+    }
+  };
+
   const handleDownloadZip = async () => {
     const data = getReconciledData();
     if (!data) return;
@@ -722,6 +806,18 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
                 >
                   {isDownloadingLate ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5 text-emerald-200" />}
                   <span>Late Excel</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadOt}
+                  disabled={isDownloadingOt || displayDateKeys.length === 0}
+                  style={{ backgroundColor: '#d97706', color: '#ffffff' }}
+                  className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+                  title="Download Dedicated Overtime (OT) Audit Report"
+                >
+                  {isDownloadingOt ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Timer className="w-3.5 h-3.5 text-amber-200" />}
+                  <span>OT Excel</span>
                 </button>
 
                 <button

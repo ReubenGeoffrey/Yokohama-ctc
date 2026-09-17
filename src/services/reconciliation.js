@@ -117,9 +117,13 @@ export function reconcileDay(date, dayRecords, master) {
     });
   }
 
-  processCategory(dayRecords.CL, master.contract, 'directCL', 'indirectCL', 'Contract Labour');
-  processCategory(dayRecords.OP, master.operator, 'directOperator', 'indirectOperator', 'Operator');
-  processCategory(dayRecords.NAPS, master.naps, 'directNAPS', 'indirectNAPS', 'NAPS');
+  const clList = dayRecords.CL || dayRecords.contract || dayRecords.Contract || dayRecords['Contract Labour'] || [];
+  const opList = dayRecords.OP || dayRecords.operator || dayRecords.Operator || [];
+  const napsList = dayRecords.NAPS || dayRecords.naps || [];
+
+  processCategory(clList, master.contract, 'directCL', 'indirectCL', 'Contract Labour');
+  processCategory(opList, master.operator, 'directOperator', 'indirectOperator', 'Operator');
+  processCategory(napsList, master.naps, 'directNAPS', 'indirectNAPS', 'NAPS');
 
   const dTotOp = buckets.directOperator.ctc + buckets.directOperator.ot;
   const dTotCL = buckets.directCL.ctc + buckets.directCL.ot;
@@ -181,8 +185,12 @@ export function aggregateMonthlyStats(batchResults, master) {
   }
 
   // Aggregate across all dates
-  batchResults.forEach(r => {
-    if (r.empDayMap) {
+  const list = Array.isArray(batchResults)
+    ? batchResults
+    : (batchResults && typeof batchResults === 'object' ? (batchResults.results || Object.values(batchResults)) : []);
+
+  list.forEach(r => {
+    if (r && r.empDayMap) {
       const entries = r.empDayMap instanceof Map
         ? Array.from(r.empDayMap.entries())
         : Object.entries(r.empDayMap);

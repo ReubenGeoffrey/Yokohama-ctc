@@ -1484,12 +1484,16 @@ export function DashboardOverview({
     const napsList = [];
 
     if (master) {
-      if (master.operator) {
-        Object.keys(master.operator).forEach(code => {
-          const item = master.operator[code];
+      if (master.operator || displayEmpStats?.OP) {
+        const allOpCodes = new Set([
+          ...Object.keys(master.operator || {}),
+          ...(displayEmpStats?.OP instanceof Map ? Array.from(displayEmpStats.OP.keys()) : Object.keys(displayEmpStats?.OP || {}))
+        ]);
+        allOpCodes.forEach(code => {
+          const item = master.operator?.[code] || {};
           const st = getEmpStat(displayEmpStats?.OP, code);
           const otHrs = st.otHrs || 0;
-          const dailyRate = item.dailyOT || 0;
+          const dailyRate = item.dailyOT || st.dailyOT || 0;
           const otWages = st.otAmount !== undefined ? st.otAmount : Math.round(otHrs * dailyRate * 100) / 100;
           if (otHrs > 0) {
             opOtHours += otHrs;
@@ -1497,10 +1501,10 @@ export function DashboardOverview({
             opOtWages += otWages;
             opList.push({
               code,
-              name: item.name || 'Operator',
+              name: item.name || st.name || 'Operator',
               category: 'OPERATOR',
               categoryColor: 'bg-sky-50 text-sky-700 border-sky-200',
-              dept: item.dept || item.department || 'Production',
+              dept: item.dept || item.department || st.dept || 'Production',
               days: st.daysPresent,
               otHours: otHrs,
               dailyRate,
@@ -1512,12 +1516,16 @@ export function DashboardOverview({
         });
       }
 
-      if (master.contract) {
-        Object.keys(master.contract).forEach(code => {
-          const item = master.contract[code];
+      if (master.contract || displayEmpStats?.CL) {
+        const allClCodes = new Set([
+          ...Object.keys(master.contract || {}),
+          ...(displayEmpStats?.CL instanceof Map ? Array.from(displayEmpStats.CL.keys()) : Object.keys(displayEmpStats?.CL || {}))
+        ]);
+        allClCodes.forEach(code => {
+          const item = master.contract?.[code] || {};
           const st = getEmpStat(displayEmpStats?.CL, code);
           const otHrs = st.otHrs || 0;
-          const dailyRate = item.dailyOT || 0;
+          const dailyRate = item.dailyOT || st.dailyOT || 0;
           const otWages = st.otAmount !== undefined ? st.otAmount : Math.round(otHrs * dailyRate * 100) / 100;
           if (otHrs > 0) {
             clOtHours += otHrs;
@@ -1525,10 +1533,10 @@ export function DashboardOverview({
             clOtWages += otWages;
             clList.push({
               code,
-              name: item.name || 'Contract Labour',
+              name: item.name || st.name || 'Contract Labour',
               category: 'CL',
               categoryColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-              dept: item.dept || item.contractor || 'Contract',
+              dept: item.dept || item.contractor || st.dept || 'Contract',
               days: st.daysPresent,
               otHours: otHrs,
               dailyRate,
@@ -1540,9 +1548,13 @@ export function DashboardOverview({
         });
       }
 
-      if (master.naps) {
-        Object.keys(master.naps).forEach(code => {
-          const item = master.naps[code];
+      if (master.naps || displayEmpStats?.NAPS) {
+        const allNapsCodes = new Set([
+          ...Object.keys(master.naps || {}),
+          ...(displayEmpStats?.NAPS instanceof Map ? Array.from(displayEmpStats.NAPS.keys()) : Object.keys(displayEmpStats?.NAPS || {}))
+        ]);
+        allNapsCodes.forEach(code => {
+          const item = master.naps?.[code] || {};
           const st = getEmpStat(displayEmpStats?.NAPS, code);
           const otHrs = st.otHrs || 0;
           const dailyRate = 0;
@@ -1553,10 +1565,10 @@ export function DashboardOverview({
             napsOtWages += otWages;
             napsList.push({
               code,
-              name: item.name || 'NAPS Apprentice',
+              name: item.name || st.name || 'NAPS Apprentice',
               category: 'NAPS',
               categoryColor: 'bg-amber-50 text-amber-700 border-amber-200',
-              dept: item.dept || 'NAPS',
+              dept: item.dept || st.dept || 'NAPS',
               days: st.daysPresent,
               otHours: otHrs,
               dailyRate,

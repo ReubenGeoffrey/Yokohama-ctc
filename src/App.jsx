@@ -90,12 +90,18 @@ export function App() {
         });
 
         let finalStats = safeEmpStats;
-        const bKeys = Object.keys(cloudState.batchDates || {});
-        // If batchDates exist but calculations are empty or lost during JSON sync, auto re-reconcile!
-        if (bKeys.length > 0 && (finalResults.length === 0 || (finalStats.CL.size === 0 && finalStats.OP.size === 0))) {
+
+        // Merge local attendance files from IndexedDB so locally uploaded files are never lost
+        const localAttendance = (await StorageService.loadAttendanceFiles()) || {};
+        const mergedBatchDates = { ...localAttendance, ...(cloudState.batchDates || {}) };
+        const bKeys = Object.keys(mergedBatchDates);
+
+        // Check if any results need OT re-calculation or if dates need reconciliation
+        const needsOtFix = finalResults.some(r => r.gOtHrs === undefined || r.gOtHrs === null || (r.gOT === 0 && (r.dHC + r.iHC) > 0));
+        if (bKeys.length > 0 && (finalResults.length === 0 || (finalStats.CL.size === 0 && finalStats.OP.size === 0) || needsOtFix || bKeys.length !== finalResults.length)) {
           finalResults = [];
           bKeys.sort().forEach(dKey => {
-            const dObj = cloudState.batchDates[dKey];
+            const dObj = mergedBatchDates[dKey];
             if (dObj) {
               const res = reconcileDay(dObj.date, dObj, cloudState.master);
               finalResults.push(res);
@@ -109,13 +115,13 @@ export function App() {
 
         setMaster(effectiveM);
         setMasterMeta(effectiveMeta);
-        setBatchDates(cloudState.batchDates || {});
+        setBatchDates(mergedBatchDates);
         setBatchResults(finalResults);
         setEmpStats(finalStats);
 
         // Also cache locally to IndexedDB
         await StorageService.saveMaster(effectiveM, effectiveMeta?.fileName || 'Master');
-        if (cloudState.batchDates) await StorageService.saveAttendanceFiles(cloudState.batchDates);
+        await StorageService.saveAttendanceFiles(mergedBatchDates);
         await StorageService.saveBatchResults({ results: finalResults, empStats: finalStats });
 
         setIsSyncing(false);
