@@ -365,66 +365,100 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
     const { year, month, monthName } = getSelectedMonthYear(data.results);
     setIsDownloadingLate(true);
     try {
-      const shiftDefinitions = [
-        { code: 'A', name: 'Shift A (7am-3pm)', start: '07:00 AM', end: '03:00 PM', startH: 7, startM: 0 },
-        { code: 'B', name: 'Shift B (3pm-11pm)', start: '03:00 PM', end: '11:00 PM', startH: 15, startM: 0 },
-        { code: 'C', name: 'Shift C (11pm-7am)', start: '11:00 PM', end: '07:00 AM', startH: 23, startM: 0 },
-        { code: 'G', name: 'General G (9am-5.30pm)', start: '09:00 AM', end: '05:30 PM', startH: 9, startM: 0 }
+      const shiftMap = {
+        'AA': { name: 'Shift A (7am-3pm)', start: '07:00 AM' },
+        'A': { name: 'Shift A (7am-3pm)', start: '07:00 AM' },
+        'BB': { name: 'Shift B (3pm-11pm)', start: '03:00 PM' },
+        'B': { name: 'Shift B (3pm-11pm)', start: '03:00 PM' },
+        'CC': { name: 'Shift C (11pm-7am)', start: '11:00 PM' },
+        'C': { name: 'Shift C (11pm-7am)', start: '11:00 PM' },
+        'GG': { name: 'General G (9am-5.30pm)', start: '09:00 AM' },
+        'G': { name: 'General G (9am-5.30pm)', start: '09:00 AM' }
+      };
+
+      const MONTH_NAMES = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
       ];
+
+      const formatDateDisplay = (dateStr) => {
+        if (!dateStr) return '';
+        const parts = String(dateStr).split('-');
+        if (parts.length === 3) {
+          const [y, m, d] = parts;
+          const monthShort = MONTH_NAMES[parseInt(m, 10) - 1]?.slice(0, 3) || m;
+          return `${d}-${monthShort}-${y}`;
+        }
+        return dateStr;
+      };
 
       const opList = [], clList = [], napsList = [];
       let opLost = 0, clLost = 0, napsLost = 0;
 
-      const getLate = (code, days) => {
-        let h = 0;
-        for (let i = 0; i < code.length; i++) h = (h * 31 + code.charCodeAt(i)) % 1000;
-        if (h % 3 !== 0) return null;
-        const mins = 10 + (h % 45);
-        const shift = shiftDefinitions[h % 4];
-        const inM = shift.startM + mins;
-        const inH = shift.startH + Math.floor(inM / 60);
-        const inMin = inM % 60;
-        const period = inH >= 12 ? 'PM' : 'AM';
-        const displayH = inH > 12 ? inH - 12 : (inH === 0 ? 12 : inH);
-        const inTime = `${String(displayH).padStart(2, '0')}:${String(inMin).padStart(2, '0')} ${period}`;
-        const severity = mins > 30 ? 'High' : (mins > 15 ? 'Medium' : 'Low');
-        const totalLostMins = mins * days;
-        return { mins, totalLostMins, shift: shift.code, shiftStart: shift.start, inTime, severity, date: 'Multiple Dates' };
-      };
+      if (data.results && data.results.length > 0) {
+        data.results.forEach(r => {
+          if (!r.empDayMap) return;
+          const entries = r.empDayMap instanceof Map ? Array.from(r.empDayMap.entries()) : Object.entries(r.empDayMap);
+          entries.forEach(([code, st]) => {
+            const lCount = st.lateCount || 0;
+            const lMins = st.lateMins || 0;
+            if (lCount > 0 || lMins > 0) {
+              const shiftCode = String(st.shift || 'AA').trim().toUpperCase();
+              const sObj = shiftMap[shiftCode] || { name: `Shift ${shiftCode}`, start: shiftCode.startsWith('G') ? '09:00 AM' : '07:00 AM' };
+              const shiftName = sObj.name;
+              const shiftStart = sObj.start;
 
-      const getDays = (catStats, code) => (!catStats ? 1 : (typeof catStats.get === 'function' ? catStats.get(code)?.daysPresent : catStats[code]?.daysPresent) || 1);
+              let severity = 'Minor (<15m)';
+              if (lMins > 30) severity = 'Critical (>30m)';
+              else if (lMins > 15) severity = 'Moderate (15-30m)';
 
-      if (effectiveMaster?.operator) {
-        Object.keys(effectiveMaster.operator).forEach(code => {
-          const item = effectiveMaster.operator[code];
-          const l = getLate(code, getDays(data.empStats?.OP, code));
-          if (l) { opLost += l.totalLostMins; opList.push({ code, name: item.name || 'Operator', category: 'Operator', dept: item.dept || 'Production', lateMins: l.mins, totalLostMins: l.totalLostMins, shift: l.shift, shiftStart: l.shiftStart, inTime: l.inTime, severity: l.severity, date: l.date }); }
-        });
-      }
-      if (effectiveMaster?.contract) {
-        Object.keys(effectiveMaster.contract).forEach(code => {
-          const item = effectiveMaster.contract[code];
-          const l = getLate(code, getDays(data.empStats?.CL, code));
-          if (l) { clLost += l.totalLostMins; clList.push({ code, name: item.name || 'Contract Labour', category: 'CL', dept: item.dept || 'Contract', lateMins: l.mins, totalLostMins: l.totalLostMins, shift: l.shift, shiftStart: l.shiftStart, inTime: l.inTime, severity: l.severity, date: l.date }); }
-        });
-      }
-      if (effectiveMaster?.naps) {
-        Object.keys(effectiveMaster.naps).forEach(code => {
-          const item = effectiveMaster.naps[code];
-          const l = getLate(code, getDays(data.empStats?.NAPS, code));
-          if (l) { napsLost += l.totalLostMins; napsList.push({ code, name: item.name || 'NAPS', category: 'NAPS', dept: item.dept || 'NAPS', lateMins: l.mins, totalLostMins: l.totalLostMins, shift: l.shift, shiftStart: l.shiftStart, inTime: l.inTime, severity: l.severity, date: l.date }); }
+              const rawIn = String(st.inTime || '').trim();
+              const inTimeStr = rawIn ? (rawIn.includes('AM') || rawIn.includes('PM') ? rawIn : `${rawIn} AM`) : shiftStart;
+
+              const isOp = code.startsWith('9') || st.category === 'Operator' || st.category === 'OP';
+              const isNaps = code.startsWith('LN') || st.category === 'NAPS';
+
+              const item = {
+                code,
+                name: st.name || (isOp ? (effectiveMaster?.operator?.[code]?.name || code) : (isNaps ? (effectiveMaster?.naps?.[code]?.name || code) : (effectiveMaster?.contract?.[code]?.name || code))),
+                category: isOp ? 'Operator' : (isNaps ? 'NAPS' : 'CL'),
+                dept: st.dept || (isOp ? (effectiveMaster?.operator?.[code]?.dept || 'Production') : (isNaps ? (effectiveMaster?.naps?.[code]?.dept || 'NAPS') : (effectiveMaster?.contract?.[code]?.dept || 'Contractor'))),
+                days: st.daysPresent || 1,
+                lateCount: lCount || 1,
+                lateMins: lMins,
+                totalLostMins: lMins,
+                shift: shiftName,
+                shiftStart,
+                inTime: inTimeStr,
+                severity,
+                date: formatDateDisplay(r.date),
+                rawDate: r.date
+              };
+
+              if (isOp) {
+                opLost += lMins;
+                opList.push(item);
+              } else if (isNaps) {
+                napsLost += lMins;
+                napsList.push(item);
+              } else {
+                clLost += lMins;
+                clList.push(item);
+              }
+            }
+          });
         });
       }
 
       const totalLostMins = opLost + clLost + napsLost;
       const lateMetrics = {
-        totalCount: opList.length + clList.length + napsList.length,
+        totalCount: opList.reduce((s, e) => s + e.lateCount, 0) + clList.reduce((s, e) => s + e.lateCount, 0) + napsList.reduce((s, e) => s + e.lateCount, 0),
         totalEmployees: opList.length + clList.length + napsList.length,
         totalLostMins,
         totalLostHours: (totalLostMins / 60).toFixed(1),
-        op: { count: opList.length, employees: opList.length, lostMins: opLost, list: opList },
-        cl: { count: clList.length, employees: clList.length, lostMins: clLost, list: clList },
-        naps: { count: napsList.length, employees: napsList.length, lostMins: napsLost, list: napsList }
+        op: { count: opList.reduce((s, e) => s + e.lateCount, 0), employees: opList.length, lostMins: opLost, list: opList },
+        cl: { count: clList.reduce((s, e) => s + e.lateCount, 0), employees: clList.length, lostMins: clLost, list: clList },
+        naps: { count: napsList.reduce((s, e) => s + e.lateCount, 0), employees: napsList.length, lostMins: napsLost, list: napsList }
       };
 
       const buffer = await generateLateReportWorkbook(lateMetrics, effectiveMaster, data.results);

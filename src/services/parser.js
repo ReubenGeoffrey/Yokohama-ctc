@@ -396,6 +396,11 @@ export function parsePresentRecords(rows, hIdx) {
     idxWorkHrs = header.findIndex(h => /WORK[\s_-]*HRS?/i.test(h));
   }
 
+  let idxLateCount = header.indexOf('LATE COUNT');
+  if (idxLateCount === -1) idxLateCount = header.findIndex(h => /LATE[\s_-]*COUNT/i.test(h));
+  let idxLateHours = header.indexOf('LATE HOURS');
+  if (idxLateHours === -1) idxLateHours = header.findIndex(h => /LATE[\s_-]*H(?:OU)?RS?/i.test(h));
+
   const out = [];
   for (let i = hIdx + 1; i < rows.length; i++) {
     const r = rows[i];
@@ -436,6 +441,12 @@ export function parsePresentRecords(rows, hIdx) {
     }
     const rawOt = idxOT !== -1 ? timeStrToHours(r[idxOT]) : 0;
 
+    // Extract real late arrival and in-time
+    const lateCount = idxLateCount !== -1 ? parseFloat(r[idxLateCount]) || 0 : 0;
+    const lateHoursStr = idxLateHours !== -1 ? String(r[idxLateHours] || '').trim() : '';
+    const lateMins = parseToMinutes(lateHoursStr);
+    const inTime = (r[4] && String(r[4]).includes(':')) ? String(r[4]).trim() : '';
+
     // Detect shift from column or sub-rows
     let shift = '';
     if (idxShift !== -1 && r[idxShift]) {
@@ -470,7 +481,11 @@ export function parsePresentRecords(rows, hIdx) {
       shift: shift || 'AA',
       rawOt,
       otHours,
-      workHours: idxWorkHrs !== -1 ? timeStrToHours(r[idxWorkHrs]) : 0
+      workHours: idxWorkHrs !== -1 ? timeStrToHours(r[idxWorkHrs]) : 0,
+      lateCount,
+      lateHours: lateHoursStr,
+      lateMins,
+      inTime
     });
   }
   return out;

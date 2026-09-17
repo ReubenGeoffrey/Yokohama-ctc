@@ -109,7 +109,10 @@ export function reconcileDay(date, dayRecords, master) {
           wopCount: 0,
           otHrs: 0,
           otAmount: 0,
-          wages: 0
+          wages: 0,
+          lateCount: 0,
+          lateMins: 0,
+          inTime: rec.inTime || ''
         });
       }
       const st = empDayMap.get(rec.code);
@@ -121,6 +124,9 @@ export function reconcileDay(date, dayRecords, master) {
       st.workHrs += (rec.workHours || 0);
       st.otHrs += otHours;
       st.otAmount = (st.otAmount || 0) + dayOtAmt;
+      st.lateCount = (st.lateCount || 0) + (rec.lateCount || 0);
+      st.lateMins = (st.lateMins || 0) + (rec.lateMins || 0);
+      if (rec.inTime) st.inTime = rec.inTime;
       const basePay = isPresent ? info.dailyCTC : 0;
       st.wages += basePay + dayOtAmt;
     });
@@ -225,7 +231,10 @@ export function aggregateMonthlyStats(batchResults, master) {
               wopCount: 0,
               otHrs: 0,
               otAmount: 0,
-              wages: 0
+              wages: 0,
+              lateCount: 0,
+              lateMins: 0,
+              inTime: ''
             });
           }
           const emp = map.get(code);
@@ -238,6 +247,9 @@ export function aggregateMonthlyStats(batchResults, master) {
           emp.otHrs += (st.otHrs || 0);
           emp.otAmount = (emp.otAmount || 0) + (st.otAmount || 0);
           emp.wages += (st.wages || 0);
+          emp.lateCount = (emp.lateCount || 0) + (st.lateCount || 0);
+          emp.lateMins = (emp.lateMins || 0) + (st.lateMins || 0);
+          if (st.inTime) emp.inTime = st.inTime;
         }
       });
     }

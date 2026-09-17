@@ -207,141 +207,80 @@ export function ExportPanel({ batchResults, master, empStats }) {
     let clLostMins = 0;
     let napsLostMins = 0;
 
-    const shiftDefinitions = [
-      { code: 'A', name: 'Shift A (7am-3pm)', start: '07:00 AM', end: '03:00 PM', startH: 7, startM: 0 },
-      { code: 'B', name: 'Shift B (3pm-11pm)', start: '03:00 PM', end: '11:00 PM', startH: 15, startM: 0 },
-      { code: 'C', name: 'Shift C (11pm-7am)', start: '11:00 PM', end: '07:00 AM', startH: 23, startM: 0 },
-      { code: 'G', name: 'General G (9am-5.30pm)', start: '09:00 AM', end: '05:30 PM', startH: 9, startM: 0 }
-    ];
-
-    const getLateInfo = (code, daysPresent) => {
-      let hash = 0;
-      for (let i = 0; i < code.length; i++) {
-        hash = (hash << 5) - hash + code.charCodeAt(i);
-        hash |= 0;
-      }
-      const absHash = Math.abs(hash);
-      const isLateCandidate = (absHash % 100) < 22;
-      if (!isLateCandidate || daysPresent <= 0) return null;
-
-      const incidentCount = Math.max(1, (absHash % Math.min(daysPresent, 4)) + 1);
-      const avgMins = 8 + (absHash % 42);
-      const totalMins = incidentCount * avgMins;
-      const shiftObj = shiftDefinitions[absHash % shiftDefinitions.length];
-
-      const startH = shiftObj.startH;
-      const startM = shiftObj.startM;
-      const totalMin = startH * 60 + startM + avgMins;
-      const inH24 = Math.floor(totalMin / 60) % 24;
-      const inM = totalMin % 60;
-      const ampm = inH24 >= 12 ? 'PM' : 'AM';
-      const inH12 = inH24 % 12 === 0 ? 12 : inH24 % 12;
-      const inTime = `${String(inH12).padStart(2, '0')}:${String(inM).padStart(2, '0')} ${ampm}`;
-
-      let severity = 'Minor (<15m)';
-      if (avgMins > 30) severity = 'Critical (>30m)';
-      else if (avgMins > 15) severity = 'Moderate (15-30m)';
-
-      let dateStr = '01-Aug-2026';
-      if (batchResults && batchResults.length > 0) {
-        const dateIdx = absHash % batchResults.length;
-        const bDate = batchResults[dateIdx]?.date;
-        if (bDate) {
-          const d = new Date(bDate);
-          dateStr = `${String(d.getUTCDate()).padStart(2, '0')}-${MONTH_NAMES[d.getUTCMonth()].slice(0, 3)}-${d.getUTCFullYear()}`;
-        }
-      }
-
-      return {
-        incidentCount,
-        lateMins: avgMins,
-        totalLostMins: totalMins,
-        shift: shiftObj.name,
-        shiftStart: shiftObj.start,
-        inTime,
-        severity,
-        date: dateStr
-      };
+    const shiftMap = {
+      'AA': { name: 'Shift A (7am-3pm)', start: '07:00 AM' },
+      'A': { name: 'Shift A (7am-3pm)', start: '07:00 AM' },
+      'BB': { name: 'Shift B (3pm-11pm)', start: '03:00 PM' },
+      'B': { name: 'Shift B (3pm-11pm)', start: '03:00 PM' },
+      'CC': { name: 'Shift C (11pm-7am)', start: '11:00 PM' },
+      'C': { name: 'Shift C (11pm-7am)', start: '11:00 PM' },
+      'GG': { name: 'General G (9am-5.30pm)', start: '09:00 AM' },
+      'G': { name: 'General G (9am-5.30pm)', start: '09:00 AM' }
     };
 
-    if (master?.operator) {
-      Object.keys(master.operator).forEach(code => {
-        const item = master.operator[code];
-        const st = getEmpStat(empStats?.OP, code);
-        const days = st.daysPresent || 1;
-        const lInfo = getLateInfo(code, days);
-        if (lInfo) {
-          opLostMins += lInfo.totalLostMins;
-          opList.push({
-            code,
-            name: item.name || 'Operator Personnel',
-            category: 'Operator',
-            dept: item.dept || 'Production',
-            days,
-            lateCount: lInfo.incidentCount,
-            lateMins: lInfo.lateMins,
-            totalLostMins: lInfo.totalLostMins,
-            shift: lInfo.shift,
-            shiftStart: lInfo.shiftStart,
-            inTime: lInfo.inTime,
-            severity: lInfo.severity,
-            date: lInfo.date
-          });
-        }
-      });
-    }
+    const formatDateDisplay = (dateStr) => {
+      if (!dateStr) return '';
+      const parts = String(dateStr).split('-');
+      if (parts.length === 3) {
+        const [y, m, d] = parts;
+        const monthShort = MONTH_NAMES[parseInt(m, 10) - 1]?.slice(0, 3) || m;
+        return `${d}-${monthShort}-${y}`;
+      }
+      return dateStr;
+    };
 
-    if (master?.contract) {
-      Object.keys(master.contract).forEach(code => {
-        const item = master.contract[code];
-        const st = getEmpStat(empStats?.CL, code);
-        const days = st.daysPresent || 1;
-        const lInfo = getLateInfo(code, days);
-        if (lInfo) {
-          clLostMins += lInfo.totalLostMins;
-          clList.push({
-            code,
-            name: item.name || 'Contract Labour',
-            category: 'CL',
-            dept: item.dept || 'Contractor',
-            days,
-            lateCount: lInfo.incidentCount,
-            lateMins: lInfo.lateMins,
-            totalLostMins: lInfo.totalLostMins,
-            shift: lInfo.shift,
-            shiftStart: lInfo.shiftStart,
-            inTime: lInfo.inTime,
-            severity: lInfo.severity,
-            date: lInfo.date
-          });
-        }
-      });
-    }
+    if (targetBatchResults && targetBatchResults.length > 0) {
+      targetBatchResults.forEach(r => {
+        if (!r.empDayMap) return;
+        const entries = r.empDayMap instanceof Map ? Array.from(r.empDayMap.entries()) : Object.entries(r.empDayMap);
+        entries.forEach(([code, st]) => {
+          const lCount = st.lateCount || 0;
+          const lMins = st.lateMins || 0;
+          if (lCount > 0 || lMins > 0) {
+            const shiftCode = String(st.shift || 'AA').trim().toUpperCase();
+            const sObj = shiftMap[shiftCode] || { name: `Shift ${shiftCode}`, start: shiftCode.startsWith('G') ? '09:00 AM' : '07:00 AM' };
+            const shiftName = sObj.name;
+            const shiftStart = sObj.start;
 
-    if (master?.naps) {
-      Object.keys(master.naps).forEach(code => {
-        const item = master.naps[code];
-        const st = getEmpStat(empStats?.NAPS, code);
-        const days = st.daysPresent || 1;
-        const lInfo = getLateInfo(code, days);
-        if (lInfo) {
-          napsLostMins += lInfo.totalLostMins;
-          napsList.push({
-            code,
-            name: item.name || 'NAPS Apprentice',
-            category: 'NAPS',
-            dept: item.dept || 'NAPS',
-            days,
-            lateCount: lInfo.incidentCount,
-            lateMins: lInfo.lateMins,
-            totalLostMins: lInfo.totalLostMins,
-            shift: lInfo.shift,
-            shiftStart: lInfo.shiftStart,
-            inTime: lInfo.inTime,
-            severity: lInfo.severity,
-            date: lInfo.date
-          });
-        }
+            let severity = 'Minor (<15m)';
+            if (lMins > 30) severity = 'Critical (>30m)';
+            else if (lMins > 15) severity = 'Moderate (15-30m)';
+
+            const rawIn = String(st.inTime || '').trim();
+            const inTimeStr = rawIn ? (rawIn.includes('AM') || rawIn.includes('PM') ? rawIn : `${rawIn} AM`) : shiftStart;
+
+            const isOp = code.startsWith('9') || st.category === 'Operator' || st.category === 'OP';
+            const isNaps = code.startsWith('LN') || st.category === 'NAPS';
+
+            const item = {
+              code,
+              name: st.name || (isOp ? (master?.operator?.[code]?.name || code) : (isNaps ? (master?.naps?.[code]?.name || code) : (master?.contract?.[code]?.name || code))),
+              category: isOp ? 'Operator' : (isNaps ? 'NAPS' : 'CL'),
+              dept: st.dept || (isOp ? (master?.operator?.[code]?.dept || 'Production') : (isNaps ? (master?.naps?.[code]?.dept || 'NAPS') : (master?.contract?.[code]?.dept || 'Contractor'))),
+              days: st.daysPresent || 1,
+              lateCount: lCount || 1,
+              lateMins: lMins,
+              totalLostMins: lMins,
+              shift: shiftName,
+              shiftStart,
+              inTime: inTimeStr,
+              severity,
+              date: formatDateDisplay(r.date),
+              rawDate: r.date
+            };
+
+            if (isOp) {
+              opLostMins += lMins;
+              opList.push(item);
+            } else if (isNaps) {
+              napsLostMins += lMins;
+              napsList.push(item);
+            } else {
+              clLostMins += lMins;
+              clList.push(item);
+            }
+          }
+        });
       });
     }
 
@@ -359,7 +298,7 @@ export function ExportPanel({ batchResults, master, empStats }) {
       cl: { count: clList.reduce((s, e) => s + e.lateCount, 0), employees: clList.length, lostMins: clLostMins, list: clList },
       naps: { count: napsList.reduce((s, e) => s + e.lateCount, 0), employees: napsList.length, lostMins: napsLostMins, list: napsList }
     };
-  }, [master, empStats, batchResults]);
+  }, [master, targetBatchResults]);
 
   const handleDownloadMonthly = async () => {
     setDownloadingMonthly(true);
