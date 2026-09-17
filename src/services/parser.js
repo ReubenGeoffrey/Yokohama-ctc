@@ -416,7 +416,14 @@ export function parsePresentRecords(rows, hIdx) {
       const hasWorkOrOt = (workVal !== '' && workVal !== '00:00' && workVal !== '0') || (otVal !== '' && otVal !== '00:00' && otVal !== '0');
 
       if (woVal > 0) {
-        stStr = hasWorkOrOt ? 'WOP' : 'WO';
+        // NAPS (LN) apprentices: eligible for WOP without needing in-time and out-time
+        // Operators and Contract Labour: require in-time / out-time / work hours
+        const isNaps = codeStr.startsWith('LN');
+        if (isNaps) {
+          stStr = 'WOP';
+        } else {
+          stStr = hasWorkOrOt ? 'WOP' : 'WO';
+        }
       } else if (pVal > 0) {
         stStr = 'P';
       } else if (aVal > 0) {
