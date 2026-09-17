@@ -1,3 +1,5 @@
+import { calculateEligibleOt } from './parser.js';
+
 export function emptyBucket() {
   return { headcount: 0, ctc: 0, ot: 0, otHours: 0 };
 }
@@ -18,9 +20,12 @@ export function reconcileDay(date, dayRecords, master) {
   function processCategory(list, map, dKey, iKey, label) {
     if (!list) return;
     list.forEach(rec => {
-      // Plant Overtime Eligibility Policy: 1 hr OT not eligible, >= 2 hrs only eligible take value
-      const rawOt = rec.otHours || 0;
-      const otHours = rawOt >= 2 ? rawOt : 0;
+      // Plant Overtime Eligibility Policy:
+      // G Shift (9:00 AM - 5:30 PM): 1 hr OT is eligible and takes value
+      // Production / Other Shifts: 1 hr OT is ineligible, >= 2 hrs only takes value
+      const rawOt = rec.rawOt !== undefined ? rec.rawOt : (rec.otHours || 0);
+      const shift = rec.shift || '';
+      const otHours = calculateEligibleOt(rawOt, shift);
       const hasOT = otHours > 0;
       const isPresent = rec.status === 'P' || rec.status === 'WOP';
 
@@ -98,6 +103,7 @@ export function reconcileDay(date, dayRecords, master) {
           direct: info.direct,
           dailyCTC: info.dailyCTC,
           dailyOT: info.dailyOT,
+          shift: rec.shift || '',
           workHrs: 0,
           daysPresent: 0,
           wopCount: 0,
@@ -213,6 +219,7 @@ export function aggregateMonthlyStats(batchResults, master) {
               dept: st.dept || 'Production',
               dailyCTC: st.dailyCTC || (cat === 'NAPS' ? 483 : 783.59),
               dailyOT: st.dailyOT || (cat === 'NAPS' ? 0 : 162.61),
+              shift: st.shift || '',
               workHrs: 0,
               daysPresent: 0,
               wopCount: 0,
@@ -224,6 +231,7 @@ export function aggregateMonthlyStats(batchResults, master) {
           const emp = map.get(code);
           if (st.name && (!emp.name || emp.name === code)) emp.name = st.name;
           if (st.dept && (!emp.dept || emp.dept === 'Production')) emp.dept = st.dept;
+          if (st.shift && (!emp.shift || emp.shift === '')) emp.shift = st.shift;
           emp.workHrs += (st.workHrs || 0);
           emp.daysPresent += (st.daysPresent || 0);
           emp.wopCount += (st.wopCount || 0);

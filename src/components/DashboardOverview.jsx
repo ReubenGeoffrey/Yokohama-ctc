@@ -1505,6 +1505,7 @@ export function DashboardOverview({
               category: 'OPERATOR',
               categoryColor: 'bg-sky-50 text-sky-700 border-sky-200',
               dept: item.dept || item.department || st.dept || 'Production',
+              shift: st.shift || 'AA',
               days: st.daysPresent,
               otHours: otHrs,
               dailyRate,
@@ -1537,6 +1538,7 @@ export function DashboardOverview({
               category: 'CL',
               categoryColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
               dept: item.dept || item.contractor || st.dept || 'Contract',
+              shift: st.shift || 'GG',
               days: st.daysPresent,
               otHours: otHrs,
               dailyRate,
@@ -1569,6 +1571,7 @@ export function DashboardOverview({
               category: 'NAPS',
               categoryColor: 'bg-amber-50 text-amber-700 border-amber-200',
               dept: item.dept || st.dept || 'NAPS',
+              shift: st.shift || 'GG',
               days: st.daysPresent,
               otHours: otHrs,
               dailyRate,
@@ -3608,8 +3611,13 @@ export function DashboardOverview({
                     Active Operations
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 font-medium">
-                  Audited overtime man-hours, compensation distribution, and statutory rates for {currentMonthObj ? currentMonthObj.label : 'all dates'}
+                <p className="text-xs text-slate-500 font-medium flex flex-wrap items-center gap-2">
+                  <span>Audited overtime man-hours, compensation distribution, and statutory rates for {currentMonthObj ? currentMonthObj.label : 'all dates'}</span>
+                  <span className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100/70 text-amber-900 border border-amber-300">
+                    <span>G Shift (9am–5:30pm): 1h+ Eligible</span>
+                    <span className="text-amber-400">|</span>
+                    <span>Production (A, B, C): 2h+ Eligible</span>
+                  </span>
                 </p>
               </div>
 
@@ -3701,47 +3709,41 @@ export function DashboardOverview({
                   <ChartTypeToggle
                     currentMode={chartModes.otCategory}
                     onToggle={(m) => toggleChartMode('otCategory', m)}
+                    isTrend={false}
                   />
                 </div>
               </div>
 
-              <div className="mt-2">
-                {chartModes.otCategory === 'pie' ? (
-                  <EnterpriseDonutChart
-                    segments={otCategorySegments}
-                    totalLabel="Total OT"
-                    totalValue={`${fmtN(otMetrics.totalHours)}h`}
-                  />
+              <div className="mt-3">
+                {chartModes.otCategory === 'donut' ? (
+                  <DonutChart segments={otCategorySegments} />
                 ) : (
-                  <PureSVGBarChart bars={otCategorySegments} />
+                  <BarList segments={otCategorySegments} />
                 )}
               </div>
             </div>
 
-            {/* Card 3: Overtime Compensation Distribution */}
+            {/* Card 3: Overtime Wages Cost Share */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-black text-slate-900">OT Compensation</h3>
-                    <p className="text-xs text-slate-400 mt-0.5 font-medium">Total overtime payouts by category</p>
+                    <p className="text-xs text-slate-400 mt-0.5 font-medium">Overtime wages distribution</p>
                   </div>
                   <ChartTypeToggle
-                    currentMode={chartModes.otShift}
-                    onToggle={(m) => toggleChartMode('otShift', m)}
+                    currentMode={chartModes.otWages}
+                    onToggle={(m) => toggleChartMode('otWages', m)}
+                    isTrend={false}
                   />
                 </div>
               </div>
 
-              <div className="mt-2">
-                {chartModes.otShift === 'bar' ? (
-                  <PureSVGBarChart bars={otWageSegments} />
+              <div className="mt-3">
+                {chartModes.otWages === 'bar' ? (
+                  <BarList segments={otWageSegments} />
                 ) : (
-                  <EnterpriseDonutChart
-                    segments={otWageSegments}
-                    totalLabel="OT Wages"
-                    totalValue={`₹${fmt(otMetrics.totalWages)}`}
-                  />
+                  <DonutChart segments={otWageSegments} />
                 )}
               </div>
             </div>
@@ -3831,18 +3833,27 @@ export function DashboardOverview({
             </div>
           </div>
 
-          {/* Overtime Employee Table */}
+          {/* Overtime Audit Table */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            {/* Filter Pills & Search Bar */}
-            <div className="p-4 border-b border-slate-100 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                {/* Category Pills */}
+            {/* Header & Filter Bar */}
+            <div className="p-5 border-b border-slate-200/80 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                    Audited Personnel Overtime Register
+                  </h4>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Showing {filteredOtEmployees.length} of {otMetrics.totalEmployees} employees deployed on overtime
+                  </p>
+                </div>
+
+                {/* Category Quick Filter Pills */}
                 <div className="flex flex-wrap items-center gap-1.5">
                   {[
-                    { key: 'ALL', label: 'All Overtime', count: otMetrics.allList.length },
-                    { key: 'OP', label: 'Operators', count: otMetrics.op.list.length },
-                    { key: 'CL', label: 'Contract Labour', count: otMetrics.cl.list.length },
-                    { key: 'NAPS', label: 'NAPS', count: otMetrics.naps.list.length }
+                    { key: 'ALL', label: 'All Categories', count: otMetrics.totalEmployees },
+                    { key: 'OP', label: 'Operators', count: otMetrics.op.employees },
+                    { key: 'CL', label: 'Contract Labour', count: otMetrics.cl.employees },
+                    { key: 'NAPS', label: 'NAPS', count: otMetrics.naps.employees }
                   ].map(f => {
                     const isSel = otCategoryFilter === f.key;
                     return (
@@ -3896,6 +3907,7 @@ export function DashboardOverview({
                     <th className="py-3.5 px-4">Employee Name</th>
                     <th className="py-3.5 px-4">Category</th>
                     <th className="py-3.5 px-4">Department</th>
+                    <th className="py-3.5 px-3 text-center">Shift</th>
                     <th className="py-3.5 px-4 text-center">Days Present</th>
                     <th className="py-3.5 px-4 text-center font-black text-amber-900 bg-amber-50/60">OT Hours</th>
                     <th className="py-3.5 px-4 text-right">Daily OT Rate</th>
@@ -3907,7 +3919,7 @@ export function DashboardOverview({
                 <tbody className="divide-y divide-slate-100">
                   {pagedOtEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan="10" className="py-12 text-center text-slate-400 font-medium">
+                      <td colSpan="11" className="py-12 text-center text-slate-400 font-medium">
                         {otMetrics.allList.length === 0
                           ? 'No overtime records detected for this period.'
                           : 'No overtime employee matches your search.'}
@@ -3929,6 +3941,15 @@ export function DashboardOverview({
                         </td>
                         <td className="py-3 px-4 text-slate-600">
                           {emp.dept}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                            (emp.shift || '').startsWith('G')
+                              ? 'bg-amber-50 text-amber-900 border-amber-300'
+                              : 'bg-slate-100 text-slate-700 border-slate-300'
+                          }`}>
+                            {emp.shift || 'GG'}
+                          </span>
                         </td>
                         <td className="py-3 px-4 text-center font-bold text-slate-800">
                           {emp.days || 1}

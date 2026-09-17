@@ -1068,7 +1068,7 @@ export async function generateOvertimeReportWorkbook(otMetrics, master, batchRes
     const ws = wb.addWorksheet(sheetName);
     ws.views = [{ showGridLines: true }];
 
-    const headers = ['S.No', 'Emp Code', 'Employee Name', 'Department', 'Days Present', 'OT Hours', 'Daily OT Rate', 'OT Wages', 'Total Wages'];
+    const headers = ['S.No', 'Emp Code', 'Employee Name', 'Department', 'Shift', 'Days Present', 'OT Hours', 'Daily OT Rate', 'OT Wages', 'Total Wages'];
     headers.forEach((h, i) => {
       const cell = ws.getCell(1, i + 1);
       cell.value = h;
@@ -1093,21 +1093,22 @@ export async function generateOvertimeReportWorkbook(otMetrics, master, batchRes
       ws.getCell(r, 2).value = emp.code;
       ws.getCell(r, 3).value = emp.name;
       ws.getCell(r, 4).value = emp.dept;
-      ws.getCell(r, 5).value = emp.days || 1;
-      ws.getCell(r, 6).value = Math.round((emp.otHours || 0) * 100) / 100;
-      ws.getCell(r, 7).value = Math.round((emp.dailyRate || 0) * 100) / 100;
-      ws.getCell(r, 8).value = Math.round((emp.otWages || 0) * 100) / 100;
-      ws.getCell(r, 9).value = Math.round((emp.totalWages || 0) * 100) / 100;
+      ws.getCell(r, 5).value = emp.shift || ((emp.category === 'Operator' || emp.category === 'OPERATOR') ? 'AA' : 'GG');
+      ws.getCell(r, 6).value = emp.days || 1;
+      ws.getCell(r, 7).value = Math.round((emp.otHours || 0) * 100) / 100;
+      ws.getCell(r, 8).value = Math.round((emp.dailyRate || 0) * 100) / 100;
+      ws.getCell(r, 9).value = Math.round((emp.otWages || 0) * 100) / 100;
+      ws.getCell(r, 10).value = Math.round((emp.totalWages || 0) * 100) / 100;
 
       const banded = i % 2 === 1;
-      for (let c = 1; c <= 9; c++) {
+      for (let c = 1; c <= 10; c++) {
         const cell = ws.getCell(r, c);
         cell.border = amberThinBorder;
         cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
         if (banded) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cAmberRowEven } };
-        if (c === 5) cell.numFmt = '#,##0';
-        if (c === 6) cell.numFmt = '#,##0.00';
-        if (c === 7 || c === 8 || c === 9) cell.numFmt = '#,##0.00';
+        if (c === 6) cell.numFmt = '#,##0';
+        if (c === 7) cell.numFmt = '#,##0.00';
+        if (c === 8 || c === 9 || c === 10) cell.numFmt = '#,##0.00';
         cell.alignment = (c === 3 || c === 4) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
       }
       ws.getRow(r).height = 20;
@@ -1120,23 +1121,24 @@ export async function generateOvertimeReportWorkbook(otMetrics, master, batchRes
     ws.getCell(lastR, 3).value = 'TOTAL';
     ws.getCell(lastR, 4).value = `${list.length} Employees`;
     ws.getCell(lastR, 5).value = '';
-    ws.getCell(lastR, 6).value = Math.round(totHours * 100) / 100;
-    ws.getCell(lastR, 7).value = '';
-    ws.getCell(lastR, 8).value = Math.round(totOtWages * 100) / 100;
-    ws.getCell(lastR, 9).value = Math.round(totAllWages * 100) / 100;
+    ws.getCell(lastR, 6).value = '';
+    ws.getCell(lastR, 7).value = Math.round(totHours * 100) / 100;
+    ws.getCell(lastR, 8).value = '';
+    ws.getCell(lastR, 9).value = Math.round(totOtWages * 100) / 100;
+    ws.getCell(lastR, 10).value = Math.round(totAllWages * 100) / 100;
 
-    for (let c = 1; c <= 9; c++) {
+    for (let c = 1; c <= 10; c++) {
       const cell = ws.getCell(lastR, c);
       cell.border = amberDoubleBottomBorder;
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cAmberTotal } };
       cell.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-      if (c === 6) cell.numFmt = '#,##0.00';
-      if (c === 8 || c === 9) cell.numFmt = '#,##0.00';
+      if (c === 7) cell.numFmt = '#,##0.00';
+      if (c === 9 || c === 10) cell.numFmt = '#,##0.00';
       cell.alignment = (c === 3 || c === 4) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
     }
     ws.getRow(lastR).height = 24;
 
-    const wCols = { 1: 7, 2: 14, 3: 28, 4: 22, 5: 15, 6: 15, 7: 16, 8: 18, 9: 18 };
+    const wCols = { 1: 7, 2: 14, 3: 28, 4: 22, 5: 12, 6: 15, 7: 15, 8: 16, 9: 18, 10: 18 };
     Object.entries(wCols).forEach(([c, w]) => { ws.getColumn(Number(c)).width = w; });
   }
 

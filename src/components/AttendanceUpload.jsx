@@ -464,7 +464,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
         const otWages = st.otAmount !== undefined ? st.otAmount : Math.round(otHrs * dailyRate * 100) / 100;
         if (otHrs > 0) {
           opOtHours += otHrs; opOtEmployees += 1; opOtWages += otWages;
-          opList.push({ code, name: item.name || st.name || 'Operator', category: 'Operator', dept: item.dept || st.dept || 'Production', days: st.daysPresent, otHours: otHrs, dailyRate, otWages, totalWages: st.wages });
+          opList.push({ code, name: item.name || st.name || 'Operator', category: 'Operator', dept: item.dept || st.dept || 'Production', shift: st.shift || 'AA', days: st.daysPresent, otHours: otHrs, dailyRate, otWages, totalWages: st.wages });
         }
       });
 
@@ -480,7 +480,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
         const otWages = st.otAmount !== undefined ? st.otAmount : Math.round(otHrs * dailyRate * 100) / 100;
         if (otHrs > 0) {
           clOtHours += otHrs; clOtEmployees += 1; clOtWages += otWages;
-          clList.push({ code, name: item.name || st.name || 'Contract Labour', category: 'CL', dept: item.dept || st.dept || 'Contract', days: st.daysPresent, otHours: otHrs, dailyRate, otWages, totalWages: st.wages });
+          clList.push({ code, name: item.name || st.name || 'Contract Labour', category: 'CL', dept: item.dept || st.dept || 'Contract', shift: st.shift || 'GG', days: st.daysPresent, otHours: otHrs, dailyRate, otWages, totalWages: st.wages });
         }
       });
 
@@ -496,7 +496,7 @@ export function AttendanceUpload({ master, batchDates, setBatchDates, onReconcil
         const otWages = st.otAmount !== undefined ? st.otAmount : Math.round(otHrs * dailyRate * 100) / 100;
         if (otHrs > 0) {
           napsOtHours += otHrs; napsOtEmployees += 1; napsOtWages += otWages;
-          napsList.push({ code, name: item.name || st.name || 'NAPS Apprentice', category: 'NAPS', dept: item.dept || st.dept || 'NAPS', days: st.daysPresent, otHours: otHrs, dailyRate, otWages, totalWages: st.wages });
+          napsList.push({ code, name: item.name || st.name || 'NAPS Apprentice', category: 'NAPS', dept: item.dept || st.dept || 'NAPS', shift: st.shift || 'GG', days: st.daysPresent, otHours: otHrs, dailyRate, otWages, totalWages: st.wages });
         }
       });
 

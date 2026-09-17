@@ -286,6 +286,22 @@ export function detectCategory(arg1, arg2, arg3) {
   return 'CL';
 }
 
+export function isGShift(shift) {
+  if (!shift) return false;
+  const s = String(shift).trim().toUpperCase();
+  return s.startsWith('G') || s.includes('GENERAL') || s.includes('SHIFT G') || /\bG\b/.test(s);
+}
+
+export function calculateEligibleOt(rawOt, shift) {
+  if (!rawOt || rawOt <= 0) return 0;
+  if (isGShift(shift)) {
+    // General Shift (G shift 9:00 AM - 5:30 PM): 1 hr OT and above is eligible
+    return rawOt >= 1 ? rawOt : 0;
+  }
+  // Production / Other Shifts (A, B, C, etc.): 1 hr OT is ineligible, >= 2 hrs only eligible
+  return rawOt >= 2 ? rawOt : 0;
+}
+
 export function parsePresentRecords(rows, hIdx) {
   if (hIdx === -1) return [];
   const header = rows[hIdx].map(h => String(h || '').trim().toUpperCase());
@@ -306,6 +322,11 @@ export function parsePresentRecords(rows, hIdx) {
   let idxStatus = header.indexOf('STATUS');
   if (idxStatus === -1) {
     idxStatus = header.findIndex(h => /^(?:STATUS|ATTENDANCE|P\/A)$/i.test(h));
+  }
+
+  let idxShift = header.indexOf('SHIFT');
+  if (idxShift === -1) {
+    idxShift = header.findIndex(h => /^SHIFT/i.test(h));
   }
 
   let idxOT = header.indexOf('OT');
@@ -339,13 +360,40 @@ export function parsePresentRecords(rows, hIdx) {
     if (codeStr === 'GRANDTOTAL' || codeStr.startsWith('TOTAL')) continue;
     const stStr = idxStatus !== -1 ? String(r[idxStatus] || '').trim().toUpperCase() : 'P';
     const rawOt = idxOT !== -1 ? timeStrToHours(r[idxOT]) : 0;
-    // Plant Overtime Eligibility Policy: 1 hr OT not eligible, >= 2 hrs only eligible take value
-    const otHours = rawOt >= 2 ? rawOt : 0;
+
+    // Detect shift from column or sub-rows
+    let shift = '';
+    if (idxShift !== -1 && r[idxShift]) {
+      shift = String(r[idxShift]).trim().toUpperCase();
+    } else {
+      for (let j = i + 1; j < Math.min(rows.length, i + 12); j++) {
+        const subR = rows[j];
+        if (!subR) continue;
+        if (idxCode !== -1 && subR[idxCode] && String(subR[idxCode]).trim() !== '') break;
+        if (String(subR[3] || '').trim().toUpperCase() === 'SHIFT') {
+          shift = String(subR[4] || '').trim().toUpperCase();
+          break;
+        }
+        for (let c = 0; c < Math.min(subR.length, 6); c++) {
+          if (String(subR[c] || '').trim().toUpperCase() === 'SHIFT') {
+            shift = String(subR[c + 1] || '').trim().toUpperCase();
+            break;
+          }
+        }
+        if (shift) break;
+      }
+    }
+
+    // Plant Overtime Policy: G shift (9am - 5:30pm) is eligible for 1 hr OT; other shifts require >= 2 hrs
+    const otHours = calculateEligibleOt(rawOt, shift);
+
     out.push({
       code: codeStr,
       name: idxName !== -1 ? String(r[idxName] || '').trim() : '',
       status: stStr,
       isWop: stStr === 'WOP',
+      shift: shift || 'AA',
+      rawOt,
       otHours,
       workHours: idxWorkHrs !== -1 ? timeStrToHours(r[idxWorkHrs]) : 0
     });
