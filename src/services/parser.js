@@ -21,11 +21,45 @@ export const MONTH_NAMES = [
 ];
 
 export function timeStrToHours(v) {
-  if (!v) return 0;
-  if (typeof v === 'number') return v * 24;
+  if (v === null || v === undefined || v === '') return 0;
+
+  // 1. If Date object (from SheetJS cellDates: true)
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    const hrs = v.getHours();
+    const mins = v.getMinutes();
+    const secs = v.getSeconds();
+    return Math.round((hrs + (mins / 60) + (secs / 3600)) * 100) / 100;
+  }
+
+  // 2. If Number
+  if (typeof v === 'number') {
+    if (isNaN(v)) return 0;
+    // If it's a fractional day value in Excel (e.g. 0.0416666 for 1 hour, < 1)
+    if (v > 0 && v < 1) {
+      return Math.round(v * 24 * 100) / 100;
+    }
+    return Math.round(v * 100) / 100;
+  }
+
+  // 3. If String
   const str = String(v).trim();
-  const m = str.match(/^(\d{1,2}):(\d{2})/);
-  if (m) return parseInt(m[1], 10) + parseInt(m[2], 10) / 60;
+  if (!str) return 0;
+
+  // Pattern 1: HH:MM or H:MM (e.g. "01:00", "8:30", "16:00", "01:00:00")
+  const mTime = str.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (mTime) {
+    const h = parseInt(mTime[1], 10);
+    const m = parseInt(mTime[2], 10);
+    const s = mTime[3] ? parseInt(mTime[3], 10) : 0;
+    return Math.round((h + (m / 60) + (s / 3600)) * 100) / 100;
+  }
+
+  // Pattern 2: Decimal number or integer string (e.g. "2", "1.5", "8.0", "0.5", "2 hrs")
+  const mNum = str.match(/^(\d+(?:\.\d+)?)/);
+  if (mNum) {
+    return Math.round(parseFloat(mNum[1]) * 100) / 100;
+  }
+
   return 0;
 }
 
@@ -255,12 +289,47 @@ export function detectCategory(arg1, arg2, arg3) {
 export function parsePresentRecords(rows, hIdx) {
   if (hIdx === -1) return [];
   const header = rows[hIdx].map(h => String(h || '').trim().toUpperCase());
-  const idxCode = header.indexOf('CODE');
-  const idxName = header.indexOf('NAME');
-  const idxStatus = header.indexOf('STATUS');
-  const idxOT = header.indexOf('OT');
+
+  // Dynamic Header Column Matching
+  let idxCode = header.indexOf('CODE');
+  if (idxCode === -1) idxCode = header.indexOf('EMP CODE');
+  if (idxCode === -1) idxCode = header.indexOf('EMP NO');
+  if (idxCode === -1) idxCode = header.indexOf('EMP_CODE');
+  if (idxCode === -1) {
+    idxCode = header.findIndex(h => /^(?:EMP[\s_-]*)?CODE$|^(?:EMP[\s_-]*)?NO$/i.test(h));
+  }
+
+  let idxName = header.indexOf('NAME');
+  if (idxName === -1) idxName = header.indexOf('EMP NAME');
+  if (idxName === -1) idxName = header.indexOf('EMPLOYEE NAME');
+
+  let idxStatus = header.indexOf('STATUS');
+  if (idxStatus === -1) {
+    idxStatus = header.findIndex(h => /^(?:STATUS|ATTENDANCE|P\/A)$/i.test(h));
+  }
+
+  let idxOT = header.indexOf('OT');
+  if (idxOT === -1) {
+    idxOT = header.findIndex(h => {
+      const clean = h.replace(/[^A-Z0-9]/g, '');
+      return clean === 'OT' || clean === 'OTHRS' || clean === 'OTHOURS' || clean === 'TOTALOT' || clean === 'TOTALOTHRS' || clean === 'OVERTIME' || clean === 'OVERTIMEHRS';
+    });
+  }
+  if (idxOT === -1) {
+    idxOT = header.findIndex(h => /\bOT\b|OVERTIME/i.test(h) && !/AMOUNT|WAGES|RATE|CTC/i.test(h));
+  }
+
   let idxWorkHrs = header.indexOf('WORKHRS');
   if (idxWorkHrs === -1) idxWorkHrs = header.indexOf('WORK HRS');
+  if (idxWorkHrs === -1) {
+    idxWorkHrs = header.findIndex(h => {
+      const clean = h.replace(/[^A-Z0-9]/g, '');
+      return clean === 'WORKHRS' || clean === 'WORKHOURS' || clean === 'TOTALWORKHRS' || clean === 'TOTALWORKHOURS';
+    });
+  }
+  if (idxWorkHrs === -1) {
+    idxWorkHrs = header.findIndex(h => /WORK[\s_-]*HRS?/i.test(h));
+  }
 
   const out = [];
   for (let i = hIdx + 1; i < rows.length; i++) {

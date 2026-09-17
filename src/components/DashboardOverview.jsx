@@ -39,15 +39,16 @@ import { aggregateMonthlyStats } from '../services/reconciliation';
 import {
   generateWopReportWorkbook,
   generateLateReportWorkbook,
+  generateOvertimeReportWorkbook,
   downloadBlob
 } from '../services/excelEngine';
 
 function getEmpStat(statMap, code) {
-  if (!statMap) return { daysPresent: 0, wopCount: 0, wages: 0 };
+  if (!statMap) return { daysPresent: 0, wopCount: 0, otHrs: 0, otAmount: 0, wages: 0 };
   if (typeof statMap.get === 'function') {
-    return statMap.get(code) || { daysPresent: 0, wopCount: 0, wages: 0 };
+    return statMap.get(code) || { daysPresent: 0, wopCount: 0, otHrs: 0, otAmount: 0, wages: 0 };
   }
-  return statMap[code] || { daysPresent: 0, wopCount: 0, wages: 0 };
+  return statMap[code] || { daysPresent: 0, wopCount: 0, otHrs: 0, otAmount: 0, wages: 0 };
 }
 
 // ── Pure-SVG Smooth Wave / Area Chart (Left Card) ────────────────
@@ -835,6 +836,13 @@ export function DashboardOverview({
   // Excel Export States
   const [isExportingWop, setIsExportingWop] = useState(false);
   const [isExportingLate, setIsExportingLate] = useState(false);
+  const [isExportingOt, setIsExportingOt] = useState(false);
+
+  // Overtime (OT) Filter & Pagination States
+  const [otCategoryFilter, setOtCategoryFilter] = useState('ALL'); // 'ALL' | 'OP' | 'CL' | 'NAPS'
+  const [otSearchQuery, setOtSearchQuery] = useState('');
+  const [otCurrentPage, setOtCurrentPage] = useState(1);
+  const otPageSize = 10;
 
   // Chart Display Mode Customization across all dashboards
   const [chartModes, setChartModes] = useState({
@@ -846,7 +854,10 @@ export function DashboardOverview({
     wopWage: 'bar',           // 'bar' | 'pie'
     lateTrend: 'wave',        // 'wave' | 'bar'
     lateCategory: 'pie',      // 'pie' | 'bar'
-    lateShift: 'bar'          // 'bar' | 'pie'
+    lateShift: 'bar',         // 'bar' | 'pie'
+    otTrend: 'wave',          // 'wave' | 'bar'
+    otCategory: 'pie',        // 'pie' | 'bar'
+    otShift: 'bar'            // 'bar' | 'pie'
   });
 
   const toggleChartMode = (key, mode) => {
@@ -867,7 +878,10 @@ export function DashboardOverview({
         wopWage: 'pie',
         lateTrend: 'wave',
         lateCategory: 'pie',
-        lateShift: 'pie'
+        lateShift: 'pie',
+        otTrend: 'wave',
+        otCategory: 'pie',
+        otShift: 'pie'
       });
     } else if (targetType === 'bar') {
       setChartModes({
@@ -879,7 +893,10 @@ export function DashboardOverview({
         wopWage: 'bar',
         lateTrend: 'bar',
         lateCategory: 'bar',
-        lateShift: 'bar'
+        lateShift: 'bar',
+        otTrend: 'bar',
+        otCategory: 'bar',
+        otShift: 'bar'
       });
     } else {
       // Default executive layout
@@ -892,7 +909,10 @@ export function DashboardOverview({
         wopWage: 'bar',
         lateTrend: 'wave',
         lateCategory: 'pie',
-        lateShift: 'bar'
+        lateShift: 'bar',
+        otTrend: 'wave',
+        otCategory: 'pie',
+        otShift: 'bar'
       });
     }
   };
@@ -996,7 +1016,8 @@ export function DashboardOverview({
         directHC: r.dHC || 0,
         indirectHC: r.iHC || 0,
         totalCost: r.gTot || 0,
-        otHours: r.gOT || 0,
+        otHours: r.gOtHrs || 0,
+        otWages: r.gOT || 0,
         isoDate: r.date
       };
     });
@@ -1051,6 +1072,8 @@ export function DashboardOverview({
           dept: item.dept || item.department || 'Production',
           days: stats.daysPresent,
           wopCount: stats.wopCount || 0,
+          otHours: stats.otHrs || 0,
+          otWages: stats.otAmount || 0,
           wages: stats.wages || (item.ctc ? item.ctc * (stats.daysPresent || 1) : 0),
           status: 'Active'
         });
@@ -1070,6 +1093,8 @@ export function DashboardOverview({
           dept: item.dept || item.contractor || 'Contract',
           days: stats.daysPresent,
           wopCount: stats.wopCount || 0,
+          otHours: stats.otHrs || 0,
+          otWages: stats.otAmount || 0,
           wages: stats.wages || 0,
           status: 'Active'
         });
@@ -1089,6 +1114,8 @@ export function DashboardOverview({
           dept: item.dept || 'NAPS',
           days: stats.daysPresent,
           wopCount: stats.wopCount || 0,
+          otHours: stats.otHrs || 0,
+          otWages: stats.otAmount || 0,
           wages: stats.wages || 0,
           status: 'Active'
         });
@@ -1447,6 +1474,159 @@ export function DashboardOverview({
     ];
   }, [lateMetrics]);
 
+  // Detailed Overtime Statistics for Operator, CL, and NAPS
+  const otMetrics = useMemo(() => {
+    let opOtHours = 0, opOtEmployees = 0, opOtWages = 0;
+    let clOtHours = 0, clOtEmployees = 0, clOtWages = 0;
+    let napsOtHours = 0, napsOtEmployees = 0, napsOtWages = 0;
+    const opList = [];
+    const clList = [];
+    const napsList = [];
+
+    if (master) {
+      if (master.operator) {
+        Object.keys(master.operator).forEach(code => {
+          const item = master.operator[code];
+          const st = getEmpStat(displayEmpStats?.OP, code);
+          const otHrs = st.otHrs || 0;
+          const dailyRate = item.dailyOT || 0;
+          const otWages = st.otAmount !== undefined ? st.otAmount : Math.round(otHrs * dailyRate * 100) / 100;
+          if (otHrs > 0) {
+            opOtHours += otHrs;
+            opOtEmployees += 1;
+            opOtWages += otWages;
+            opList.push({
+              code,
+              name: item.name || 'Operator',
+              category: 'OPERATOR',
+              categoryColor: 'bg-sky-50 text-sky-700 border-sky-200',
+              dept: item.dept || item.department || 'Production',
+              days: st.daysPresent,
+              otHours: otHrs,
+              dailyRate,
+              otWages,
+              totalWages: st.wages,
+              status: 'Active'
+            });
+          }
+        });
+      }
+
+      if (master.contract) {
+        Object.keys(master.contract).forEach(code => {
+          const item = master.contract[code];
+          const st = getEmpStat(displayEmpStats?.CL, code);
+          const otHrs = st.otHrs || 0;
+          const dailyRate = item.dailyOT || 0;
+          const otWages = st.otAmount !== undefined ? st.otAmount : Math.round(otHrs * dailyRate * 100) / 100;
+          if (otHrs > 0) {
+            clOtHours += otHrs;
+            clOtEmployees += 1;
+            clOtWages += otWages;
+            clList.push({
+              code,
+              name: item.name || 'Contract Labour',
+              category: 'CL',
+              categoryColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+              dept: item.dept || item.contractor || 'Contract',
+              days: st.daysPresent,
+              otHours: otHrs,
+              dailyRate,
+              otWages,
+              totalWages: st.wages,
+              status: 'Active'
+            });
+          }
+        });
+      }
+
+      if (master.naps) {
+        Object.keys(master.naps).forEach(code => {
+          const item = master.naps[code];
+          const st = getEmpStat(displayEmpStats?.NAPS, code);
+          const otHrs = st.otHrs || 0;
+          const dailyRate = 0;
+          const otWages = 0;
+          if (otHrs > 0) {
+            napsOtHours += otHrs;
+            napsOtEmployees += 1;
+            napsOtWages += otWages;
+            napsList.push({
+              code,
+              name: item.name || 'NAPS Apprentice',
+              category: 'NAPS',
+              categoryColor: 'bg-amber-50 text-amber-700 border-amber-200',
+              dept: item.dept || 'NAPS',
+              days: st.daysPresent,
+              otHours: otHrs,
+              dailyRate,
+              otWages,
+              totalWages: st.wages,
+              status: 'Active'
+            });
+          }
+        });
+      }
+    }
+
+    const totalHours = Math.round((opOtHours + clOtHours + napsOtHours) * 100) / 100;
+    const totalEmployees = opOtEmployees + clOtEmployees + napsOtEmployees;
+    const totalWages = Math.round(opOtWages + clOtWages + napsOtWages);
+    const avgHours = totalEmployees > 0 ? (totalHours / totalEmployees).toFixed(1) : '0.0';
+
+    return {
+      op: { hours: opOtHours, employees: opOtEmployees, wages: opOtWages, list: opList },
+      cl: { hours: clOtHours, employees: clOtEmployees, wages: clOtWages, list: clList },
+      naps: { hours: napsOtHours, employees: napsOtEmployees, wages: napsOtWages, list: napsList },
+      totalHours,
+      totalEmployees,
+      totalWages,
+      avgHours,
+      allList: [...opList, ...clList, ...napsList].sort((a, b) => b.otHours - a.otHours)
+    };
+  }, [master, displayEmpStats]);
+
+  // Daily Overtime Trend (OT Card 1 Trend Wave / Bar)
+  const otWaveData = useMemo(() => {
+    if (!displayResults || displayResults.length === 0) return [];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return displayResults.map(r => {
+      const d = new Date(r.date);
+      const day = d.getUTCDate();
+      const monthShort = monthNames[d.getUTCMonth()] || 'Aug';
+      const dayStr = String(day).padStart(2, '0');
+      const otHours = r.gOtHrs || 0;
+      const otWages = r.gOT || 0;
+      return {
+        dateStr: `${dayStr} ${monthShort}`,
+        fullDate: formatDateDisplay(d),
+        label: `${dayStr} ${monthShort}`,
+        dayNum: day,
+        value: Math.round(otHours * 10) / 10,
+        totalCost: otWages,
+        isoDate: r.date
+      };
+    });
+  }, [displayResults]);
+
+  // Overtime Category Segments (OT Card 2 Donut / Bar)
+  const otCategorySegments = useMemo(() => {
+    return [
+      { label: 'Plant Operators', value: Math.round(otMetrics.op.hours), color: '#0ea5e9', formattedValue: `${otMetrics.op.hours} hrs` },
+      { label: 'Contract Labour (CL)', value: Math.round(otMetrics.cl.hours), color: '#059669', formattedValue: `${otMetrics.cl.hours} hrs` },
+      { label: 'NAPS Apprentices', value: Math.round(otMetrics.naps.hours), color: '#f59e0b', formattedValue: `${otMetrics.naps.hours} hrs` }
+    ];
+  }, [otMetrics]);
+
+  // Overtime Wages Segments (OT Card 3 Bar / Donut)
+  const otWageSegments = useMemo(() => {
+    return [
+      { label: 'Operators', value: Math.round(otMetrics.op.wages || 0), color: '#0ea5e9', formattedValue: `₹${fmt(otMetrics.op.wages)}` },
+      { label: 'Contract Labour', value: Math.round(otMetrics.cl.wages || 0), color: '#059669', formattedValue: `₹${fmt(otMetrics.cl.wages)}` },
+      { label: 'NAPS', value: Math.round(otMetrics.naps.wages || 0), color: '#f59e0b', formattedValue: `₹${fmt(otMetrics.naps.wages)}` }
+    ];
+  }, [otMetrics]);
+
   // WOP Category Segments (WOP Card 2 Donut / Bar)
   const wopCategorySegments = useMemo(() => {
     return [
@@ -1603,6 +1783,38 @@ export function DashboardOverview({
   const lateClAvg = lateMetrics.cl.count ? Math.round(lateMetrics.cl.lostMins / lateMetrics.cl.count) : 0;
   const lateNapsAvg = lateMetrics.naps.count ? Math.round(lateMetrics.naps.lostMins / lateMetrics.naps.count) : 0;
 
+  // Filtered employees (Overtime Table)
+  const filteredOtEmployees = useMemo(() => {
+    let list = otMetrics.allList;
+    if (otCategoryFilter === 'OP') list = otMetrics.op.list;
+    else if (otCategoryFilter === 'CL') list = otMetrics.cl.list;
+    else if (otCategoryFilter === 'NAPS') list = otMetrics.naps.list;
+
+    if (!otSearchQuery.trim()) return list;
+    const q = otSearchQuery.toLowerCase();
+    return list.filter(e =>
+      e.code.toLowerCase().includes(q) ||
+      e.name.toLowerCase().includes(q) ||
+      e.dept.toLowerCase().includes(q) ||
+      e.category.toLowerCase().includes(q)
+    );
+  }, [otMetrics, otCategoryFilter, otSearchQuery]);
+
+  const totalOtPages = Math.ceil(filteredOtEmployees.length / otPageSize) || 1;
+  const pagedOtEmployees = useMemo(() => {
+    const start = (otCurrentPage - 1) * otPageSize;
+    return filteredOtEmployees.slice(start, start + otPageSize);
+  }, [filteredOtEmployees, otCurrentPage, otPageSize]);
+
+  // Derived Overtime shares and averages for executive cards
+  const otOpShare = otMetrics.totalHours > 0 ? ((otMetrics.op.hours / otMetrics.totalHours) * 100).toFixed(1) : '0.0';
+  const otClShare = otMetrics.totalHours > 0 ? ((otMetrics.cl.hours / otMetrics.totalHours) * 100).toFixed(1) : '0.0';
+  const otNapsShare = otMetrics.totalHours > 0 ? ((otMetrics.naps.hours / otMetrics.totalHours) * 100).toFixed(1) : '0.0';
+
+  const otOpAvg = otMetrics.op.employees ? (otMetrics.op.hours / otMetrics.op.employees).toFixed(1) : '0';
+  const otClAvg = otMetrics.cl.employees ? (otMetrics.cl.hours / otMetrics.cl.employees).toFixed(1) : '0';
+  const otNapsAvg = otMetrics.naps.employees ? (otMetrics.naps.hours / otMetrics.naps.employees).toFixed(1) : '0';
+
   // Dedicated Excel Export Handlers
   const handleExportWopExcel = async () => {
     setIsExportingWop(true);
@@ -1629,6 +1841,20 @@ export function DashboardOverview({
       console.error('Failed to export Late Coming report:', err);
     } finally {
       setIsExportingLate(false);
+    }
+  };
+
+  const handleExportOtExcel = async () => {
+    setIsExportingOt(true);
+    try {
+      const monthLabel = selectedMonthKey === 'ALL' ? 'Full_Year' : (availableMonths.find(m => m.key === selectedMonthKey)?.shortLabel || 'Month');
+      const buffer = await generateOvertimeReportWorkbook(otMetrics, master, displayResults);
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      downloadBlob(blob, `Overtime_Audit_Report_${monthLabel}.xlsx`);
+    } catch (err) {
+      console.error('Failed to export Overtime report:', err);
+    } finally {
+      setIsExportingOt(false);
     }
   };
 
@@ -1682,6 +1908,21 @@ export function DashboardOverview({
               <Clock className="w-3.5 h-3.5 text-emerald-700" />
             )}
             <span>Late Excel</span>
+          </button>
+
+          {/* Download Overtime Report Button */}
+          <button
+            onClick={handleExportOtExcel}
+            disabled={isExportingOt}
+            className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold border border-amber-200 rounded-xl text-xs flex items-center space-x-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
+            title="Download Overtime (OT) Audit Report in Excel"
+          >
+            {isExportingOt ? (
+              <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+            ) : (
+              <Zap className="w-3.5 h-3.5 text-amber-700" />
+            )}
+            <span>OT Excel</span>
           </button>
 
           {/* Download Summary Button */}
@@ -1850,6 +2091,23 @@ export function DashboardOverview({
               className="px-2 py-0.5 rounded-full text-[10px] font-black border border-rose-200"
             >
               {lateMetrics.totalCount} Late
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTabSwitch('ot')}
+            style={activeTab === 'ot' ? { backgroundColor: '#d97706', color: '#ffffff', borderColor: '#b45309' } : { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all duration-150 flex items-center space-x-2 cursor-pointer select-none border ${
+              activeTab === 'ot' ? 'tab-btn-ot-active shadow-md ring-2 ring-amber-400' : 'tab-btn-inactive hover:bg-amber-50'
+            }`}
+          >
+            <span style={{ color: activeTab === 'ot' ? '#ffffff' : '#0f172a' }}>Overtime Analytics (OT)</span>
+            <span
+              style={{ backgroundColor: activeTab === 'ot' ? '#fef3c7' : '#fef3c7', color: '#92400e' }}
+              className="px-2 py-0.5 rounded-full text-[10px] font-black border border-amber-300"
+            >
+              {fmtN(otMetrics.totalHours)}h OT
             </span>
           </button>
         </div>
@@ -2077,6 +2335,8 @@ export function DashboardOverview({
                     <th className="py-3.5 px-4">Category</th>
                     <th className="py-3.5 px-4">Department</th>
                     <th className="py-3.5 px-4 text-center">Days Present</th>
+                    <th className="py-3.5 px-3 text-center">OT Hours</th>
+                    <th className="py-3.5 px-4 text-right">OT Wages</th>
                     <th className="py-3.5 px-4 text-right">Calculated Wages</th>
                     <th className="py-3.5 px-5 text-center">Status</th>
                   </tr>
@@ -2084,7 +2344,7 @@ export function DashboardOverview({
                 <tbody className="divide-y divide-slate-100">
                   {pagedEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="py-12 text-center text-slate-400 font-medium">
+                      <td colSpan="9" className="py-12 text-center text-slate-400 font-medium">
                         {employeeRows.length === 0
                           ? 'No employee roster loaded yet. Upload Master Roster in Stage 1.'
                           : 'No employee matches your search.'}
@@ -2116,6 +2376,18 @@ export function DashboardOverview({
                               </span>
                             )}
                           </div>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          {emp.otHours > 0 ? (
+                            <span className="px-2 py-0.5 bg-amber-50 text-amber-900 border border-amber-200 rounded-md font-mono text-[11px] font-black">
+                              {emp.otHours}h
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 font-mono">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-amber-700">
+                          {emp.otWages > 0 ? fmt(emp.otWages) : '—'}
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
                           {emp.wages > 0 ? fmt(emp.wages) : '—'}
@@ -3297,6 +3569,430 @@ export function DashboardOverview({
                   type="button"
                   onClick={() => setLateCurrentPage(totalLatePages)}
                   disabled={lateCurrentPage === totalLatePages}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                  title="Last Page"
+                >
+                  <ChevronsRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── VIEW 4: OVERTIME (OT) ANALYTICS ── */}
+      {activeTab === 'ot' && (
+        <div className="space-y-6">
+          {/* Executive Header Banner & Actions */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse inline-block" />
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                    Overtime (OT) Audit &amp; Compensation
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-900 border border-amber-200">
+                    Active Operations
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium">
+                  Audited overtime man-hours, compensation distribution, and statutory rates for {currentMonthObj ? currentMonthObj.label : 'all dates'}
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleExportOtExcel}
+                  disabled={isExportingOt || otMetrics.totalHours === 0}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black shadow-xs transition flex items-center space-x-2 cursor-pointer disabled:opacity-50"
+                  title="Download dedicated Overtime Audit Report in Excel format"
+                >
+                  {isExportingOt ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                  )}
+                  <span>Export Overtime Audit (.xlsx)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 4 Executive KPI Metric Tiles */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mt-5">
+              <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200">
+                <div className="text-[10px] uppercase font-bold text-amber-800 tracking-wider">Total OT Hours</div>
+                <div className="text-2xl font-black text-amber-950 mt-1 font-mono">{fmtN(otMetrics.totalHours)}h</div>
+                <div className="text-[10px] text-amber-700/80 font-medium mt-0.5">Cumulative plant overtime</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div className="text-[10px] uppercase font-bold text-slate-600 tracking-wider">Overtime Workers</div>
+                <div className="text-2xl font-black text-slate-950 mt-1">{fmtN(otMetrics.totalEmployees)}</div>
+                <div className="text-[10px] text-slate-500 font-medium mt-0.5">Personnel deployed on OT</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200">
+                <div className="text-[10px] uppercase font-bold text-amber-800 tracking-wider">Total OT Wages</div>
+                <div className="text-2xl font-black text-amber-950 mt-1 font-mono">₹{fmt(otMetrics.totalWages)}</div>
+                <div className="text-[10px] text-amber-700/80 font-medium mt-0.5">Overtime compensation</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div className="text-[10px] uppercase font-bold text-slate-600 tracking-wider">Avg OT / Worker</div>
+                <div className="text-2xl font-black text-slate-950 mt-1 font-mono">{otMetrics.avgHours}h</div>
+                <div className="text-[10px] text-slate-500 font-medium mt-0.5">Average overtime load</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3 Executive Analytics Cards (Matching Plant Overview standard) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Card 1: Daily Overtime Hours Trend */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-slate-900 tracking-tight">Overtime Trend (Hours)</h3>
+                  <ChartTypeToggle
+                    currentMode={chartModes.otTrend}
+                    onToggle={(m) => toggleChartMode('otTrend', m)}
+                    isTrend={true}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
+                  <p className="text-xs text-slate-400 font-medium">Daily overtime hours volume</p>
+                  <span className="text-slate-400 text-[11px] font-bold">
+                    Total: <strong className="text-amber-600 font-mono">{fmtN(otMetrics.totalHours)}h</strong>
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-3">
+                {chartModes.otTrend === 'wave' ? (
+                  <SmoothWaveChart data={otWaveData} />
+                ) : (
+                  <DailyBarChart data={otWaveData} barColor="#d97706" />
+                )}
+              </div>
+            </div>
+
+            {/* Card 2: OT by Labour Category */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900">OT by Category</h3>
+                    <p className="text-xs text-slate-400 mt-0.5 font-medium">Overtime hours share across categories</p>
+                  </div>
+                  <ChartTypeToggle
+                    currentMode={chartModes.otCategory}
+                    onToggle={(m) => toggleChartMode('otCategory', m)}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-2">
+                {chartModes.otCategory === 'pie' ? (
+                  <EnterpriseDonutChart
+                    segments={otCategorySegments}
+                    totalLabel="Total OT"
+                    totalValue={`${fmtN(otMetrics.totalHours)}h`}
+                  />
+                ) : (
+                  <PureSVGBarChart bars={otCategorySegments} />
+                )}
+              </div>
+            </div>
+
+            {/* Card 3: Overtime Compensation Distribution */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900">OT Compensation</h3>
+                    <p className="text-xs text-slate-400 mt-0.5 font-medium">Total overtime payouts by category</p>
+                  </div>
+                  <ChartTypeToggle
+                    currentMode={chartModes.otShift}
+                    onToggle={(m) => toggleChartMode('otShift', m)}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-2">
+                {chartModes.otShift === 'bar' ? (
+                  <PureSVGBarChart bars={otWageSegments} />
+                ) : (
+                  <EnterpriseDonutChart
+                    segments={otWageSegments}
+                    totalLabel="OT Wages"
+                    totalValue={`₹${fmt(otMetrics.totalWages)}`}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 3 Category Detail Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Operator Card */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-sky-500" />
+                  <span className="text-xs font-black text-slate-900 uppercase">Plant Operators</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-sky-50 text-sky-700 border border-sky-200">
+                  {otOpShare}% Share
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-100 text-center">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block">Personnel</span>
+                  <span className="text-sm font-black text-slate-900 font-mono">{otMetrics.op.employees}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block">OT Hours</span>
+                  <span className="text-sm font-black text-sky-700 font-mono">{fmtN(otMetrics.op.hours)}h</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block">OT Wages</span>
+                  <span className="text-sm font-black text-slate-900 font-mono">₹{fmt(otMetrics.op.wages)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Contract Labour Card */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  <span className="text-xs font-black text-slate-900 uppercase">Contract Labour (CL)</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  {otClShare}% Share
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-100 text-center">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block">Personnel</span>
+                  <span className="text-sm font-black text-slate-900 font-mono">{otMetrics.cl.employees}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block">OT Hours</span>
+                  <span className="text-sm font-black text-emerald-700 font-mono">{fmtN(otMetrics.cl.hours)}h</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block">OT Wages</span>
+                  <span className="text-sm font-black text-slate-900 font-mono">₹{fmt(otMetrics.cl.wages)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* NAPS Apprentices Card */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  <span className="text-xs font-black text-slate-900 uppercase">NAPS Apprentices</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-50 text-amber-700 border border-amber-200">
+                  {otNapsShare}% Share
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-100 text-center">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block">Personnel</span>
+                  <span className="text-sm font-black text-slate-900 font-mono">{otMetrics.naps.employees}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block">OT Hours</span>
+                  <span className="text-sm font-black text-amber-700 font-mono">{fmtN(otMetrics.naps.hours)}h</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold block">OT Wages</span>
+                  <span className="text-sm font-black text-slate-900 font-mono">₹{fmt(otMetrics.naps.wages)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Overtime Employee Table */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            {/* Filter Pills & Search Bar */}
+            <div className="p-4 border-b border-slate-100 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                {/* Category Pills */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[
+                    { key: 'ALL', label: 'All Overtime', count: otMetrics.allList.length },
+                    { key: 'OP', label: 'Operators', count: otMetrics.op.list.length },
+                    { key: 'CL', label: 'Contract Labour', count: otMetrics.cl.list.length },
+                    { key: 'NAPS', label: 'NAPS', count: otMetrics.naps.list.length }
+                  ].map(f => {
+                    const isSel = otCategoryFilter === f.key;
+                    return (
+                      <button
+                        key={f.key}
+                        type="button"
+                        onClick={() => {
+                          setOtCategoryFilter(f.key);
+                          setOtCurrentPage(1);
+                        }}
+                        style={isSel ? { backgroundColor: '#d97706', color: '#ffffff', borderColor: '#b45309' } : { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center space-x-1.5 cursor-pointer border ${
+                          isSel ? 'shadow-xs' : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <span>{f.label}</span>
+                        <span
+                          style={isSel ? { backgroundColor: 'rgba(255, 255, 255, 0.25)', color: '#ffffff' } : { backgroundColor: '#f1f5f9', color: '#0f172a' }}
+                          className="px-1.5 py-0.2 rounded-full text-[10px] font-black"
+                        >
+                          {f.count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={otSearchQuery}
+                  onChange={(e) => {
+                    setOtSearchQuery(e.target.value);
+                    setOtCurrentPage(1);
+                  }}
+                  placeholder="Search overtime records by employee code, name, department..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-black border-b border-slate-200/80">
+                    <th className="py-3.5 px-5">ID / Code</th>
+                    <th className="py-3.5 px-4">Employee Name</th>
+                    <th className="py-3.5 px-4">Category</th>
+                    <th className="py-3.5 px-4">Department</th>
+                    <th className="py-3.5 px-4 text-center">Days Present</th>
+                    <th className="py-3.5 px-4 text-center font-black text-amber-900 bg-amber-50/60">OT Hours</th>
+                    <th className="py-3.5 px-4 text-right">Daily OT Rate</th>
+                    <th className="py-3.5 px-4 text-right font-black text-amber-900 bg-amber-50/60">OT Compensation</th>
+                    <th className="py-3.5 px-4 text-right">Total Wages</th>
+                    <th className="py-3.5 px-5 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {pagedOtEmployees.length === 0 ? (
+                    <tr>
+                      <td colSpan="10" className="py-12 text-center text-slate-400 font-medium">
+                        {otMetrics.allList.length === 0
+                          ? 'No overtime records detected for this period.'
+                          : 'No overtime employee matches your search.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    pagedOtEmployees.map((emp, i) => (
+                      <tr key={i} className="hover:bg-amber-50/30 transition font-medium">
+                        <td className="py-3 px-5 font-mono font-bold text-slate-900">
+                          {emp.code}
+                        </td>
+                        <td className="py-3 px-4 font-bold text-slate-900">
+                          {emp.name}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${emp.categoryColor}`}>
+                            {emp.category}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-600">
+                          {emp.dept}
+                        </td>
+                        <td className="py-3 px-4 text-center font-bold text-slate-800">
+                          {emp.days || 1}
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono font-black text-amber-900 bg-amber-50/30">
+                          <span className="px-2 py-0.5 bg-amber-100 text-amber-950 border border-amber-300 rounded-md font-bold">
+                            {emp.otHours}h
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono text-slate-600">
+                          {emp.dailyRate > 0 ? `₹${emp.dailyRate.toFixed(2)}` : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-black text-amber-800 bg-amber-50/30">
+                          ₹{fmt(emp.otWages)}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
+                          ₹{fmt(emp.totalWages)}
+                        </td>
+                        <td className="py-3 px-5 text-center">
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span>Audited</span>
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Bar */}
+            <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+              <div>
+                Showing <strong className="text-slate-800">{filteredOtEmployees.length ? (otCurrentPage - 1) * otPageSize + 1 : 0}</strong> to{' '}
+                <strong className="text-slate-800">{Math.min(otCurrentPage * otPageSize, filteredOtEmployees.length)}</strong> of{' '}
+                <strong className="text-slate-800">{filteredOtEmployees.length}</strong> overtime records
+              </div>
+
+              <div className="flex items-center space-x-1.5">
+                <button
+                  type="button"
+                  onClick={() => setOtCurrentPage(1)}
+                  disabled={otCurrentPage === 1}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                  title="First Page"
+                >
+                  <ChevronsLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOtCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={otCurrentPage === 1}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+
+                <span className="px-3 py-1 bg-amber-50 text-amber-900 font-bold rounded-lg border border-amber-200">
+                  {otCurrentPage} / {totalOtPages}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setOtCurrentPage(p => Math.min(totalOtPages, p + 1))}
+                  disabled={otCurrentPage === totalOtPages}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                  title="Next Page"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOtCurrentPage(totalOtPages)}
+                  disabled={otCurrentPage === totalOtPages}
                   className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
                   title="Last Page"
                 >

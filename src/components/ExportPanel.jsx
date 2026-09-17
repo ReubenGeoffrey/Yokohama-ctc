@@ -20,6 +20,7 @@ import {
   generateZipBundle,
   generateWopReportWorkbook,
   generateLateReportWorkbook,
+  generateOvertimeReportWorkbook,
   downloadBlob
 } from '../services/excelEngine';
 
@@ -33,6 +34,7 @@ export function ExportPanel({ batchResults, master, empStats }) {
   const [downloadingZip, setDownloadingZip] = useState(false);
   const [downloadingWop, setDownloadingWop] = useState(false);
   const [downloadingLate, setDownloadingLate] = useState(false);
+  const [downloadingOt, setDownloadingOt] = useState(false);
 
   // Detect months present in batchResults
   const availableMonths = useMemo(() => {
@@ -420,6 +422,123 @@ export function ExportPanel({ batchResults, master, empStats }) {
     }
   };
 
+  // Compute Overtime Metrics for Export
+  const otMetrics = useMemo(() => {
+    const opList = [];
+    const clList = [];
+    const napsList = [];
+    let opOtHours = 0, opOtEmployees = 0, opOtWages = 0;
+    let clOtHours = 0, clOtEmployees = 0, clOtWages = 0;
+    let napsOtHours = 0, napsOtEmployees = 0, napsOtWages = 0;
+
+    if (master) {
+      if (master.operator) {
+        Object.keys(master.operator).forEach(code => {
+          const item = master.operator[code];
+          const st = getEmpStat(empStats?.OP, code);
+          const otHrs = st.otHrs || 0;
+          const dailyRate = item.dailyOT || 0;
+          const otWages = st.otAmount !== undefined ? st.otAmount : Math.round(otHrs * dailyRate * 100) / 100;
+          if (otHrs > 0) {
+            opOtHours += otHrs;
+            opOtEmployees += 1;
+            opOtWages += otWages;
+            opList.push({
+              code,
+              name: item.name || 'Operator Personnel',
+              category: 'Operator',
+              dept: item.dept || 'Production',
+              days: st.daysPresent,
+              otHours: otHrs,
+              dailyRate,
+              otWages,
+              totalWages: st.wages
+            });
+          }
+        });
+      }
+
+      if (master.contract) {
+        Object.keys(master.contract).forEach(code => {
+          const item = master.contract[code];
+          const st = getEmpStat(empStats?.CL, code);
+          const otHrs = st.otHrs || 0;
+          const dailyRate = item.dailyOT || 0;
+          const otWages = st.otAmount !== undefined ? st.otAmount : Math.round(otHrs * dailyRate * 100) / 100;
+          if (otHrs > 0) {
+            clOtHours += otHrs;
+            clOtEmployees += 1;
+            clOtWages += otWages;
+            clList.push({
+              code,
+              name: item.name || 'Contract Labour',
+              category: 'CL',
+              dept: item.dept || item.contractor || 'Contract',
+              days: st.daysPresent,
+              otHours: otHrs,
+              dailyRate,
+              otWages,
+              totalWages: st.wages
+            });
+          }
+        });
+      }
+
+      if (master.naps) {
+        Object.keys(master.naps).forEach(code => {
+          const item = master.naps[code];
+          const st = getEmpStat(empStats?.NAPS, code);
+          const otHrs = st.otHrs || 0;
+          const dailyRate = 0;
+          const otWages = 0;
+          if (otHrs > 0) {
+            napsOtHours += otHrs;
+            napsOtEmployees += 1;
+            napsOtWages += otWages;
+            napsList.push({
+              code,
+              name: item.name || 'NAPS Apprentice',
+              category: 'NAPS',
+              dept: item.dept || 'NAPS',
+              days: st.daysPresent,
+              otHours: otHrs,
+              dailyRate,
+              otWages,
+              totalWages: st.wages
+            });
+          }
+        });
+      }
+    }
+
+    const totalHours = Math.round((opOtHours + clOtHours + napsOtHours) * 100) / 100;
+    const totalEmployees = opOtEmployees + clOtEmployees + napsOtEmployees;
+    const totalWages = Math.round(opOtWages + clOtWages + napsOtWages);
+
+    return {
+      op: { hours: opOtHours, employees: opOtEmployees, wages: opOtWages, list: opList },
+      cl: { hours: clOtHours, employees: clOtEmployees, wages: clOtWages, list: clList },
+      naps: { hours: napsOtHours, employees: napsOtEmployees, wages: napsOtWages, list: napsList },
+      totalHours,
+      totalEmployees,
+      totalWages
+    };
+  }, [master, empStats]);
+
+  const handleDownloadOt = async () => {
+    setDownloadingOt(true);
+    try {
+      const buffer = await generateOvertimeReportWorkbook(otMetrics, master, targetBatchResults);
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      downloadBlob(blob, `Overtime_OT_Report_${currentMonthConfig.label.replace(/\s+/g, '_')}.xlsx`);
+    } catch (err) {
+      console.error(err);
+      alert('Error exporting Overtime Workbook: ' + err.message);
+    } finally {
+      setDownloadingOt(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -686,6 +805,59 @@ export function ExportPanel({ batchResults, master, empStats }) {
               <>
                 <Archive className="w-4 h-4 text-slate-500" />
                 <span>Download Daily Reports (.zip)</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Package 5: Overtime (OT) Audit Report */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 flex flex-col justify-between space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 flex items-center justify-center shadow-2xs">
+                <FileSpreadsheet className="w-5 h-5 text-amber-700" />
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-base font-black text-slate-900">
+                Overtime (OT) Audit &amp; Compensation
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
+                Dedicated overtime register with individual worker hours, daily OT rates, and statutory compensation totals.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-slate-100 text-xs text-slate-600 font-medium">
+              <div className="flex items-center space-x-2">
+                <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Executive OT Summary with total hours &amp; payouts</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Separate tabs for Operators, Contract Labour &amp; NAPS</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Audited {otMetrics.totalHours} OT hours across {otMetrics.totalEmployees} personnel</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleDownloadOt}
+            disabled={downloadingOt || !targetBatchResults.length}
+            className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black shadow-xs transition flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
+          >
+            {downloadingOt ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Generating OT Workbook...</span>
+              </>
+            ) : (
+              <>
+                <FileDown className="w-4 h-4" />
+                <span>Download Overtime Excel (.xlsx)</span>
               </>
             )}
           </button>

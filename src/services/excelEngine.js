@@ -932,6 +932,221 @@ export async function generateLateReportWorkbook(lateMetrics, master, batchResul
   return await wb.xlsx.writeBuffer();
 }
 
+// ── Generate Dedicated Overtime (OT) Audit Workbook (Executive Amber/Orange Template) ──
+export async function generateOvertimeReportWorkbook(otMetrics, master, batchResults) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Built by Joseph & Reuben Geoffrey (Hr Team)';
+  wb.created = new Date();
+
+  const cAmberDark = 'FF78350F';   // Deep Warm Amber Slate
+  const cAmberHeader = 'FFB45309'; // Executive Warm Amber
+  const cAmberAccent = 'FFFEF3C7'; // Light Amber Cream
+  const cAmberTotal = 'FFD97706';  // Vibrant Amber
+  const cAmberRowEven = 'FFFFFBEB';
+  const cAmberBorder = 'FFFDE68A';
+
+  const amberThinBorder = {
+    top: { style: 'thin', color: { argb: cAmberBorder } },
+    left: { style: 'thin', color: { argb: cAmberBorder } },
+    bottom: { style: 'thin', color: { argb: cAmberBorder } },
+    right: { style: 'thin', color: { argb: cAmberBorder } }
+  };
+
+  const amberDoubleBottomBorder = {
+    top: { style: 'thin', color: { argb: cAmberBorder } },
+    left: { style: 'thin', color: { argb: cAmberBorder } },
+    bottom: { style: 'double', color: { argb: 'FF92400E' } },
+    right: { style: 'thin', color: { argb: cAmberBorder } }
+  };
+
+  // 1. Executive Summary Sheet
+  const wsSummary = wb.addWorksheet('OT Executive Summary');
+  wsSummary.views = [{ showGridLines: true }];
+
+  // Banner Title
+  wsSummary.mergeCells('A1:F1');
+  const titleCell = wsSummary.getCell('A1');
+  titleCell.value = 'CTC — OVERTIME (OT) EXECUTIVE AUDIT REPORT';
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cAmberDark } };
+  titleCell.font = { name: FONT_NAME, size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  wsSummary.getRow(1).height = 32;
+
+  // KPI Tiles
+  wsSummary.getCell('A3').value = 'Total OT Hours';
+  wsSummary.getCell('B3').value = otMetrics.totalHours;
+  wsSummary.getCell('C3').value = 'Total Overtime Workers';
+  wsSummary.getCell('D3').value = otMetrics.totalEmployees;
+  wsSummary.getCell('E3').value = 'Total Overtime Wages';
+  wsSummary.getCell('F3').value = otMetrics.totalWages;
+
+  ['A3', 'C3', 'E3'].forEach(pos => {
+    const c = wsSummary.getCell(pos);
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cAmberAccent } };
+    c.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FF92400E' } };
+    c.border = amberThinBorder;
+    c.alignment = { horizontal: 'center', vertical: 'middle' };
+  });
+
+  ['B3', 'D3', 'F3'].forEach((pos, idx) => {
+    const c = wsSummary.getCell(pos);
+    c.font = { name: FONT_NAME, size: 11, bold: true, color: { argb: cAmberDark } };
+    c.border = amberThinBorder;
+    c.alignment = { horizontal: 'center', vertical: 'middle' };
+    if (idx === 0) c.numFmt = '#,##0.00';
+    else if (idx === 1) c.numFmt = '#,##0';
+    else if (idx === 2) c.numFmt = '₹#,##0';
+  });
+  wsSummary.getRow(3).height = 22;
+
+  // Category Breakdown Table
+  const catHeaders = ['Labour Category', 'Personnel Count', 'Total OT Hours', 'Overtime Compensation', '% OT Share'];
+  catHeaders.forEach((h, i) => {
+    const cell = wsSummary.getCell(5, i + 1);
+    cell.value = h;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cAmberHeader } };
+    cell.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.border = amberThinBorder;
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+  });
+  wsSummary.getRow(5).height = 22;
+
+  const cats = [
+    { label: 'Plant Operators', m: otMetrics.op },
+    { label: 'Contract Labour', m: otMetrics.cl },
+    { label: 'NAPS Apprentices', m: otMetrics.naps }
+  ];
+
+  let catRow = 6;
+  cats.forEach(c => {
+    const share = otMetrics.totalHours > 0 ? (c.m.hours / otMetrics.totalHours) : 0;
+    wsSummary.getCell(catRow, 1).value = c.label;
+    wsSummary.getCell(catRow, 2).value = c.m.employees;
+    wsSummary.getCell(catRow, 3).value = c.m.hours;
+    wsSummary.getCell(catRow, 4).value = c.m.wages;
+    wsSummary.getCell(catRow, 5).value = share;
+
+    for (let col = 1; col <= 5; col++) {
+      const cell = wsSummary.getCell(catRow, col);
+      cell.border = amberThinBorder;
+      cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
+      if (col === 2) cell.numFmt = '#,##0';
+      if (col === 3) cell.numFmt = '#,##0.00';
+      if (col === 4) cell.numFmt = '₹#,##0';
+      if (col === 5) cell.numFmt = '0.0%';
+      cell.alignment = (col === 1) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'right', vertical: 'middle' };
+    }
+    wsSummary.getRow(catRow).height = 20;
+    catRow++;
+  });
+
+  // Summary Total Row
+  wsSummary.getCell(catRow, 1).value = 'PLANT WIDE TOTAL';
+  wsSummary.getCell(catRow, 2).value = otMetrics.totalEmployees;
+  wsSummary.getCell(catRow, 3).value = otMetrics.totalHours;
+  wsSummary.getCell(catRow, 4).value = otMetrics.totalWages;
+  wsSummary.getCell(catRow, 5).value = 1.0;
+
+  for (let col = 1; col <= 5; col++) {
+    const cell = wsSummary.getCell(catRow, col);
+    cell.border = amberDoubleBottomBorder;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cAmberTotal } };
+    cell.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+    if (col === 2) cell.numFmt = '#,##0';
+    if (col === 3) cell.numFmt = '#,##0.00';
+    if (col === 4) cell.numFmt = '₹#,##0';
+    if (col === 5) cell.numFmt = '0.0%';
+    cell.alignment = (col === 1) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'right', vertical: 'middle' };
+  }
+  wsSummary.getRow(catRow).height = 24;
+
+  const summaryCols = { 1: 26, 2: 18, 3: 18, 4: 26, 5: 16 };
+  Object.entries(summaryCols).forEach(([c, w]) => { wsSummary.getColumn(Number(c)).width = w; });
+
+  // Helper for Category Detail Sheets
+  function buildOtDetail(sheetName, list) {
+    const ws = wb.addWorksheet(sheetName);
+    ws.views = [{ showGridLines: true }];
+
+    const headers = ['S.No', 'Emp Code', 'Employee Name', 'Department', 'Days Present', 'OT Hours', 'Daily OT Rate', 'OT Wages', 'Total Wages'];
+    headers.forEach((h, i) => {
+      const cell = ws.getCell(1, i + 1);
+      cell.value = h;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cAmberHeader } };
+      cell.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.border = amberThinBorder;
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+    ws.getRow(1).height = 24;
+
+    let totHours = 0;
+    let totOtWages = 0;
+    let totAllWages = 0;
+
+    list.forEach((emp, i) => {
+      const r = i + 2;
+      totHours += (emp.otHours || 0);
+      totOtWages += (emp.otWages || 0);
+      totAllWages += (emp.totalWages || 0);
+
+      ws.getCell(r, 1).value = i + 1;
+      ws.getCell(r, 2).value = emp.code;
+      ws.getCell(r, 3).value = emp.name;
+      ws.getCell(r, 4).value = emp.dept;
+      ws.getCell(r, 5).value = emp.days || 1;
+      ws.getCell(r, 6).value = Math.round((emp.otHours || 0) * 100) / 100;
+      ws.getCell(r, 7).value = Math.round((emp.dailyRate || 0) * 100) / 100;
+      ws.getCell(r, 8).value = Math.round((emp.otWages || 0) * 100) / 100;
+      ws.getCell(r, 9).value = Math.round((emp.totalWages || 0) * 100) / 100;
+
+      const banded = i % 2 === 1;
+      for (let c = 1; c <= 9; c++) {
+        const cell = ws.getCell(r, c);
+        cell.border = amberThinBorder;
+        cell.font = { name: FONT_NAME, size: 10, color: { argb: 'FF111827' } };
+        if (banded) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cAmberRowEven } };
+        if (c === 5) cell.numFmt = '#,##0';
+        if (c === 6) cell.numFmt = '#,##0.00';
+        if (c === 7 || c === 8 || c === 9) cell.numFmt = '#,##0.00';
+        cell.alignment = (c === 3 || c === 4) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+      }
+      ws.getRow(r).height = 20;
+    });
+
+    // Total Row
+    const lastR = list.length + 2;
+    ws.getCell(lastR, 1).value = '';
+    ws.getCell(lastR, 2).value = '';
+    ws.getCell(lastR, 3).value = 'TOTAL';
+    ws.getCell(lastR, 4).value = `${list.length} Employees`;
+    ws.getCell(lastR, 5).value = '';
+    ws.getCell(lastR, 6).value = Math.round(totHours * 100) / 100;
+    ws.getCell(lastR, 7).value = '';
+    ws.getCell(lastR, 8).value = Math.round(totOtWages * 100) / 100;
+    ws.getCell(lastR, 9).value = Math.round(totAllWages * 100) / 100;
+
+    for (let c = 1; c <= 9; c++) {
+      const cell = ws.getCell(lastR, c);
+      cell.border = amberDoubleBottomBorder;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: cAmberTotal } };
+      cell.font = { name: FONT_NAME, size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+      if (c === 6) cell.numFmt = '#,##0.00';
+      if (c === 8 || c === 9) cell.numFmt = '#,##0.00';
+      cell.alignment = (c === 3 || c === 4) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+    }
+    ws.getRow(lastR).height = 24;
+
+    const wCols = { 1: 7, 2: 14, 3: 28, 4: 22, 5: 15, 6: 15, 7: 16, 8: 18, 9: 18 };
+    Object.entries(wCols).forEach(([c, w]) => { ws.getColumn(Number(c)).width = w; });
+  }
+
+  buildOtDetail('Plant Operators (OT)', otMetrics.op.list);
+  buildOtDetail('Contract Labour (OT)', otMetrics.cl.list);
+  buildOtDetail('NAPS Apprentices (OT)', otMetrics.naps.list);
+
+  return await wb.xlsx.writeBuffer();
+}
+
 // Trigger browser file download
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);

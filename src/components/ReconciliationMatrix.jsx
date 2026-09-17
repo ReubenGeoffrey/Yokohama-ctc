@@ -172,6 +172,7 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
   const totHC      = displayResults.reduce((s, r) => s + (r.gHC || 0), 0);
   const totCTC     = displayResults.reduce((s, r) => s + (r.gCTC || 0), 0);
   const totOT      = displayResults.reduce((s, r) => s + (r.gOT || 0), 0);
+  const totOtHrs   = displayResults.reduce((s, r) => s + (r.gOtHrs || 0), 0);
   const totCost    = totCTC + totOT;
   const totDirCost = displayResults.reduce((s, r) => s + (r.dTot || 0), 0);
   const totIndCost = displayResults.reduce((s, r) => s + (r.iTot || 0), 0);
@@ -337,7 +338,7 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
         {[
           { label: 'Total Man-days',  value: fmtN(totHC),      sub: `${displayResults.length} dates` },
           { label: 'Daily CTC Wages',  value: fmt(totCTC),      sub: 'Standard working wages' },
-          { label: 'OT Compensation',  value: fmt(totOT),       sub: 'Overtime wages' },
+          { label: 'OT Compensation',  value: fmt(totOT),       sub: `${fmtN(totOtHrs)} hrs overtime` },
           { label: 'Plant Total Cost', value: fmt(totCost),     sub: 'CTC + OT combined', highlight: true },
         ].map((kpi, i) => (
           <div
@@ -526,6 +527,8 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
                 <th className="py-3.5 px-4 text-right">Indirect Man-days</th>
                 <th className="py-3.5 px-4 text-right">Indirect Cost</th>
                 <th className="py-3.5 px-4 text-right font-black text-slate-900 bg-slate-100/70">Total Man-days</th>
+                <th className="py-3.5 px-4 text-right font-black text-amber-900 bg-amber-50/60">OT Hours</th>
+                <th className="py-3.5 px-4 text-right font-black text-amber-900 bg-amber-50/60">OT Wages</th>
                 <th className="py-3.5 px-4 text-right font-black text-slate-900 bg-slate-100/70">Total Cost</th>
                 <th className="py-3.5 px-5 text-center">Action</th>
               </tr>
@@ -550,6 +553,12 @@ export function ReconciliationMatrix({ batchResults, master, onNext }) {
                   </td>
                   <td className="py-3.5 px-4 text-right font-black text-slate-950 bg-slate-50/50">
                     {fmtN(r.gHC)}
+                  </td>
+                  <td className="py-3.5 px-4 text-right font-mono font-bold text-amber-900 bg-amber-50/30">
+                    {r.gOtHrs > 0 ? `${fmtN(r.gOtHrs)}h` : '—'}
+                  </td>
+                  <td className="py-3.5 px-4 text-right font-mono font-bold text-amber-800 bg-amber-50/30">
+                    {r.gOT > 0 ? `₹${fmt(r.gOT)}` : '—'}
                   </td>
                   <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-700 bg-slate-50/50">
                     {fmt(r.gTot)}
