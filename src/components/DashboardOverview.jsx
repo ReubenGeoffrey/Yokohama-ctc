@@ -857,6 +857,7 @@ export function DashboardOverview({
     lateShift: 'bar',         // 'bar' | 'pie'
     otTrend: 'wave',          // 'wave' | 'bar'
     otCategory: 'pie',        // 'pie' | 'bar'
+    otWages: 'bar',           // 'bar' | 'pie'
     otShift: 'bar'            // 'bar' | 'pie'
   });
 
@@ -881,6 +882,7 @@ export function DashboardOverview({
         lateShift: 'pie',
         otTrend: 'wave',
         otCategory: 'pie',
+        otWages: 'pie',
         otShift: 'pie'
       });
     } else if (targetType === 'bar') {
@@ -896,6 +898,7 @@ export function DashboardOverview({
         lateShift: 'bar',
         otTrend: 'bar',
         otCategory: 'bar',
+        otWages: 'bar',
         otShift: 'bar'
       });
     } else {
@@ -912,6 +915,7 @@ export function DashboardOverview({
         lateShift: 'bar',
         otTrend: 'wave',
         otCategory: 'pie',
+        otWages: 'bar',
         otShift: 'bar'
       });
     }
@@ -3640,10 +3644,14 @@ export function DashboardOverview({
               </div>
 
               <div className="mt-3">
-                {chartModes.otCategory === 'donut' ? (
-                  <DonutChart segments={otCategorySegments} />
+                {chartModes.otCategory === 'pie' ? (
+                  <EnterpriseDonutChart
+                    segments={otCategorySegments}
+                    totalLabel="Total OT"
+                    totalValue={`${fmtN(otMetrics.totalHours)}h`}
+                  />
                 ) : (
-                  <BarList segments={otCategorySegments} />
+                  <PureSVGBarChart bars={otCategorySegments} />
                 )}
               </div>
             </div>
@@ -3666,9 +3674,13 @@ export function DashboardOverview({
 
               <div className="mt-3">
                 {chartModes.otWages === 'bar' ? (
-                  <BarList segments={otWageSegments} />
+                  <PureSVGBarChart bars={otWageSegments} />
                 ) : (
-                  <DonutChart segments={otWageSegments} />
+                  <EnterpriseDonutChart
+                    segments={otWageSegments}
+                    totalLabel="Total OT Pay"
+                    totalValue={`₹${fmt(otMetrics.totalWages)}`}
+                  />
                 )}
               </div>
             </div>
