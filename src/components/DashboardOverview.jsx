@@ -973,6 +973,11 @@ export function DashboardOverview({
     });
   }, [batchResults, selectedMonthKey]);
 
+  // Currently selected month object for labeling
+  const currentMonthObj = useMemo(() => {
+    return availableMonths.find(m => m.key === selectedMonthKey) || null;
+  }, [availableMonths, selectedMonthKey]);
+
   // Dynamically compute employee stats for the active display results
   const displayEmpStats = useMemo(() => {
     if (!master || !displayResults.length) return empStats || { OP: new Map(), CL: new Map(), NAPS: new Map() };

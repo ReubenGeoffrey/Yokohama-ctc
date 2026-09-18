@@ -332,14 +332,22 @@ export function isGShift(shift) {
   return s.startsWith('G') || s.includes('GENERAL') || s.includes('SHIFT G') || /\bG\b/.test(s);
 }
 
-export function calculateEligibleOt(rawOt, shift) {
+export function calculateEligibleOt(rawOt, shift, workHours = 0) {
   if (!rawOt || rawOt <= 0) return 0;
+
+  // Sanity check: Overtime can never exceed total work hours (e.g. biometric midnight-crossover glitch for Shift CC)
+  let effectiveOt = rawOt;
+  if (workHours > 0 && effectiveOt > workHours) {
+    // If worker was Present, OT cannot exceed hours worked beyond standard 8h shift
+    effectiveOt = Math.max(0, Math.round((workHours - 8) * 100) / 100);
+  }
+
   if (isGShift(shift)) {
     // General Shift (G shift 9:00 AM - 5:30 PM): 1 hr OT and above is eligible
-    return rawOt >= 1 ? rawOt : 0;
+    return effectiveOt >= 1 ? effectiveOt : 0;
   }
   // Production / Other Shifts (A, B, C, etc.): 1 hr OT is ineligible, >= 2 hrs only eligible
-  return rawOt >= 2 ? rawOt : 0;
+  return effectiveOt >= 2 ? effectiveOt : 0;
 }
 
 export function parsePresentRecords(rows, hIdx) {
@@ -470,8 +478,10 @@ export function parsePresentRecords(rows, hIdx) {
       }
     }
 
-    // Plant Overtime Policy: G shift (9am - 5:30pm) is eligible for 1 hr OT; other shifts require >= 2 hrs
-    const otHours = calculateEligibleOt(rawOt, shift);
+    const rawWorkHours = idxWorkHrs !== -1 ? timeStrToHours(r[idxWorkHrs]) : 0;
+
+    // Plant Overtime Policy: G shift (9am - 5:30pm) is eligible for 1 hr OT; other shifts require >= 2 hrs; sanity guard against rawOt > workHours
+    const otHours = calculateEligibleOt(rawOt, shift, rawWorkHours);
 
     out.push({
       code: codeStr,
@@ -481,7 +491,7 @@ export function parsePresentRecords(rows, hIdx) {
       shift: shift || 'AA',
       rawOt,
       otHours,
-      workHours: idxWorkHrs !== -1 ? timeStrToHours(r[idxWorkHrs]) : 0,
+      workHours: rawWorkHours,
       lateCount,
       lateHours: lateHoursStr,
       lateMins,
